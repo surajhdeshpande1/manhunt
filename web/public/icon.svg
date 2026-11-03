@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0e0d0c"/>
+  <g transform="skewX(-8) translate(40 0)">
+    <rect x="70" y="150" width="34" height="212" fill="#ff4a1c" transform="skewX(-14)"/>
+    <text x="128" y="352" font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="800" font-size="250" fill="#efe6d6" letter-spacing="2">TAG</text>
+  </g>
+</svg>
