@@ -5,6 +5,7 @@ import { selfieUrl } from '../lib/supabase';
 import { cssVar } from '../lib/theme';
 
 const STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+const OUT_RED = '#e63323';
 export type Marker = { id: string; lat: number; lng: number; selfie?: string | null; role?: 'runner' | 'hunter' | null; label?: string; me?: boolean; stale?: boolean; alert?: boolean };
 export type MapHandle = { fit: (pts?: LngLat[]) => void; flyTo: (lat: number, lng: number, zoom?: number) => void };
 type Props = {
@@ -97,26 +98,29 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
     m.touchZoomRotate.disableRotation();
     map.current = m;
     m.on('style.load', () => {
-      recolor(m);
-      const accent = cssVar('--accent'), danger = cssVar('--danger'), text = cssVar('--text'), bg = cssVar('--bg');
+      const accent = cssVar('--accent');
       m.addSource('tag-mask', { type: 'geojson', data: empty });
+      m.addSource('tag-mask-b', { type: 'geojson', data: empty });
       m.addSource('tag-boundary', { type: 'geojson', data: empty });
       m.addSource('tag-nogo', { type: 'geojson', data: empty });
       m.addSource('tag-zone', { type: 'geojson', data: empty });
       m.addSource('tag-zone-next', { type: 'geojson', data: empty });
       m.addSource('tag-draft', { type: 'geojson', data: empty });
       m.addSource('tag-acc', { type: 'geojson', data: empty });
-      m.addLayer({ id: 'tag-mask', type: 'fill', source: 'tag-mask', paint: { 'fill-color': bg, 'fill-opacity': 0.62 } });
-      m.addLayer({ id: 'tag-boundary-fill', type: 'fill', source: 'tag-boundary', paint: { 'fill-color': accent, 'fill-opacity': 0.05 } });
-      m.addLayer({ id: 'tag-boundary-line', type: 'line', source: 'tag-boundary', paint: { 'line-color': accent, 'line-width': 2.5, 'line-opacity': 0.95 } });
-      m.addLayer({ id: 'tag-nogo-fill', type: 'fill', source: 'tag-nogo', paint: { 'fill-color': danger, 'fill-opacity': 0.22 } });
-      m.addLayer({ id: 'tag-nogo-line', type: 'line', source: 'tag-nogo', paint: { 'line-color': danger, 'line-width': 1.5, 'line-dasharray': [2, 1.5] } });
-      m.addLayer({ id: 'tag-zone-line', type: 'line', source: 'tag-zone', paint: { 'line-color': text, 'line-width': 2, 'line-opacity': 0.9 } });
-      m.addLayer({ id: 'tag-zone-next-line', type: 'line', source: 'tag-zone-next', paint: { 'line-color': accent, 'line-width': 1.5, 'line-dasharray': [3, 2], 'line-opacity': 0.9 } });
-      m.addLayer({ id: 'tag-acc', type: 'fill', source: 'tag-acc', paint: { 'fill-color': accent, 'fill-opacity': 0.12 } });
-      m.addLayer({ id: 'tag-draft-fill', type: 'fill', source: 'tag-draft', filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': accent, 'fill-opacity': 0.12 } });
-      m.addLayer({ id: 'tag-draft-line', type: 'line', source: 'tag-draft', filter: ['!=', '$type', 'Point'], paint: { 'line-color': accent, 'line-width': 2, 'line-dasharray': [2, 1] } });
-      m.addLayer({ id: 'tag-draft-pts', type: 'circle', source: 'tag-draft', filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 6, 'circle-color': bg, 'circle-stroke-color': accent, 'circle-stroke-width': 2.5 } });
+      // everything players must stay out of is tinted translucent red; the map stays readable underneath
+      m.addLayer({ id: 'tag-mask', type: 'fill', source: 'tag-mask', paint: { 'fill-color': OUT_RED, 'fill-opacity': 0.24 } });
+      m.addLayer({ id: 'tag-mask-b', type: 'fill', source: 'tag-mask-b', paint: { 'fill-color': OUT_RED, 'fill-opacity': 0.24 } });
+      m.addLayer({ id: 'tag-boundary-line-casing', type: 'line', source: 'tag-boundary', paint: { 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': 0.85 } });
+      m.addLayer({ id: 'tag-boundary-line', type: 'line', source: 'tag-boundary', paint: { 'line-color': OUT_RED, 'line-width': 3 } });
+      m.addLayer({ id: 'tag-nogo-fill', type: 'fill', source: 'tag-nogo', paint: { 'fill-color': OUT_RED, 'fill-opacity': 0.38 } });
+      m.addLayer({ id: 'tag-nogo-line', type: 'line', source: 'tag-nogo', paint: { 'line-color': '#9b1208', 'line-width': 2, 'line-dasharray': [2, 1.5] } });
+      m.addLayer({ id: 'tag-zone-casing', type: 'line', source: 'tag-zone', paint: { 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': 0.9 } });
+      m.addLayer({ id: 'tag-zone-line', type: 'line', source: 'tag-zone', paint: { 'line-color': '#0f172a', 'line-width': 3 } });
+      m.addLayer({ id: 'tag-zone-next-line', type: 'line', source: 'tag-zone-next', paint: { 'line-color': '#0f172a', 'line-width': 2, 'line-dasharray': [2.5, 2], 'line-opacity': 0.85 } });
+      m.addLayer({ id: 'tag-acc', type: 'fill', source: 'tag-acc', paint: { 'fill-color': '#2563eb', 'fill-opacity': 0.14 } });
+      m.addLayer({ id: 'tag-draft-fill', type: 'fill', source: 'tag-draft', filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': accent, 'fill-opacity': 0.18 } });
+      m.addLayer({ id: 'tag-draft-line', type: 'line', source: 'tag-draft', filter: ['!=', '$type', 'Point'], paint: { 'line-color': accent, 'line-width': 3, 'line-dasharray': [2, 1] } });
+      m.addLayer({ id: 'tag-draft-pts', type: 'circle', source: 'tag-draft', filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 7, 'circle-color': '#ffffff', 'circle-stroke-color': accent, 'circle-stroke-width': 3 } });
       ready.current = true;
       sync();
     });
@@ -130,13 +134,9 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
   useEffect(() => {
     const m = map.current; if (!m || !ready.current) return;
     requestAnimationFrame(() => {
-      recolor(m);
-      const accent = cssVar('--accent'), danger = cssVar('--danger'), text = cssVar('--text'), bg = cssVar('--bg');
+      const accent = cssVar('--accent');
       const s = (l: string, k: string, v: string) => { try { m.setPaintProperty(l, k as any, v); } catch { /* */ } };
-      s('tag-mask', 'fill-color', bg); s('tag-boundary-fill', 'fill-color', accent); s('tag-boundary-line', 'line-color', accent);
-      s('tag-nogo-fill', 'fill-color', danger); s('tag-nogo-line', 'line-color', danger); s('tag-zone-line', 'line-color', text);
-      s('tag-zone-next-line', 'line-color', accent); s('tag-acc', 'fill-color', accent);
-      s('tag-draft-fill', 'fill-color', accent); s('tag-draft-line', 'line-color', accent); s('tag-draft-pts', 'circle-stroke-color', accent); s('tag-draft-pts', 'circle-color', bg);
+      s('tag-draft-fill', 'fill-color', accent); s('tag-draft-line', 'line-color', accent); s('tag-draft-pts', 'circle-stroke-color', accent);
     });
   }, [p.themeKey]);
 
@@ -149,8 +149,11 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
     src('tag-zone')?.setData(zone ? poly([circlePolygon(zone)]) as any : empty);
     src('tag-zone-next')?.setData(zoneNext ? poly([circlePolygon(zoneNext)]) as any : empty);
     // darken everything outside the live zone (or outside the boundary when there is no zone yet)
-    const hole = zone ? circlePolygon(zone) : boundary && boundary.length >= 3 ? closeRing(boundary) : null;
-    src('tag-mask')?.setData(showMask !== false && hole ? poly([[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]], [...hole].reverse()]) as any : empty);
+    // tint everything outside the safe zone AND everything outside the boundary (overlap reads darker)
+    const world: LngLat[] = [[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]];
+    const ring = boundary && boundary.length >= 3 ? closeRing(boundary) : null;
+    src('tag-mask')?.setData(showMask !== false && zone ? poly([world, [...circlePolygon(zone)].reverse()]) as any : empty);
+    src('tag-mask-b')?.setData(showMask !== false && ring ? poly([world, [...ring].reverse()]) as any : empty);
     src('tag-acc')?.setData(me && me.acc ? poly([circlePolygon({ lat: me.lat, lng: me.lng, r: me.acc }, 40)]) as any : empty);
     if (draft && draft.length) {
       const feats: any[] = draft.map((pt) => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: pt } }));
@@ -158,7 +161,7 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
       else if (draft.length === 2) feats.push({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: draft } });
       src('tag-draft')?.setData(fc(feats) as any);
       try {
-        const c = draftKind === 'nogo' ? cssVar('--danger') : cssVar('--accent');
+        const c = draftKind === 'nogo' ? OUT_RED : cssVar('--accent');
         m.setPaintProperty('tag-draft-line', 'line-color', c); m.setPaintProperty('tag-draft-fill', 'fill-color', c); m.setPaintProperty('tag-draft-pts', 'circle-stroke-color', c);
       } catch { /* */ }
     } else src('tag-draft')?.setData(empty);
@@ -193,7 +196,7 @@ const css = `
 .tag-marker[data-role="runner"] .tm-pin { background:#ff6214; }
 .tag-marker[data-role="hunter"] .tm-pin { background:#ffd000; }
 .tag-marker .tm-img { width:100%; height:34px; background:#222 center/cover; clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px)); display:grid; place-items:center; font:700 12px 'Barlow Condensed'; color:#fff; }
-.tag-marker .tm-label { margin-top:2px; padding:1px 5px; background:var(--bg); color:var(--text); font:700 10px/1.3 'Barlow Condensed'; letter-spacing:.12em; text-transform:uppercase; white-space:nowrap; }
+.tag-marker .tm-label { margin-top:2px; padding:1px 5px; background:#0e0d0c; color:#fff; font:700 10px/1.3 'Barlow Condensed'; letter-spacing:.12em; text-transform:uppercase; white-space:nowrap; }
 .tag-marker[data-me="1"] .tm-pin { animation: tmPulse 1.6s ease-in-out infinite; }
 .tag-marker[data-stale="1"] { opacity:.45; }
 .tag-marker[data-alert="1"] .tm-pin { background:var(--danger); animation: tmPulse .6s ease-in-out infinite; }

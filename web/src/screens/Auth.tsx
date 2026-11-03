@@ -167,35 +167,59 @@ export function SignIn() {
 /* ---------- Forgot / reset ---------- */
 export function Forgot() {
   useTheme('neutral');
+  const nav = useNavigate();
   const toast = useToast();
   const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
+  const [step, setStep] = useState<'email' | 'code' | 'nomail'>('email');
+  const [code, setCode] = useState('');
+  const [pw, setPw] = useState('');
   const [busy, setBusy] = useState(false);
-  async function submit(e: FormEvent) {
+  async function send(e?: FormEvent) {
+    e?.preventDefault();
+    setBusy(true);
+    try { await callFunction('password-reset', { action: 'request', email }); setStep('code'); toast('If that email has an account, a code is on its way'); }
+    catch (e: any) { if (e.code === 'email_not_configured') setStep('nomail'); else toast(cleanError(e.message), true); }
+    finally { setBusy(false); }
+  }
+  async function confirm(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: `${location.origin}/reset` });
-    setBusy(false);
-    if (error && !/rate/i.test(error.message)) { toast(cleanError(error.message), true); return; }
-    setSent(true);
+    try {
+      await callFunction('password-reset', { action: 'confirm', email, code, password: pw });
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password: pw });
+      haptic.ok(); toast('Password updated');
+      nav(error ? '/signin' : '/home', { replace: true });
+    } catch (e: any) { toast(cleanError(e.message), true); } finally { setBusy(false); }
   }
   return (
     <Slash>
-      <form className="screen" onSubmit={submit}>
+      <div className="screen">
         <Header title="Reset password" />
-        {sent ? (
+        {step === 'email' && (
+          <form className="stack" style={{ gap: 16 }} onSubmit={send}>
+            <p className="muted" style={{ margin: 0 }}>Enter your account email. We'll send a 6-digit code.</p>
+            <Field label="Email" type="email" autoCapitalize="none" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Button size="lg" block loading={busy} type="submit" disabled={!email}>Send code</Button>
+          </form>
+        )}
+        {step === 'code' && (
+          <form className="stack" style={{ gap: 16 }} onSubmit={confirm}>
+            <p className="muted" style={{ margin: 0 }}>Check <b style={{ color: 'var(--text)' }}>{email}</b> (and spam) for the code. It expires in 15 minutes.</p>
+            <Field label="6-digit code" inputMode="numeric" autoComplete="one-time-code" value={code} maxLength={6}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              style={{ letterSpacing: '0.5em', fontFamily: 'Barlow Condensed', fontWeight: 700, fontSize: 24 }} />
+            <Field label="New password" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="At least 8 characters" />
+            <Button size="lg" block loading={busy} type="submit" disabled={code.length !== 6 || pw.length < 8}>Set new password</Button>
+            <button type="button" className="muted" style={{ fontSize: 14 }} onClick={() => send()}>Send a new code</button>
+          </form>
+        )}
+        {step === 'nomail' && (
           <div className="stack">
-            <p>If <b>{email}</b> has a TAG account, a reset link is on its way. Check spam too.</p>
-            <p className="muted">No email after a few minutes? Ask your room admin to contact the TAG owner, who can issue you a temporary password.</p>
-          </div>
-        ) : (
-          <div className="stack" style={{ gap: 16 }}>
-            <p className="muted">Enter your account email and we will send a reset link.</p>
-            <Field label="Email" type="email" autoCapitalize="none" value={email} onChange={(e) => setEmail(e.target.value)} />
-            <Button size="lg" block loading={busy} type="submit" disabled={!email}>Send reset link</Button>
+            <p>Email reset isn't switched on yet.</p>
+            <p className="muted">Ask the TAG owner to issue you a temporary password from the Owner console. Then sign in and change it from your Profile.</p>
           </div>
         )}
-      </form>
+      </div>
     </Slash>
   );
 }

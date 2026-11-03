@@ -82,6 +82,7 @@ export default function Profile() {
         </div>
         <div className="row" style={{ gap: 8 }}>
           <Button kind="ghost" className="grow" onClick={() => setEdit(true)}>Edit details</Button>
+          <Button kind="ghost" className="grow" onClick={() => nav('/reset')}>Password</Button>
           <Button kind="quiet" className="grow" onClick={signOut}>Sign out</Button>
         </div>
       </Section>
