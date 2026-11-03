@@ -6,7 +6,7 @@ import { haptic } from '../lib/feel';
 
 /* ---------- Button ---------- */
 type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  kind?: 'primary' | 'ghost' | 'danger' | 'quiet'; size?: 'sm' | 'md' | 'lg'; block?: boolean; loading?: boolean; arrow?: boolean;
+  kind?: 'primary' | 'hot' | 'ghost' | 'danger' | 'quiet'; size?: 'sm' | 'md' | 'lg'; block?: boolean; loading?: boolean; arrow?: boolean;
 };
 export function Button({ kind = 'primary', size = 'md', block, loading, arrow, className = '', children, onClick, disabled, ...rest }: BtnProps) {
   const cls = ['btn', `btn-${kind}`, size !== 'md' && `btn-${size}`, block && 'btn-block', className].filter(Boolean).join(' ');
@@ -55,12 +55,23 @@ export function Avatar({ src, name, size = 40, out, className = '' }: { src?: st
   );
 }
 
-/* ---------- Logo ---------- */
-export function Logo({ size = 44, className = '' }: { size?: number; className?: string }) {
+/* ---------- Logo ----------
+   Two players at the moment of contact: the runner (blue) and the hunter (red) touching. */
+export function LogoMark({ size = 28, style }: { size?: number; style?: React.CSSProperties }) {
   return (
-    <span className={`display ${className}`} style={{ fontSize: size, fontWeight: 800, letterSpacing: '0.02em', display: 'inline-flex', alignItems: 'center', gap: size * 0.12, transform: 'skewX(-8deg)' }}>
-      <span style={{ display: 'inline-block', width: size * 0.16, height: size * 0.72, background: 'var(--accent)', transform: 'skewX(-14deg)' }} />
-      TAG
+    <svg width={size * 1.7} height={size} viewBox="0 0 34 20" aria-hidden style={{ display: 'block', overflow: 'visible', ...style }}>
+      <circle cx="10" cy="10" r="8.6" fill="var(--runner)" />
+      <circle cx="24" cy="10" r="8.6" fill="var(--hunter)" />
+      <circle cx="10" cy="10" r="8.6" fill="none" stroke="var(--bg)" strokeWidth="1.6" transform="translate(14 0)" />
+    </svg>
+  );
+}
+export function Logo({ size = 44, className = '' }: { size?: number; className?: string; still?: boolean }) {
+  return (
+    <span className={`display ${className}`} aria-label="TAG"
+      style={{ fontSize: size, fontWeight: 800, letterSpacing: '-0.06em', display: 'inline-flex', alignItems: 'center', gap: size * 0.2, lineHeight: 1 }}>
+      <LogoMark size={size * 0.56} />
+      <span style={{ transform: `translateY(-${size * 0.04}px)` }}>tag</span>
     </span>
   );
 }
@@ -82,8 +93,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div className="toast-wrap">
         <AnimatePresence>
           {items.map((t) => (
-            <motion.div key={t.id} className={`toast cut cut-sm ${t.err ? 'err' : ''}`}
-              initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+            <motion.div key={t.id} className={`toast ${t.err ? 'err' : ''}`} layout
+              initial={{ opacity: 0, y: -24, scale: 0.92 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -12, scale: 0.96 }} transition={{ type: 'spring', damping: 22, stiffness: 340 }}
               onClick={() => setItems((x) => x.filter((i) => i.id !== t.id))}>{t.text}</motion.div>
           ))}
         </AnimatePresence>
@@ -93,15 +104,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 export const useToast = () => useContext(ToastCtx);
 
-/* ---------- Slash page transition ---------- */
+/* ---------- Page transition ----------
+   A short rise-and-focus: content arrives from slightly below and out of focus. */
 export function Slash({ children, k, className = '' }: { children: ReactNode; k?: string; className?: string }) {
   return (
     <motion.div key={k} className={className} style={{ minHeight: '100%', position: 'relative' }}
-      initial={{ clipPath: 'polygon(0% 0%, 0% 0%, -25% 100%, -25% 100%)' }}
-      animate={{ clipPath: 'polygon(0% 0%, 125% 0%, 100% 100%, -25% 100%)' }}
-      transition={{ duration: 0.5, ease: [0.7, 0, 0.2, 1] }}>
-      <motion.div aria-hidden style={{ position: 'fixed', top: 0, bottom: 0, width: 3, background: 'var(--accent)', zIndex: 50, pointerEvents: 'none', transform: 'skewX(-14deg)' }}
-        initial={{ left: '-5%', opacity: 1 }} animate={{ left: '110%', opacity: 0 }} transition={{ duration: 0.5, ease: [0.7, 0, 0.2, 1] }} />
+      initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }}
+      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+      onAnimationComplete={(e) => { const el = (e as any)?.target as HTMLElement | undefined; if (el?.style) el.style.filter = 'none'; }}>
       {children}
     </motion.div>
   );
@@ -121,13 +132,14 @@ export function Modal({ open, onClose, title, children, full }: { open: boolean;
         <motion.div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'var(--scrim)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
           <motion.div role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}
-            className="cut cut-lg"
-            style={{ width: '100%', maxWidth: 560, maxHeight: full ? '100%' : '88%', height: full ? '100%' : undefined, overflow: 'auto', background: 'var(--bg2)',
-              padding: `20px 20px calc(env(safe-area-inset-bottom) + 20px)`, borderTop: '1px solid var(--line2)' }}
-            initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }} transition={{ type: 'spring', damping: 28, stiffness: 320 }}>
+            style={{ width: '100%', maxWidth: 560, maxHeight: full ? '100%' : '90%', height: full ? '100%' : undefined, overflow: 'auto', background: 'var(--bg2)',
+              borderRadius: full ? 0 : '28px 28px 0 0', boxShadow: 'inset 0 1px 0 var(--line2), 0 -30px 60px -20px rgba(0,0,0,.5)',
+              padding: `10px 20px calc(env(safe-area-inset-bottom) + 20px)` }}
+            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 34, stiffness: 380, mass: 0.9 }}>
+            {!full && <div aria-hidden style={{ width: 40, height: 5, borderRadius: 3, background: 'var(--line2)', margin: '0 auto 12px' }} />}
             {title && (
               <div className="row between" style={{ marginBottom: 16 }}>
-                <div className="display" style={{ fontSize: 26 }}>{title}</div>
+                <div className="display" style={{ fontSize: 27 }}>{title}</div>
                 <button className="icon-btn" aria-label="Close" onClick={onClose}><X /></button>
               </div>
             )}
@@ -142,7 +154,7 @@ export function Modal({ open, onClose, title, children, full }: { open: boolean;
 
 /* ---------- Icons (inline, thin) ---------- */
 const I = ({ d, s = 22, w = 1.8 }: { d: string; s?: number; w?: number }) => (
-  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="square" strokeLinejoin="miter" aria-hidden><path d={d} /></svg>
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={d} /></svg>
 );
 export const X = (p: { s?: number }) => <I s={p.s} d="M5 5l14 14M19 5L5 19" />;
 export const Back = (p: { s?: number }) => <I s={p.s} d="M15 4l-8 8 8 8" />;
@@ -167,6 +179,27 @@ export const IconTarget = (p: { s?: number }) => <I s={p.s} d="M12 21a9 9 0 100-
 export const IconSOS = (p: { s?: number }) => <I s={p.s} d="M12 3l9 16H3zM12 10v4M12 17v.5" />;
 export const IconMenu = (p: { s?: number }) => <I s={p.s} d="M4 7h16M4 12h16M4 17h16" />;
 
+/* ---------- Segmented control (sliding thumb) ---------- */
+let segId = 0;
+export function Segmented<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { v: T; label: ReactNode; disabled?: boolean }[] }) {
+  const [id] = useState(() => `seg${segId++}`);
+  return (
+    <div role="tablist" style={{ display: 'grid', gridTemplateColumns: `repeat(${options.length}, 1fr)`, padding: 4, borderRadius: 14, background: 'var(--surface)', boxShadow: 'inset 0 0 0 1px var(--line)' }}>
+      {options.map((o) => {
+        const on = o.v === value;
+        return (
+          <button key={o.v} type="button" role="tab" aria-selected={on} disabled={o.disabled} onClick={() => { haptic.tap(); onChange(o.v); }}
+            style={{ position: 'relative', height: 42, borderRadius: 11, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 600, fontSize: 14.5,
+              color: on ? 'var(--accent-ink)' : 'var(--muted)', opacity: o.disabled ? 0.4 : 1, transition: 'color .3s var(--ease-out)' }}>
+            {on && <motion.span layoutId={id} transition={{ type: 'spring', damping: 30, stiffness: 420 }} style={{ position: 'absolute', inset: 0, borderRadius: 11, background: 'var(--accent)' }} />}
+            <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8 }}>{o.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ---------- Small helpers ---------- */
 export function Section({ title, right, children }: { title: string; right?: ReactNode; children: ReactNode }) {
   return (
@@ -178,12 +211,15 @@ export function Section({ title, right, children }: { title: string; right?: Rea
 }
 export function Empty({ title, body, children }: { title: string; body?: string; children?: ReactNode }) {
   return (
-    <div className="frame soft cut" style={{ ['--c' as any]: '14px' }}>
-      <div className="inner cut ticks center" style={{ ['--c' as any]: '14px', padding: '28px 20px', background: 'var(--bg2)' }}>
-        <div className="display" style={{ fontSize: 22, marginBottom: 6 }}>{title}</div>
-        {body && <div className="muted" style={{ maxWidth: 320, margin: '0 auto' }}>{body}</div>}
-        {children && <div style={{ marginTop: 16 }}>{children}</div>}
-      </div>
+    <div className="card center" style={{ padding: '30px 22px', position: 'relative', overflow: 'hidden', background: 'var(--bg2)' }}>
+      <svg aria-hidden width="46" height="46" viewBox="0 0 46 46" style={{ margin: '0 auto 12px', display: 'block', color: 'var(--faint)' }}>
+        <circle cx="23" cy="23" r="21" fill="none" stroke="currentColor" strokeDasharray="2 5" />
+        <circle cx="23" cy="23" r="12" fill="none" stroke="currentColor" opacity=".6" />
+        <circle cx="23" cy="23" r="3" fill="var(--accent)" />
+      </svg>
+      <div className="display" style={{ fontSize: 21, marginBottom: 6 }}>{title}</div>
+      {body && <div className="muted" style={{ maxWidth: 320, margin: '0 auto', fontSize: 14.5 }}>{body}</div>}
+      {children && <div style={{ marginTop: 16 }}>{children}</div>}
     </div>
   );
 }

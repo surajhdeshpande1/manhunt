@@ -6,29 +6,36 @@ import { callFunction, cleanError, rpc, supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { useTheme } from '../lib/theme';
 import { haptic } from '../lib/feel';
+import { FieldScene } from '../components/FieldScene';
 
 /* ---------- Welcome ---------- */
 export function Welcome() {
   useTheme('neutral');
   const nav = useNavigate();
+  const rise = (i: number) => ({ initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.1 + i * 0.08, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const } });
   return (
     <Slash>
-      <div className="screen noise grid-bg" style={{ justifyContent: 'space-between' }}>
-        <div className="row between">
-          <div className="eyebrow">Live manhunt</div>
-          <div className="eyebrow"><span className="dot pulse accent" /> &nbsp;Online</div>
+      <div className="screen" style={{ gap: 22 }}>
+        <motion.div {...rise(0)}><Logo size={30} /></motion.div>
+        <motion.div {...rise(1)} style={{ borderRadius: 28, overflow: 'hidden', boxShadow: 'inset 0 0 0 1px var(--line)', position: 'relative', margin: '0 -4px' }}>
+          <FieldScene height={320} />
+          <div className="row" style={{ position: 'absolute', left: 16, right: 16, bottom: 14, gap: 16, fontSize: 13, fontWeight: 550 }}>
+            <span className="row" style={{ gap: 7 }}><span className="dot" style={{ color: 'var(--runner)' }} />Runners hide</span>
+            <span className="row" style={{ gap: 7 }}><span className="dot" style={{ color: 'var(--hunter)' }} />Hunters track</span>
+          </div>
+        </motion.div>
+        <div style={{ marginTop: 'auto' }}>
+          <motion.h1 {...rise(2)} className="display" style={{ fontSize: 'clamp(38px, 11vw, 52px)', margin: 0, fontWeight: 760 }}>
+            Your campus<br />is the map.
+          </motion.h1>
+          <motion.p {...rise(3)} style={{ maxWidth: 360, margin: '14px 0 0', fontSize: 16, color: 'var(--muted)', lineHeight: 1.5 }}>
+            A real-world chase, played on foot. Runners clear tasks before time runs out. Hunters follow them on a live map and scan their code to catch them.
+          </motion.p>
         </div>
-        <div style={{ position: 'relative' }}>
-          <Logo size={120} />
-          <p className="display" style={{ fontSize: 30, margin: '22px 0 10px', fontWeight: 600, lineHeight: 1.05 }}>
-            Your campus.<br />One boundary.<br /><span className="accent">No place to hide.</span>
-          </p>
-          <p className="muted" style={{ maxWidth: 360 }}>Runners hide and crack tasks. Hunters close in on a live map and scan to catch. Play it for real, outdoors.</p>
-        </div>
-        <div className="stack">
-          <Button size="lg" block arrow onClick={() => nav('/signup')}>Create account</Button>
-          <Button size="lg" kind="ghost" block onClick={() => nav('/signin')}>I have an account</Button>
-        </div>
+        <motion.div {...rise(4)} className="stack" style={{ gap: 10 }}>
+          <Button size="lg" block onClick={() => nav('/signup')}>Create account</Button>
+          <Button size="lg" kind="ghost" block onClick={() => nav('/signin')}>I already have an account</Button>
+        </motion.div>
       </div>
     </Slash>
   );
@@ -42,7 +49,7 @@ function Header({ title, step, back = -1 as number | string }: { title: string; 
         <button className="icon-btn" aria-label="Back" onClick={() => (typeof back === 'number' ? nav(back) : nav(back))}><Back /></button>
         {step && <div className="eyebrow">{step}</div>}
       </div>
-      <h1 className="display" style={{ fontSize: 44, margin: '8px 0 0' }}>{title}</h1>
+      <h1 className="display" style={{ fontSize: 42, margin: '10px 0 0', fontWeight: 780 }}>{title}</h1>
     </div>
   );
 }
@@ -93,7 +100,7 @@ export function SignUp() {
   return (
     <Slash>
       <form className="screen" onSubmit={submit} noValidate>
-        <Header title="Create account" step="1 / 3 · Details" />
+        <Header title="Create account" step="Step 1 of 3" />
         <div className="stack" style={{ gap: 16 }}>
           <Field label="Full name" autoComplete="name" value={f.full_name} onChange={(e) => set('full_name', e.target.value)} error={err.full_name} placeholder="Suraj Deshpande" />
           <Field label="Username" autoComplete="username" autoCapitalize="none" value={f.username} error={err.username}
@@ -207,7 +214,7 @@ export function Forgot() {
             <p className="muted" style={{ margin: 0 }}>Check <b style={{ color: 'var(--text)' }}>{email}</b> (and spam) for the code. It expires in 15 minutes.</p>
             <Field label="6-digit code" inputMode="numeric" autoComplete="one-time-code" value={code} maxLength={6}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              style={{ letterSpacing: '0.5em', fontFamily: 'Barlow Condensed', fontWeight: 700, fontSize: 24 }} />
+              style={{ letterSpacing: '0.5em', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 24 }} />
             <Field label="New password" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="At least 8 characters" />
             <Button size="lg" block loading={busy} type="submit" disabled={code.length !== 6 || pw.length < 8}>Set new password</Button>
             <button type="button" className="muted" style={{ fontSize: 14 }} onClick={() => send()}>Send a new code</button>
@@ -290,7 +297,7 @@ export function Permissions() {
   return (
     <Slash>
       <div className="screen">
-        <div className="eyebrow" style={{ marginBottom: 8 }}>2 / 3 · Permissions</div>
+        <div className="eyebrow" style={{ marginBottom: 8 }}>Step 2 of 3</div>
         <h1 className="display" style={{ fontSize: 44, margin: '0 0 8px' }}>Gear check</h1>
         <p className="muted" style={{ marginTop: 0 }}>TAG is played outdoors on real streets. It needs three things from your phone.</p>
         <div className="stack" style={{ gap: 10, marginTop: 12 }}>
@@ -377,7 +384,7 @@ export function Selfie({ retake = false }: { retake?: boolean }) {
   return (
     <Slash>
       <div className="screen">
-        {!retake && <div className="eyebrow" style={{ marginBottom: 8 }}>3 / 3 · Selfie</div>}
+        {!retake && <div className="eyebrow" style={{ marginBottom: 8 }}>Step 3 of 3</div>}
         <h1 className="display" style={{ fontSize: 44, margin: '0 0 8px' }}>{retake ? 'New selfie' : 'Show your face'}</h1>
         <p className="muted" style={{ marginTop: 0 }}>Live camera only. Other players and the admin use it to recognise you on the field.</p>
         <div className="frame cut cut-lg" style={{ aspectRatio: '1', marginTop: 8, position: 'relative' }}>

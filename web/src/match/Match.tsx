@@ -272,7 +272,7 @@ function Rosters({ hunters, runners, myFix, positions }: { hunters: Member[]; ru
     const d = myFix && p ? haversine(myFix.lat, myFix.lng, p.lat, p.lng) : null;
     return (
       <div className="center" style={{ flex: 'none', width: 66, opacity: m.alive ? 1 : 0.55 }}>
-        <div style={{ padding: 2, background: m.alive ? (m.role === 'hunter' ? '#ffd000' : '#ff6214') : 'var(--surface3)' }} className="cut cut-sm"><Avatar src={m.selfie} name={m.username} size={54} out={!m.alive} /></div>
+        <div style={{ padding: 2, background: m.alive ? (m.role === 'hunter' ? 'var(--hunter)' : 'var(--runner)') : 'var(--surface3)', borderRadius: '50%' }}><Avatar src={m.selfie} name={m.username} size={54} out={!m.alive} /></div>
         <div style={{ fontSize: 11, fontWeight: 600, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{m.username}</div>
         <div className="muted mono" style={{ fontSize: 10 }}>{!m.alive ? 'out' : m.role === 'runner' ? `${m.tasks} tasks` : `${m.catches} caught`}{d != null && d >= 3 && m.alive ? ` · ${fmtDist(d)}` : ''}</div>
       </div>
@@ -336,7 +336,7 @@ function AdminPanel({ s, refresh, feed, byId, mapRef }: { s: RoomState; refresh:
       {r.status === 'hiding' && (
         <div className="stack" style={{ gap: 8 }}>
           <div className="muted" style={{ fontSize: 13 }}>{hideLeft > 0 ? `Runners are hiding. HUNT unlocks in ${fmtClock(hideLeft)}.` : 'Hide time is up. Release the hunters.'}</div>
-          <Button size="lg" block disabled={hideLeft > 2000} loading={busy === 'start_hunt'} onClick={() => act('start_hunt')} style={{ minHeight: 70, fontSize: 28 }}>Hunt</Button>
+          <Button kind="hot" size="lg" block disabled={hideLeft > 2000} loading={busy === 'start_hunt'} onClick={() => act('start_hunt')} style={{ minHeight: 70, fontSize: 24, fontWeight: 750 }}>Start the hunt</Button>
         </div>
       )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -362,7 +362,7 @@ function AdminPanel({ s, refresh, feed, byId, mapRef }: { s: RoomState; refresh:
                 <div className="grow" style={{ minWidth: 0 }}>
                   <div className="row" style={{ gap: 6 }}>
                     <b style={{ fontSize: 14 }}>@{m.username}</b>
-                    <span className="tag" style={{ fontSize: 10, padding: '1px 5px', background: m.role === 'hunter' ? '#ffd000' : '#ff6214', color: '#0e0d0c' }}>{m.role === 'hunter' ? 'H' : 'R'}</span>
+                    <span className="tag" style={{ fontSize: 10, padding: '1px 5px', background: m.role === 'hunter' ? 'var(--hunter)' : 'var(--runner)', color: m.role === 'hunter' ? '#000' : '#170700' }}>{m.role === 'hunter' ? 'H' : 'R'}</span>
                     {m.oob && m.alive && <span className="tag bad" style={{ fontSize: 10, padding: '1px 5px' }}>Outside</span>}
                   </div>
                   <div className="muted" style={{ fontSize: 11 }}>

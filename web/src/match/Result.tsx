@@ -51,18 +51,21 @@ export function Result({ s }: { s: RoomState }) {
   return (
     <Slash>
       <div className="screen" style={{ gap: 26 }}>
-        <div style={{ position: 'relative', paddingTop: 24 }}>
-          <motion.div aria-hidden style={{ position: 'absolute', left: -40, right: -40, top: 58, height: 64, background: v.win === false ? 'var(--surface3)' : 'var(--accent)', skewY: -5, zIndex: 0 }}
-            initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.4 }} />
+        <div style={{ position: 'relative', paddingTop: 28 }}>
+          {[160, 260].map((d, i) => (
+            <motion.span key={d} aria-hidden style={{ position: 'absolute', right: -d / 2.6, top: -d / 3, width: d, height: d, borderRadius: '50%', border: `1.5px solid ${v.win === false ? 'var(--line2)' : 'var(--accent)'}`, opacity: 0.35 - i * 0.12 }}
+              initial={{ scale: 0.3, opacity: 0 }} animate={{ scale: 1, opacity: 0.35 - i * 0.12 }} transition={{ duration: 1.4, delay: 0.1 * i, ease: [0.22, 1, 0.36, 1] }} />
+          ))}
           <div style={{ position: 'relative' }}>
-            <div className="eyebrow">{s.room.name} · final</div>
-            <h1 className="display" style={{ fontSize: 'min(20vw, 96px)', margin: '4px 0 0', fontWeight: 800, color: v.win === false ? 'var(--muted)' : 'var(--text)' }}>{v.title}</h1>
-            <div className="display" style={{ fontSize: 18, fontWeight: 600, marginTop: 8 }}>{reason}</div>
+            <div className="eyebrow">{s.room.name}, final result</div>
+            <motion.h1 className="display" initial={{ opacity: 0, y: 16, filter: 'blur(10px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              style={{ fontSize: 'min(19vw, 92px)', margin: '6px 0 0', fontWeight: 800, letterSpacing: '-0.055em', color: v.win === false ? 'var(--muted)' : v.win ? 'var(--accent)' : 'var(--text)' }}>{v.title}</motion.h1>
+            <div style={{ fontSize: 18, fontWeight: 550, marginTop: 6 }}>{reason}</div>
           </div>
         </div>
         {s.progress && <ProgressBar p={s.progress} big />}
         {meM && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'var(--line)' }} className="cut">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'var(--line)', borderRadius: 20, overflow: 'hidden' }}>
             {[['Role', meM.role === 'hunter' ? 'Hunter' : 'Runner'], [meM.role === 'hunter' ? 'Catches' : 'Tasks', meM.role === 'hunter' ? meM.catches : meM.tasks], ['Moved', fmtDist(meM.distance ?? 0)]].map(([k, val]) => (
               <div key={k as string} style={{ background: 'var(--surface)', padding: '14px 12px' }}>
                 <div className="display mono" style={{ fontSize: 26 }}>{val}</div>
@@ -115,32 +118,32 @@ async function renderCard(s: RoomState, title: string, reason: string, me: Membe
   await document.fonts.ready;
   const W = 1080, H = 1350; const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d')!;
   const runner = me?.role === 'runner';
-  const bg = runner ? '#120e0b' : '#060a14', accent = runner ? '#ff6214' : me ? '#ffd000' : '#ff4a1c', text = '#f3ede2', muted = '#9c9183';
+  const bg = '#000000', accent = runner ? '#ff6a1a' : me ? '#ffd400' : '#f5f5f7', text = '#f5f5f7', muted = '#8e8e93';
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
   g.strokeStyle = 'rgba(243,237,226,.06)'; g.lineWidth = 1;
   for (let x = 0; x < W; x += 54) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
   for (let y = 0; y < H; y += 54) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
   g.save(); g.translate(0, 470); g.transform(1, -0.09, 0, 1, 0, 0); g.fillStyle = accent; g.fillRect(-40, 0, W + 80, 200); g.restore();
-  g.fillStyle = muted; g.font = '600 34px "Barlow Condensed"'; g.fillText('TAG // LIVE MANHUNT', 80, 120);
-  g.fillStyle = text; g.font = '700 46px "Barlow Condensed"'; g.fillText(s.room.name.toUpperCase().slice(0, 30), 80, 180);
-  g.save(); g.translate(80, 610); g.transform(1, 0, -0.14, 1, 0, 0); g.fillStyle = bg; g.font = '800 220px "Barlow Condensed"'; g.fillText(title.toUpperCase(), 0, 0); g.restore();
-  g.fillStyle = text; g.font = '600 40px "Barlow Condensed"'; g.fillText(reason.toUpperCase(), 80, 760);
+  g.fillStyle = muted; g.font = '600 34px "Inter Variable", system-ui'; g.fillText('TAG // LIVE MANHUNT', 80, 120);
+  g.fillStyle = text; g.font = '700 46px "Inter Variable", system-ui'; g.fillText(s.room.name.toUpperCase().slice(0, 30), 80, 180);
+  g.save(); g.translate(80, 610); g.transform(1, 0, -0.14, 1, 0, 0); g.fillStyle = bg; g.font = '800 220px "Inter Variable", system-ui'; g.fillText(title.toUpperCase(), 0, 0); g.restore();
+  g.fillStyle = text; g.font = '600 40px "Inter Variable", system-ui'; g.fillText(reason.toUpperCase(), 80, 760);
   const p = s.progress;
   if (p) {
     g.fillStyle = '#2d2822'; g.fillRect(80, 820, W - 160, 26);
     g.fillStyle = accent; g.fillRect(80, 820, ((W - 160) * Math.min(100, p.pct)) / 100, 26);
     g.fillStyle = text; g.fillRect(80 + ((W - 160) * p.mark) / 100 - 3, 806, 6, 54);
-    g.font = '700 44px "Barlow Condensed"'; g.fillText(`${Math.round(p.pct)}%  ·  MARK ${p.mark}%`, 80, 910);
+    g.font = '700 44px "Inter Variable", system-ui'; g.fillText(`${Math.round(p.pct)}%  ·  MARK ${p.mark}%`, 80, 910);
   }
   const img = await loadImg(selfieUrl(selfie));
   if (img) { g.save(); g.beginPath(); g.moveTo(80, 980); g.lineTo(300, 980); g.lineTo(320, 1000); g.lineTo(320, 1220); g.lineTo(100, 1220); g.lineTo(80, 1200); g.closePath(); g.clip(); g.drawImage(img, 80, 980, 240, 240); g.restore(); }
   if (me) {
-    g.fillStyle = text; g.font = '700 60px "Barlow Condensed"'; g.fillText(`@${me.username}`.toUpperCase(), 360, 1040);
-    g.fillStyle = accent; g.font = '700 40px "Barlow Condensed"'; g.fillText(runner ? 'RUNNER' : 'HUNTER', 360, 1094);
-    g.fillStyle = muted; g.font = '600 40px "Barlow Condensed"';
+    g.fillStyle = text; g.font = '700 60px "Inter Variable", system-ui'; g.fillText(`@${me.username}`.toUpperCase(), 360, 1040);
+    g.fillStyle = accent; g.font = '700 40px "Inter Variable", system-ui'; g.fillText(runner ? 'RUNNER' : 'HUNTER', 360, 1094);
+    g.fillStyle = muted; g.font = '600 40px "Inter Variable", system-ui';
     g.fillText(`${runner ? `${me.tasks} TASKS` : `${me.catches} CATCHES`}  ·  ${fmtDist(me.distance ?? 0).toUpperCase()} MOVED`, 360, 1150);
   }
-  g.fillStyle = muted; g.font = '600 30px "Barlow Condensed"'; g.fillText(location.host.toUpperCase(), 80, H - 70);
+  g.fillStyle = muted; g.font = '600 30px "Inter Variable", system-ui'; g.fillText(location.host.toUpperCase(), 80, H - 70);
   try { return await new Promise<Blob>((res, rej) => { try { c.toBlob((b) => (b ? res(b) : rej()), 'image/png'); } catch (e) { rej(e); } }); }
   catch { if (selfie) return renderCard(s, title, reason, me, null); throw new Error('Could not draw the card'); }
 }

@@ -22,63 +22,82 @@ export function Decrypt({ text, duration = 1400, className, style }: { text: str
   return <span className={className} style={{ fontVariantNumeric: 'tabular-nums', ...style }}>{out}</span>;
 }
 
-/* ---------- ROLE REVEAL ---------- */
+/* ---------- ROLE REVEAL ----------
+   The screen floods with your team colour and your role, then the colour
+   draws back into a header so the briefing can come up underneath. */
 export function RoleReveal({ role, hunters, hideSecs, onDone }: { role: Role; hunters: Member[]; hideSecs: number; onDone: () => void }) {
   const [stage, setStage] = useState(0);
   useEffect(() => {
     haptic.big();
-    const a = setTimeout(() => setStage(1), 1700);
-    const b = setTimeout(() => setStage(2), 2300);
-    return () => { clearTimeout(a); clearTimeout(b); };
+    const a = setTimeout(() => setStage(1), 1500);
+    return () => clearTimeout(a);
   }, []);
   const runner = role === 'runner';
+  const color = runner ? 'var(--runner)' : 'var(--hunter)';
   const m = Math.round(hideSecs / 60);
+  const word = runner ? 'Runner' : 'Hunter';
+  const ease = [0.22, 1, 0.36, 1] as const;
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.3 } }}
-      style={{ position: 'fixed', inset: 0, zIndex: 700, background: 'var(--bg)', color: 'var(--text)', overflow: 'auto' }} className="grid-bg">
-      <motion.div aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, width: '46%', background: 'var(--accent)', skewX: -14, transformOrigin: 'top' }}
-        initial={{ left: '-80%' }} animate={{ left: ['-80%', '30%', '170%'] }} transition={{ duration: 1.1, times: [0, 0.45, 1], ease: [0.7, 0, 0.2, 1] }} />
-      <div className="screen" style={{ justifyContent: 'center', gap: 22, position: 'relative' }}>
-        <div className="eyebrow">Identity assigned</div>
-        <div>
-          <div className="eyebrow" style={{ color: 'var(--muted)' }}>You are a</div>
-          <Decrypt text={runner ? 'RUNNER' : 'HUNTER'} className="display" style={{ display: 'block', fontSize: 'min(24vw, 128px)', fontWeight: 800, color: 'var(--accent)', lineHeight: 0.9, letterSpacing: '0.02em' }} />
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.35 } }}
+      style={{ position: 'fixed', inset: 0, zIndex: 700, background: '#000', color: 'var(--text)', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <motion.div
+        initial={{ clipPath: 'circle(0% at 50% 50%)', height: '100%' }}
+        animate={stage === 0 ? { clipPath: 'circle(150% at 50% 50%)', height: '100%' } : { clipPath: 'circle(150% at 50% 50%)', height: '44%' }}
+        transition={stage === 0 ? { duration: 0.9, ease } : { duration: 0.75, ease }}
+        style={{ background: color, color: runner ? '#170700' : '#000', flex: 'none', borderRadius: stage ? '0 0 32px 32px' : 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+          padding: 'calc(env(safe-area-inset-top) + 24px) 24px 28px', position: 'relative', overflow: 'hidden', transition: 'border-radius .6s var(--ease-out)' }}>
+        <motion.div aria-hidden style={{ position: 'absolute', right: -80, top: -80, width: 320, height: 320, borderRadius: '50%', border: '1.5px solid currentColor', opacity: 0.18 }}
+          initial={{ scale: 0.3 }} animate={{ scale: 1 }} transition={{ duration: 1.6, ease }} />
+        <motion.div aria-hidden style={{ position: 'absolute', right: 0, top: 0, width: 160, height: 160, borderRadius: '50%', border: '1.5px solid currentColor', opacity: 0.22 }}
+          initial={{ scale: 0.2 }} animate={{ scale: 1 }} transition={{ duration: 1.3, ease, delay: 0.1 }} />
+        {!runner && <Tape text="POLICE LINE · DO NOT CROSS" rotate={-6} top="22%" dark delay={0.6} />}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 0.75, y: 0 }} transition={{ delay: 0.45, duration: 0.5, ease }} style={{ fontSize: 17, fontWeight: 600, position: 'relative' }}>You’re a</motion.div>
+        <div className="display" aria-label={word} style={{ fontSize: 'min(25vw, 132px)', fontWeight: 800, letterSpacing: '-0.055em', lineHeight: 0.95, display: 'flex', overflow: 'hidden', paddingBottom: 6, position: 'relative' }}>
+          {word.split('').map((c, i) => (
+            <motion.span key={i} initial={{ y: '105%' }} animate={{ y: 0 }} transition={{ delay: 0.5 + i * 0.045, duration: 0.7, ease }}>{c}</motion.span>
+          ))}
         </div>
-        <AnimatePresence>
-          {stage >= 1 && (
-            <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="stack" style={{ gap: 10 }}>
-              <p className="display" style={{ fontSize: 26, margin: 0, fontWeight: 600, lineHeight: 1.1 }}>
-                {runner ? <>Hide. You have <span className="accent">{m} minute{m === 1 ? '' : 's'}</span>.</> : <>Hold position. The hunt opens when the admin says so.</>}
-              </p>
-              <ul className="muted" style={{ margin: 0, paddingLeft: 18, fontSize: 15 }}>
-                {runner ? (<>
-                  <li>Stay inside the boundary. Leave it and you're out after a few seconds.</li>
-                  <li>When the hunt starts, crack tasks to fill the bar. Hit the mark and runners win.</li>
-                  <li>Hunters see you on their map during reveals. If one catches you, show your QR.</li>
-                </>) : (<>
-                  <li>Runners appear on your map during reveal windows.</li>
-                  <li>Get close and scan a runner's QR to catch them.</li>
-                  <li>Stop them hitting the mark on the bar, or catch everyone.</li>
-                </>)}
-              </ul>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        {stage >= 2 && (
-          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="stack" style={{ gap: 10 }}>
-            <div className="eyebrow">Hunters on the field · {hunters.length}</div>
-            <div className="row scroll-x" style={{ gap: 12 }}>
-              {hunters.map((h) => (
-                <div key={h.id} className="center" style={{ flex: 'none', width: 74 }}>
-                  <div style={{ padding: 2, background: '#ffd000' }} className="cut cut-sm"><Avatar src={h.selfie} name={h.username} size={64} /></div>
-                  <div style={{ fontSize: 12, fontWeight: 600, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{h.username}</div>
-                </div>
+      </motion.div>
+
+      <AnimatePresence>
+        {stage >= 1 && (
+          <motion.div className="screen" style={{ gap: 22, paddingTop: 26, flex: 1 }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, duration: 0.6, ease }}>
+            <p className="display" style={{ fontSize: 26, margin: 0, fontWeight: 650, lineHeight: 1.15 }}>
+              {runner ? <>Go hide. You have {m} minute{m === 1 ? '' : 's'} before the hunt.</> : <>Hold your position. The hunt opens when the admin starts it.</>}
+            </p>
+            <div className="stack" style={{ gap: 12 }}>
+              {(runner ? [
+                'Stay inside the boundary. Step out and you have a few seconds to get back.',
+                'Clear tasks to fill the shared bar. Reach the mark and runners win.',
+                'Hunters see you during reveals. If one reaches you, show your code.',
+              ] : [
+                'Runners show up on your map during reveal windows.',
+                'Get close and scan a runner’s code to catch them.',
+                'Catch everyone, or stop them reaching the mark.',
+              ]).map((t, i) => (
+                <motion.div key={i} className="row" style={{ alignItems: 'flex-start', gap: 12 }} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 + i * 0.08, ease }}>
+                  <span style={{ width: 22, height: 22, borderRadius: '50%', flex: 'none', marginTop: 1, display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700, background: 'var(--surface2)', color }}>{i + 1}</span>
+                  <span className="muted" style={{ fontSize: 15, lineHeight: 1.45 }}>{t}</span>
+                </motion.div>
               ))}
             </div>
-            <Button size="lg" block arrow onClick={onDone} style={{ marginTop: 12 }}>{runner ? 'Go hide' : 'Ready'}</Button>
+            <div className="stack" style={{ gap: 10 }}>
+              <div className="eyebrow">{hunters.length === 1 ? '1 hunter' : `${hunters.length} hunters`} on the field</div>
+              <div className="row scroll-x" style={{ gap: 14 }}>
+                {hunters.map((h, i) => (
+                  <motion.div key={h.id} className="center" style={{ flex: 'none', width: 68 }} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.7 + i * 0.05, type: 'spring', damping: 20 }}>
+                    <div style={{ padding: 2, borderRadius: '50%', background: 'var(--hunter)', width: 'fit-content', margin: '0 auto' }}><div style={{ padding: 2, borderRadius: '50%', background: '#000' }}><Avatar src={h.selfie} name={h.username} size={54} /></div></div>
+                    <div style={{ fontSize: 12, fontWeight: 550, marginTop: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="muted">@{h.username}</div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+            <div style={{ marginTop: 'auto' }}>
+              <button onClick={() => { haptic.tap(); onDone(); }} className="btn btn-lg btn-block" style={{ background: color, color: runner ? '#170700' : '#000' }}>{runner ? 'Go hide' : 'Ready'}</button>
+            </div>
           </motion.div>
         )}
-      </div>
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -112,6 +131,19 @@ export function CinemaLayer({ current, next }: { current?: Cine & { id: number }
   );
 }
 
+/** A strip of police tape that slides across the screen. */
+export function Tape({ text, rotate = -6, top = '40%', dark, delay = 0 }: { text: string; rotate?: number; top?: string; dark?: boolean; delay?: number }) {
+  const line = Array.from({ length: 14 }, () => text).join('   ·   ');
+  return (
+    <motion.div aria-hidden className="tape-strip"
+      initial={{ x: rotate < 0 ? '-110%' : '110%' }} animate={{ x: '0%' }} transition={{ delay, duration: 0.5, ease: [0.7, 0, 0.2, 1] }}
+      style={{ position: 'absolute', left: '-25%', right: '-25%', top, rotate, padding: '9px 0', fontSize: 15, zIndex: 0, pointerEvents: 'none',
+        background: dark ? '#000' : '#ffd400', color: dark ? '#ffd400' : '#000', boxShadow: '0 10px 30px rgba(0,0,0,.45)' }}>
+      {line}
+    </motion.div>
+  );
+}
+
 function useAuto(done: () => void, ms: number) {
   const d = useRef(done); d.current = done;
   useEffect(() => { const t = setTimeout(() => d.current(), ms); return () => clearTimeout(t); }, [ms]);
@@ -121,79 +153,115 @@ function HuntGo({ done }: { done: () => void }) {
   const [n, setN] = useState(3);
   useEffect(() => {
     haptic.tap();
-    const t = setInterval(() => setN((x) => { if (x > 1) haptic.tap(); else haptic.big(); return x - 1; }), 700);
+    const t = setInterval(() => setN((x) => { if (x > 1) haptic.tap(); else haptic.big(); return x - 1; }), 800);
     return () => clearInterval(t);
   }, []);
-  useAuto(done, 3600);
+  useAuto(done, 3900);
+  const R = 92, C = 2 * Math.PI * R;
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={done}
-      style={{ position: 'fixed', inset: 0, zIndex: 720, background: 'var(--scrim)', display: 'grid', placeItems: 'center', backdropFilter: 'blur(4px)' }}>
-      <AnimatePresence mode="popLayout">
-        {n > 0 ? (
-          <motion.div key={n} className="display mono" initial={{ scale: 2.2, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }}
-            transition={{ duration: 0.3 }} style={{ fontSize: 'min(48vw, 260px)', fontWeight: 800, color: 'var(--text)' }}>{n}</motion.div>
-        ) : (
-          <motion.div key="go" style={{ position: 'relative', textAlign: 'center' }} initial={{ scale: 2.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.28, ease: [0.2, 0, 0, 1] }}>
-            <motion.div aria-hidden style={{ position: 'absolute', left: '-30%', right: '-30%', top: '40%', height: '28%', background: 'var(--accent)', skewX: -14, transformOrigin: 'left' }}
-              initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.25 }} />
-            <div className="display" style={{ position: 'relative', fontSize: 'min(30vw, 190px)', fontWeight: 800, skewX: -8, color: 'var(--text)', lineHeight: 0.9 } as any}>HUNT</div>
-            <div className="eyebrow" style={{ position: 'relative', marginTop: 12, color: 'var(--text)' }}>Is on</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.4 } }} onClick={done}
+      style={{ position: 'fixed', inset: 0, zIndex: 720, background: 'rgba(0,0,0,.72)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', display: 'grid', placeItems: 'center' }}>
+      <div style={{ position: 'relative', width: 220, height: 220, display: 'grid', placeItems: 'center' }}>
+        <svg width="220" height="220" viewBox="0 0 220 220" style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }} aria-hidden>
+          <circle cx="110" cy="110" r={R} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="3" />
+          <motion.circle cx="110" cy="110" r={R} fill="none" stroke="var(--hunter)" strokeWidth="3" strokeLinecap="round" strokeDasharray={C}
+            initial={{ strokeDashoffset: 0 }} animate={{ strokeDashoffset: C }} transition={{ duration: 2.4, ease: 'linear' }} />
+        </svg>
+        <AnimatePresence mode="popLayout">
+          {n > 0 ? (
+            <motion.div key={n} className="display mono" initial={{ y: 30, opacity: 0, filter: 'blur(8px)' }} animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }} exit={{ y: -30, opacity: 0, filter: 'blur(8px)' }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }} style={{ fontSize: 112, fontWeight: 700, color: '#fff' }}>{n}</motion.div>
+          ) : (
+            <motion.div key="go" className="center" initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', damping: 14, stiffness: 260 }}>
+              <div className="display" style={{ fontSize: 46, fontWeight: 800, color: '#fff' }}>Hunt’s on</div>
+              <div style={{ color: 'rgba(255,255,255,.6)', marginTop: 6, fontWeight: 500 }}>Hunters are moving</div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {n <= 0 && [0, 0.15].map((d) => (
+          <motion.span key={d} aria-hidden style={{ position: 'absolute', inset: 18, borderRadius: '50%', border: '1.5px solid var(--hunter)' }}
+            initial={{ scale: 1, opacity: 0.8 }} animate={{ scale: 2.6, opacity: 0 }} transition={{ duration: 1.2, delay: d, ease: [0.22, 1, 0.36, 1] }} />
+        ))}
+      </div>
     </motion.div>
   );
 }
 
 function Eliminated({ who, by, done }: { who?: Member; by?: Member; done: () => void }) {
   useEffect(() => { haptic.alarm(); }, []);
-  useAuto(done, 2600);
+  useAuto(done, 2800);
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={done}
-      style={{ position: 'fixed', inset: 0, zIndex: 720, background: 'var(--scrim)', display: 'grid', placeItems: 'center', overflow: 'hidden' }}>
-      <motion.div style={{ position: 'absolute', left: '-20%', right: '-20%', height: 150, background: '#e63323', rotate: -9 }}
-        initial={{ x: '-110%' }} animate={{ x: 0 }} transition={{ duration: 0.32, ease: [0.8, 0, 0.2, 1] }} />
-      <motion.div className="row" style={{ position: 'relative', gap: 16, rotate: -9 }} initial={{ x: 120, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.18, duration: 0.3 }}>
-        <div style={{ padding: 3, background: '#fff' }} className="cut"><Avatar src={who?.selfie} name={who?.username} size={88} out /></div>
-        <div style={{ color: '#fff' }}>
-          <div className="display" style={{ fontSize: 'min(13vw, 72px)', fontWeight: 800, lineHeight: 0.9 }}>ELIMINATED</div>
-          <div className="display" style={{ fontSize: 22, fontWeight: 600 }}>@{who?.username ?? 'runner'}{by ? <span style={{ opacity: 0.75 }}> · by @{by.username}</span> : null}</div>
+      style={{ position: 'fixed', inset: 0, zIndex: 720, background: 'rgba(0,0,0,.7)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', display: 'grid', placeItems: 'center' }}>
+      <Tape text="CAUGHT" rotate={-8} top="calc(50% - 90px)" />
+      <Tape text="CAUGHT" rotate={6} top="calc(50% - 40px)" delay={0.12} />
+      <div className="center" style={{ display: 'grid', justifyItems: 'center', position: 'relative' }}>
+        <div style={{ position: 'relative', width: 128, height: 128, display: 'grid', placeItems: 'center' }}>
+          <motion.span aria-hidden style={{ position: 'absolute', inset: -4, borderRadius: '50%', border: '4px solid var(--hunter)', background: '#000' }}
+            initial={{ scale: 2.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5, ease: [0.7, 0, 0.3, 1] }} />
+          <motion.div initial={{ filter: 'grayscale(0)' }} animate={{ filter: 'grayscale(1)' }} transition={{ delay: 0.5, duration: 0.6 }}>
+            <Avatar src={who?.selfie} name={who?.username} size={110} />
+          </motion.div>
         </div>
-      </motion.div>
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45, ease: [0.22, 1, 0.36, 1] }}>
+          <div className="display" style={{ fontSize: 40, fontWeight: 800, marginTop: 20, color: '#fff' }}>Caught</div>
+          <div style={{ color: 'rgba(255,255,255,.65)', marginTop: 6, fontWeight: 500 }}>@{who?.username ?? 'runner'}{by ? <> · tagged by @{by.username}</> : null}</div>
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
+/** Dynamic-island style banner that drops from the top of the screen. */
+function Island({ children, tone, onClick }: { children: React.ReactNode; tone: string; onClick: () => void }) {
+  return (
+    <motion.div onClick={onClick} initial={{ y: -90, scale: 0.7, opacity: 0 }} animate={{ y: 0, scale: 1, opacity: 1 }} exit={{ y: -60, scale: 0.85, opacity: 0 }}
+      transition={{ type: 'spring', damping: 22, stiffness: 320 }}
+      style={{ position: 'fixed', left: 12, right: 12, top: 'calc(env(safe-area-inset-top) + 10px)', zIndex: 715, display: 'flex', justifyContent: 'center', pointerEvents: 'auto' }}>
+      <div className="row" style={{ background: '#0c0c0d', color: '#f5f5f7', borderRadius: 26, padding: '12px 18px 12px 14px', gap: 12, maxWidth: 420, width: '100%',
+        boxShadow: `inset 0 0 0 1px rgba(255,255,255,.1), 0 20px 50px -12px rgba(0,0,0,.7), 0 0 0 1px ${tone}22` }}>
+        <span style={{ position: 'relative', width: 34, height: 34, flex: 'none', display: 'grid', placeItems: 'center' }}>
+          <motion.span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: tone, opacity: 0.25 }} animate={{ scale: [1, 1.35, 1] }} transition={{ duration: 1.4, repeat: Infinity }} />
+          <span style={{ width: 12, height: 12, borderRadius: '50%', background: tone }} />
+        </span>
+        <div className="grow">{children}</div>
+      </div>
     </motion.div>
   );
 }
 
 function Alert({ title, sub, tone = 'accent', done }: { title: string; sub?: string; tone?: 'accent' | 'danger'; done: () => void }) {
   useEffect(() => { haptic.warn(); }, []);
-  useAuto(done, 1900);
+  useAuto(done, 2600);
   const c = tone === 'danger' ? 'var(--danger)' : 'var(--accent)';
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={done}
-      style={{ position: 'fixed', inset: 0, zIndex: 710, display: 'grid', placeItems: 'center', pointerEvents: 'auto', background: 'radial-gradient(circle, transparent 30%, var(--scrim) 100%)' }}>
-      <motion.div style={{ position: 'absolute', inset: 0, border: `3px solid ${c}` }} animate={{ opacity: [1, 0.2, 1, 0.2, 1] }} transition={{ duration: 1.6 }} />
-      <motion.div className="center" initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ duration: 0.22 }}
-        style={{ width: '100%', background: c, color: tone === 'danger' ? '#fff' : 'var(--accent-ink)', padding: '22px 16px' }}>
-        <div className="display" style={{ fontSize: 'min(11vw, 56px)', fontWeight: 800 }}>{title}</div>
-        {sub && <div className="display" style={{ fontSize: 16, letterSpacing: '0.2em', fontWeight: 600, marginTop: 4 }}>{sub}</div>}
-      </motion.div>
-    </motion.div>
+    <>
+      {tone === 'danger' && <motion.div aria-hidden initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 0.4] }} exit={{ opacity: 0 }} transition={{ duration: 1 }}
+        style={{ position: 'fixed', inset: 0, zIndex: 709, pointerEvents: 'none', boxShadow: 'inset 0 0 120px 10px rgba(255,69,58,.35)' }} />}
+      <Island tone={c} onClick={done}>
+        <div style={{ fontWeight: 650, fontSize: 15.5 }}>{title}</div>
+        {sub && <div style={{ fontSize: 13.5, color: 'rgba(245,245,247,.6)' }}>{sub}</div>}
+      </Island>
+    </>
   );
 }
 
 function ResultSlam({ title, sub, win, done }: { title: string; sub: string; win: boolean | null; done: () => void }) {
   useEffect(() => { haptic.big(); }, []);
   useAuto(done, 3400);
+  const tone = win === false ? 'rgba(255,255,255,.18)' : 'var(--accent)';
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={done}
-      style={{ position: 'fixed', inset: 0, zIndex: 730, background: win === false ? '#0b0a09' : 'var(--bg)', display: 'grid', placeItems: 'center', overflow: 'hidden' }} className="grid-bg">
-      <motion.div aria-hidden style={{ position: 'absolute', left: '-20%', right: '-20%', top: '44%', height: 120, background: win === false ? '#3a3530' : 'var(--accent)', skewY: -6 }}
-        initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.35, delay: 0.1 }} />
+      style={{ position: 'fixed', inset: 0, zIndex: 730, background: '#000', display: 'grid', placeItems: 'center', overflow: 'hidden' }}>
+      {[0, 0.12, 0.24].map((d, i) => (
+        <motion.span key={i} aria-hidden style={{ position: 'absolute', width: 180, height: 180, borderRadius: '50%', border: `1.5px solid ${tone}` }}
+          initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 2.4 + i * 1.2, opacity: [0, 0.6, 0] }} transition={{ duration: 2.2, delay: d, ease: [0.22, 1, 0.36, 1] }} />
+      ))}
       <div className="center" style={{ position: 'relative' }}>
-        <motion.div className="display" initial={{ scale: 2.4, opacity: 0, filter: 'blur(12px)' }} animate={{ scale: 1, opacity: 1, filter: 'blur(0px)' }} transition={{ duration: 0.35 }}
-          style={{ fontSize: 'min(22vw, 150px)', fontWeight: 800, color: win === false ? '#9c9183' : 'var(--text)', lineHeight: 0.9 }}>{title}</motion.div>
-        <motion.div className="display" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
-          style={{ fontSize: 20, letterSpacing: '0.24em', fontWeight: 600, marginTop: 14, color: win === false ? '#9c9183' : 'var(--text)' }}>{sub}</motion.div>
+        <motion.div className="display" initial={{ scale: 1.25, opacity: 0, filter: 'blur(14px)' }} animate={{ scale: 1, opacity: 1, filter: 'blur(0px)' }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          style={{ fontSize: 'min(17vw, 104px)', fontWeight: 800, letterSpacing: '-0.05em', color: win === false ? '#8e8e93' : '#fff' }}>{title}</motion.div>
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+          style={{ fontSize: 17, fontWeight: 500, marginTop: 10, color: 'rgba(255,255,255,.6)' }}>{sub}</motion.div>
       </div>
     </motion.div>
   );
@@ -203,12 +271,9 @@ function Broadcast({ text, done }: { text: string; done: () => void }) {
   useEffect(() => { haptic.ok(); }, []);
   useAuto(done, 6500);
   return (
-    <motion.div initial={{ y: -80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -60, opacity: 0 }} onClick={done}
-      style={{ position: 'fixed', left: 12, right: 12, top: 'calc(env(safe-area-inset-top) + 12px)', zIndex: 715 }}>
-      <div className="cut" style={{ background: 'var(--text)', color: 'var(--bg)', padding: '14px 16px', maxWidth: 560, margin: '0 auto', boxShadow: '0 12px 40px rgba(0,0,0,.4)' }}>
-        <div className="eyebrow" style={{ color: 'inherit', opacity: 0.6 }}>Admin broadcast</div>
-        <div style={{ fontWeight: 600, fontSize: 17 }}>{text}</div>
-      </div>
-    </motion.div>
+    <Island tone="#f5f5f7" onClick={done}>
+      <div style={{ fontSize: 12.5, color: 'rgba(245,245,247,.55)', fontWeight: 550 }}>From the admin</div>
+      <div style={{ fontWeight: 600, fontSize: 15.5 }}>{text}</div>
+    </Island>
   );
 }

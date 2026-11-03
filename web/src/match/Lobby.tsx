@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Avatar, Back, Button, IconCopy, IconMap, IconPhone, IconPlus, IconShare, IconUndo, Modal, Section, Slash, useToast } from '../components/ui';
+import { Segmented, Avatar, Back, Button, IconCopy, IconMap, IconPhone, IconPlus, IconShare, IconUndo, Modal, Section, Slash, useToast } from '../components/ui';
 import { rpc } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { haptic } from '../lib/feel';
@@ -33,14 +33,14 @@ function RoomHeader({ s, onLeave, leaveLabel = 'Leave' }: { s: RoomState; onLeav
       <h1 className="display" style={{ fontSize: 40, margin: '6px 0 10px', wordBreak: 'break-word' }}>{s.room.name}</h1>
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         {code && !s.room.is_public && (
-          <button className="cut cut-sm row" style={{ gap: 10, padding: '8px 12px', background: 'var(--surface2)' }}
+          <motion.button whileTap={{ scale: 0.96 }} className="row" style={{ gap: 10, padding: '7px 12px 7px 14px', background: 'var(--surface2)', borderRadius: 14 }}
             onClick={async () => { await navigator.clipboard?.writeText(code).catch(() => {}); haptic.tap(); toast('Room ID copied'); }}>
-            <span className="eyebrow" style={{ fontSize: 10 }}>Room ID</span>
-            <span className="display mono" style={{ fontSize: 22, letterSpacing: '0.24em' }}>{code}</span>
-            <IconCopy s={16} />
-          </button>
+            <span className="muted" style={{ fontSize: 12, fontWeight: 550 }}>Room ID</span>
+            <span className="mono" style={{ fontSize: 20, fontWeight: 700, letterSpacing: '0.08em' }}>{code}</span>
+            <span className="muted"><IconCopy s={16} /></span>
+          </motion.button>
         )}
-        <button className="cut cut-sm row" style={{ gap: 8, padding: '8px 12px', background: 'var(--surface2)' }} onClick={share}><IconShare s={16} /><span className="display" style={{ fontSize: 14, letterSpacing: '0.12em' }}>Share</span></button>
+        <motion.button whileTap={{ scale: 0.96 }} className="row" style={{ gap: 8, padding: '0 14px', minHeight: 42, background: 'var(--surface2)', borderRadius: 14, fontWeight: 600, fontSize: 14.5 }} onClick={share}><IconShare s={16} />Share</motion.button>
         {onLeave && <button className="muted" style={{ marginLeft: 'auto', fontSize: 13 }} onClick={onLeave}>{leaveLabel}</button>}
       </div>
     </header>
@@ -235,14 +235,9 @@ export function AdminLobby({ s, refresh, themeKey }: { s: RoomState; refresh: ()
     <Slash>
       <div className="screen" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 140px)' }}>
         <RoomHeader s={s} onLeave={close} leaveLabel="Close room" />
-        <div className="row" style={{ gap: 0, borderBottom: '1px solid var(--line)', marginBottom: 18, position: 'sticky', top: 0, background: 'var(--bg)', zIndex: 5 }}>
-          {tabs.map((t) => (
-            <button key={t.k} onClick={() => { haptic.tap(); setTab(t.k); }} className="display"
-              style={{ flex: 1, padding: '12px 0', fontSize: 15, letterSpacing: '0.14em', color: tab === t.k ? 'var(--text)' : 'var(--faint)', position: 'relative' }}>
-              {t.t}{t.n > 0 && <span className="accent"> ·{t.n}</span>}
-              {tab === t.k && <motion.span layoutId="admintab" style={{ position: 'absolute', left: '20%', right: '20%', bottom: -1, height: 2, background: 'var(--accent)' }} />}
-            </button>
-          ))}
+        <div style={{ margin: '4px 0 20px', position: 'sticky', top: 'calc(env(safe-area-inset-top) + 8px)', zIndex: 5, borderRadius: 16, backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+          <Segmented value={tab} onChange={(v) => setTab(v)}
+            options={tabs.map((t) => ({ v: t.k, label: <>{t.t}{t.n > 0 && <span style={{ minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9, background: 'var(--danger)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'grid', placeItems: 'center' }}>{t.n}</span>}</> }))} />
         </div>
         {tab === 'players' && <Roster s={s} refresh={refresh} onInvite={() => setInv(true)} />}
         {tab === 'area' && <AreaEditor s={s} refresh={refresh} themeKey={themeKey} />}
@@ -257,7 +252,7 @@ export function AdminLobby({ s, refresh, themeKey }: { s: RoomState; refresh: ()
               <button key={c.t} onClick={() => setTab(c.go)} className={`tag ${c.ok ? 'ok' : 'bad'}`} style={{ whiteSpace: 'nowrap', padding: '5px 9px' }}>{c.ok ? '✓' : '!'} {c.t}</button>
             ))}
           </div>
-          <Button size="lg" block arrow loading={busy} disabled={!ready} onClick={start}>Start match</Button>
+          <Button kind="hot" size="lg" block arrow loading={busy} disabled={!ready} onClick={start}>Start match</Button>
         </div>
       </div>
       <InviteFriends roomId={s.room.id} open={inv} onClose={() => setInv(false)} members={s.members} />
@@ -321,7 +316,7 @@ function Roster({ s, refresh, onInvite }: { s: RoomState; refresh: () => void; o
                 <div className="row" style={{ gap: 4 }}>
                   {(['runner', 'hunter'] as const).map((r) => (
                     <button key={r} className={`chip`} onClick={() => call('set_role', { p_user: m.id, p_role: m.role === r ? null : r })}
-                      style={{ minHeight: 34, padding: '0 10px', fontSize: 12, background: m.role === r ? (r === 'runner' ? '#ff6214' : '#ffd000') : 'var(--surface2)', color: m.role === r ? '#0e0d0c' : 'var(--muted)' }}>
+                      style={{ minHeight: 34, padding: '0 10px', fontSize: 12, background: m.role === r ? (r === 'runner' ? 'var(--runner)' : 'var(--hunter)') : 'var(--surface2)', color: m.role === r ? (r === 'runner' ? '#170700' : '#000') : 'var(--muted)' }}>
                       {r === 'runner' ? 'Run' : 'Hunt'}
                     </button>
                   ))}

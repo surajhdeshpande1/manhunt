@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { NavLink, Route, Routes, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Avatar, Button, Empty, Field, IconGlobe, IconHost, IconLock, IconProfile, IconRefresh, IconRooms, Logo, Modal, Section, Slash, useInterval, useToast } from '../components/ui';
+import { Avatar, Button, Empty, Field, Segmented, IconGlobe, IconHost, IconLock, IconProfile, IconRefresh, IconRooms, Logo, Modal, Section, Slash, useInterval, useToast } from '../components/ui';
 import { rpc } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { useTheme } from '../lib/theme';
 import { haptic } from '../lib/feel';
 import { timeAgo } from '../lib/clock';
+import { FieldScene } from '../components/FieldScene';
 import Profile from './Profile';
 
 export default function Home() {
   useTheme('neutral');
   return (
-    <div style={{ minHeight: '100%', paddingBottom: 'calc(env(safe-area-inset-bottom) + 76px)' }}>
+    <div style={{ minHeight: '100%', paddingBottom: 'calc(env(safe-area-inset-bottom) + 96px)', position: 'relative' }}>
       <Routes>
         <Route index element={<Slash k="rooms"><RoomsTab /></Slash>} />
         <Route path="host" element={<Slash k="host"><HostTab /></Slash>} />
@@ -31,21 +32,23 @@ function TabBar() {
     { to: '/home/profile', label: 'Profile', icon: <IconProfile />, end: false, badge: profile?.friends_pending || 0 },
   ];
   return (
-    <nav aria-label="Main" style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 100, background: 'color-mix(in srgb, var(--bg) 88%, transparent)',
-      backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderTop: '1px solid var(--line)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-      <div style={{ maxWidth: 560, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
+    <nav aria-label="Main" style={{ position: 'fixed', left: 0, right: 0, bottom: 'calc(env(safe-area-inset-bottom) + 12px)', zIndex: 100, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+      <div style={{ pointerEvents: 'auto', display: 'grid', gridTemplateColumns: 'repeat(3, 92px)', padding: 6, borderRadius: 24,
+        background: 'color-mix(in srgb, var(--surface) 82%, transparent)', backdropFilter: 'blur(18px) saturate(1.4)', WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
+        boxShadow: 'inset 0 0 0 1px var(--line2), inset 0 1px 0 var(--hi), 0 20px 40px -16px rgba(0,0,0,.6)' }}>
         {tabs.map((t) => (
           <NavLink key={t.to} to={t.to} end={t.end} onClick={() => haptic.tap()}
-            style={({ isActive }) => ({ position: 'relative', height: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
-              color: isActive ? 'var(--text)' : 'var(--faint)', textDecoration: 'none', transition: 'color .2s' })}>
+            style={({ isActive }) => ({ position: 'relative', height: 54, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+              color: isActive ? 'var(--accent-ink)' : 'var(--muted)', textDecoration: 'none', transition: 'color .35s var(--ease-out)', borderRadius: 18 })}>
             {({ isActive }) => (
               <>
-                {isActive && <motion.span layoutId="tabbar" style={{ position: 'absolute', top: 0, width: 36, height: 3, background: 'var(--accent)', transform: 'skewX(-20deg)' }} />}
+                {isActive && <motion.span layoutId="tabbar" transition={{ type: 'spring', damping: 26, stiffness: 360 }}
+                  style={{ position: 'absolute', inset: 0, borderRadius: 18, background: 'var(--accent)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.35), 0 6px 18px -6px var(--accent-glow)' }} />}
                 <span style={{ position: 'relative' }}>
                   {t.icon}
-                  {t.badge > 0 && <span style={{ position: 'absolute', top: -4, right: -8, minWidth: 16, height: 16, padding: '0 4px', background: 'var(--accent)', color: 'var(--accent-ink)', fontSize: 11, fontWeight: 700, display: 'grid', placeItems: 'center' }}>{t.badge}</span>}
+                  {t.badge > 0 && <span style={{ position: 'absolute', top: -5, right: -9, minWidth: 17, height: 17, padding: '0 5px', borderRadius: 9, background: 'var(--danger)', color: '#fff', fontSize: 10.5, fontWeight: 750, display: 'grid', placeItems: 'center', boxShadow: '0 0 0 2px var(--surface)' }}>{t.badge}</span>}
                 </span>
-                <span className="display" style={{ fontSize: 12, letterSpacing: '0.16em', fontWeight: 600 }}>{t.label}</span>
+                <span style={{ position: 'relative', fontSize: 11.5, fontWeight: 650 }}>{t.label}</span>
               </>
             )}
           </NavLink>
@@ -89,33 +92,45 @@ function RoomsTab() {
 
   const active = mine.filter((r) => r.status !== 'ended' || r.is_admin);
   return (
-    <div className="screen" style={{ gap: 26 }}>
-      <header className="row between">
-        <Logo size={34} />
-        <div className="row" style={{ gap: 10 }}>
-          <div style={{ textAlign: 'right' }}>
-            <div className="eyebrow" style={{ fontSize: 10 }}>Callsign</div>
-            <div className="display" style={{ fontSize: 17 }}>@{profile?.username}</div>
-          </div>
-          <Avatar src={profile?.selfie_path} name={profile?.username} size={40} />
+    <div className="screen" style={{ gap: 28 }}>
+      <header style={{ position: 'relative', zIndex: 1 }}>
+        <div className="row between">
+          <Logo size={30} />
+          <button onClick={() => nav('/home/profile')} aria-label="Your profile" style={{ borderRadius: '50%' }}><Avatar src={profile?.selfie_path} name={profile?.username} size={40} /></button>
         </div>
+        <h1 className="display" style={{ fontSize: 34, margin: '30px 0 0', fontWeight: 720 }}>{greeting()}, {profile?.full_name?.split(' ')[0] || profile?.username}</h1>
+        <p className="muted" style={{ margin: '6px 0 0' }}>{(rooms?.filter((r) => r.status === 'lobby').length ?? 0) > 0 ? `${rooms!.filter((r) => r.status === 'lobby').length} public ${rooms!.filter((r) => r.status === 'lobby').length === 1 ? 'room is' : 'rooms are'} taking players.` : 'Join a room with its ID, or host your own.'}</p>
       </header>
 
       {active.length > 0 && (
         <Section title="Your rooms">
-          {active.map((r) => (
-            <button key={r.id} onClick={() => nav(`/room/${r.id}`)} className="frame cut" style={{ textAlign: 'left', background: 'var(--accent)' }}>
-              <div className="inner cut row" style={{ padding: '14px 16px', gap: 12 }}>
+          {active.map((r, i) => i === 0 ? (
+            <motion.button whileTap={{ scale: 0.98 }} key={r.id} onClick={() => nav(`/room/${r.id}`)} className="card" style={{ textAlign: 'left', padding: 0, overflow: 'hidden', display: 'block', width: '100%' }}>
+              <div style={{ position: 'relative', height: 150 }}>
+                <FieldScene height={150} />
+                <div style={{ position: 'absolute', top: 12, left: 14 }}><StatusTag s={r.status} /></div>
+              </div>
+              <div className="row" style={{ padding: '14px 16px 16px 18px', gap: 14 }}>
                 <div className="grow">
-                  <div className="display" style={{ fontSize: 22 }}>{r.name}</div>
-                  <div className="muted" style={{ fontSize: 13 }}>
-                    {r.is_admin ? 'You are the admin' : r.my_status === 'pending' ? 'Waiting for admin to accept' : 'You are in'} · {r.players} players
+                  <div className="display" style={{ fontSize: 22, fontWeight: 680 }}>{r.name}</div>
+                  <div className="muted" style={{ fontSize: 13.5, marginTop: 3 }}>
+                    {r.is_admin ? 'You’re the admin' : r.my_status === 'pending' ? 'Waiting for the admin to accept you' : 'You’re in'}, {r.players} {r.players === 1 ? 'player' : 'players'}
                   </div>
                 </div>
-                <StatusTag s={r.status} />
-                <span className="accent display" style={{ fontSize: 18 }}>→</span>
+                <span className="row" style={{ gap: 6, fontWeight: 600, fontSize: 14.5 }}>Open <Chevron /></span>
               </div>
-            </button>
+            </motion.button>
+          ) : (
+            <motion.button whileTap={{ scale: 0.98 }} key={r.id} onClick={() => nav(`/room/${r.id}`)} className="card row" style={{ textAlign: 'left', padding: '16px 16px 16px 18px', gap: 14, position: 'relative', overflow: 'hidden' }}>
+              <div className="grow">
+                <div style={{ fontSize: 17, fontWeight: 650, letterSpacing: '-0.015em' }}>{r.name}</div>
+                <div className="muted" style={{ fontSize: 13.5, marginTop: 3 }}>
+                  {r.is_admin ? 'You’re the admin' : r.my_status === 'pending' ? 'Waiting for the admin to accept you' : 'You’re in'}, {r.players} {r.players === 1 ? 'player' : 'players'}
+                </div>
+              </div>
+              <StatusTag s={r.status} />
+              <Chevron />
+            </motion.button>
           ))}
         </Section>
       )}
@@ -126,8 +141,8 @@ function RoomsTab() {
             <div key={i.id} className="card card-pad row" style={{ gap: 12, background: 'var(--surface2)' }}>
               <Avatar src={i.from.selfie} name={i.from.username} size={42} />
               <div className="grow">
-                <div className="display" style={{ fontSize: 19 }}>{i.room}</div>
-                <div className="muted" style={{ fontSize: 13 }}>@{i.from.username} invited you · {i.players} in</div>
+                <div style={{ fontSize: 16.5, fontWeight: 650 }}>{i.room}</div>
+                <div className="muted" style={{ fontSize: 13 }}>@{i.from.username} invited you, {i.players} in</div>
               </div>
               <Button size="sm" loading={joining === i.room_id} onClick={() => enter(i.room_id)}>Join</Button>
               <button className="icon-btn muted" aria-label="Dismiss" onClick={async () => { await rpc('dismiss_invite', { p_id: i.id }).catch(() => {}); load(); refresh(); }}>✕</button>
@@ -136,22 +151,20 @@ function RoomsTab() {
         </Section>
       )}
 
-      <button onClick={() => setPrivOpen(true)} className="frame cut cut-lg" style={{ textAlign: 'left' }}>
-        <div className="inner cut cut-lg ticks row" style={{ padding: '18px 18px', gap: 14, background: 'var(--surface)' }}>
-          <div style={{ width: 46, height: 46, display: 'grid', placeItems: 'center', background: 'var(--accent)', color: 'var(--accent-ink)' }} className="cut cut-sm"><IconLock /></div>
-          <div className="grow">
-            <div className="display" style={{ fontSize: 22 }}>Join private room</div>
-            <div className="muted" style={{ fontSize: 13 }}>Got a room ID and password? Enter here.</div>
-          </div>
-          <span className="display accent" style={{ fontSize: 22 }}>→</span>
+      <motion.button whileTap={{ scale: 0.98 }} onClick={() => setPrivOpen(true)} className="card row" style={{ textAlign: 'left', padding: 16, gap: 14 }}>
+        <div style={{ width: 46, height: 46, display: 'grid', placeItems: 'center', background: 'var(--surface2)', color: 'var(--text)', borderRadius: '50%' }}><IconLock s={20} /></div>
+        <div className="grow">
+          <div style={{ fontSize: 16.5, fontWeight: 650 }}>Join a private room</div>
+          <div className="muted" style={{ fontSize: 13.5 }}>Enter the room ID and password from your admin.</div>
         </div>
-      </button>
+        <Chevron />
+      </motion.button>
 
-      <Section title={`Public rooms${rooms ? ` · ${rooms.length}` : ''}`}
+      <Section title="Public rooms"
         right={<button className="icon-btn muted" aria-label="Refresh" style={{ width: 32, height: 32, transform: spin ? 'rotate(360deg)' : 'none', transition: 'transform .6s' }}
           onClick={async () => { setSpin(true); await load(); setTimeout(() => setSpin(false), 600); }}><IconRefresh s={18} /></button>}>
         {rooms === null ? (
-          [0, 1, 2].map((i) => <div key={i} className="card" style={{ height: 112, opacity: 0.4, background: 'var(--surface2)' }} />)
+          [0, 1, 2].map((i) => <div key={i} className="card skeleton" style={{ height: 138 }} />)
         ) : rooms.length === 0 ? (
           <Empty title="No public rooms yet" body="Approved organisers host public games here. Make your own private room from the Host tab." />
         ) : rooms.map((r, i) => (
@@ -176,38 +189,56 @@ function StatusTag({ s }: { s: string }) {
 function RoomCard({ r, onEnter, busy }: { r: PublicRoom; onEnter: () => void; busy: boolean }) {
   const full = r.players >= r.max;
   const open = r.status === 'lobby';
-  const label = r.is_admin ? 'Manage' : r.my_status === 'accepted' ? 'Open' : r.my_status === 'pending' ? 'Pending' : full ? 'Full' : open ? 'Enter' : 'Live';
+  const label = r.is_admin ? 'Manage' : r.my_status === 'accepted' ? 'Open' : r.my_status === 'pending' ? 'Pending' : full ? 'Full' : open ? 'Enter' : 'In progress';
   const can = r.is_admin || r.my_status === 'accepted' || r.my_status === 'pending' || (open && !full);
+  const pct = Math.min(100, (r.players / r.max) * 100);
   return (
-    <div className="frame soft cut" style={{ ['--c' as any]: '14px' }}>
-      <div className="inner cut" style={{ ['--c' as any]: '14px', padding: 16, position: 'relative', overflow: 'hidden' }}>
-        <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: open ? 'var(--accent)' : 'var(--faint)' }} />
-        <div className="row between" style={{ alignItems: 'flex-start' }}>
-          <div className="grow">
-            <div className="row" style={{ gap: 8, marginBottom: 6 }}><StatusTag s={r.status} />{!r.has_area && open && <span className="tag">Area not set</span>}</div>
-            <div className="display" style={{ fontSize: 26, wordBreak: 'break-word' }}>{r.name}</div>
-          </div>
-          <div className="mono display" style={{ fontSize: 26, textAlign: 'right', lineHeight: 1 }}>
-            {r.players}<span className="muted" style={{ fontSize: 16 }}>/{r.max}</span>
-            <div className="eyebrow" style={{ fontSize: 10, marginTop: 2 }}>players</div>
+    <div className="card" style={{ padding: 18, position: 'relative', overflow: 'hidden' }}>
+      <div className="row between" style={{ alignItems: 'flex-start', gap: 14 }}>
+        <div className="grow">
+          <div className="row" style={{ gap: 6, marginBottom: 8 }}><StatusTag s={r.status} />{!r.has_area && open && <span className="tag">No play area yet</span>}</div>
+          <div className="display" style={{ fontSize: 23, wordBreak: 'break-word', fontWeight: 680 }}>{r.name}</div>
+        </div>
+        <Ring pct={pct} label={`${r.players}`} sub={`of ${r.max}`} />
+      </div>
+      <div className="row between" style={{ marginTop: 16, gap: 12 }}>
+        <div className="row" style={{ gap: 10, minWidth: 0 }}>
+          <Avatar src={r.admin.selfie} name={r.admin.username} size={32} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 650 }}>@{r.admin.username}</div>
+            <div className="muted" style={{ fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 180 }}>Opened {timeAgo(r.created_at)} ago</div>
           </div>
         </div>
-        <div style={{ height: 3, background: 'var(--surface3)', margin: '12px 0' }}>
-          <div style={{ width: `${Math.min(100, (r.players / r.max) * 100)}%`, height: '100%', background: 'var(--accent)' }} />
-        </div>
-        <div className="row between">
-          <div className="row" style={{ gap: 10, minWidth: 0 }}>
-            <Avatar src={r.admin.selfie} name={r.admin.username} size={30} />
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>@{r.admin.username}</div>
-              <div className="muted" style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 190 }}>{r.admin.college} · {timeAgo(r.created_at)} ago</div>
-            </div>
-          </div>
-          <Button size="sm" disabled={!can} loading={busy} onClick={onEnter}>{label}</Button>
-        </div>
+        <Button size="sm" kind={open && !r.is_admin ? 'primary' : 'quiet'} disabled={!can} loading={busy} onClick={onEnter} style={{ minWidth: 86 }}>{label}</Button>
       </div>
     </div>
   );
+}
+
+/** player count as a small dial */
+function Ring({ pct, label, sub }: { pct: number; label: string; sub: string }) {
+  const R = 25, C = 2 * Math.PI * R;
+  return (
+    <div style={{ position: 'relative', width: 60, height: 60, flex: 'none' }} aria-label={`${label} ${sub} players`}>
+      <svg width="60" height="60" viewBox="0 0 60 60" style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx="30" cy="30" r={R} fill="none" stroke="var(--surface3)" strokeWidth="4" />
+        <motion.circle cx="30" cy="30" r={R} fill="none" stroke="var(--accent)" strokeWidth="4" strokeLinecap="round" strokeDasharray={C}
+          initial={{ strokeDashoffset: C }} animate={{ strokeDashoffset: C * (1 - pct / 100) }} transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1], delay: 0.15 }} />
+      </svg>
+      <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', lineHeight: 1 }}>
+        <div><div className="display mono" style={{ fontSize: 18 }}>{label}</div><div className="muted" style={{ fontSize: 10, marginTop: 2 }}>{sub}</div></div>
+      </div>
+    </div>
+  );
+}
+
+function Chevron() {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--faint)', flex: 'none' }} aria-hidden><path d="M9 5l7 7-7 7" /></svg>;
+}
+
+function greeting() {
+  const h = new Date().getHours();
+  return h < 5 ? 'Out late' : h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening';
 }
 
 function PrivateJoin({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -229,9 +260,9 @@ function PrivateJoin({ open, onClose }: { open: boolean; onClose: () => void }) 
       <form className="stack" style={{ gap: 16 }} onSubmit={submit}>
         <Field label="Room ID" value={code} autoCapitalize="characters" maxLength={6} placeholder="6 characters"
           onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-          style={{ letterSpacing: '0.4em', fontFamily: 'Barlow Condensed', fontWeight: 700, fontSize: 22, textTransform: 'uppercase' }} />
+          style={{ letterSpacing: '0.35em', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, textTransform: 'uppercase' }} />
         <Field label="Password" type="password" value={pw} onChange={(e) => setPw(e.target.value)} />
-        <Button size="lg" block arrow loading={busy} disabled={code.length !== 6 || pw.length < 4} type="submit">Request to join</Button>
+        <Button size="lg" block loading={busy} disabled={code.length !== 6 || pw.length < 4} type="submit">Request to join</Button>
         <p className="muted center" style={{ fontSize: 13, margin: 0 }}>The admin still has to accept you.</p>
       </form>
     </Modal>
@@ -267,37 +298,33 @@ function HostTab() {
 
   return (
     <div className="screen" style={{ gap: 24 }}>
-      <header>
-        <div className="eyebrow">Host</div>
-        <h1 className="display" style={{ fontSize: 48, margin: '6px 0 4px' }}>Open a room</h1>
-        <p className="muted" style={{ margin: 0 }}>You run the match as admin: draw the boundary, set the rules, pick roles, start the hunt. Admins spectate, they don't play.</p>
+      <header style={{ position: 'relative', zIndex: 1, paddingTop: 12 }}>
+        <h1 className="display" style={{ fontSize: 34, margin: '18px 0 10px', fontWeight: 720 }}>Host a game</h1>
+        <p className="muted" style={{ margin: 0, maxWidth: 400 }}>As admin you draw the play area, set the rules and assign roles, then watch the whole map while everyone else plays.</p>
       </header>
 
       <form className="stack" style={{ gap: 18 }} onSubmit={create}>
         <Field label="Room name" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} placeholder="Friday Night Hunt" />
         <div className="field">
           <label>Type</label>
-          <div className="row" style={{ gap: 8 }}>
-            <button type="button" className={`chip ${!pub ? 'on' : ''}`} style={{ flex: 1, gap: 8 }} onClick={() => setPub(false)}><IconLock s={16} /> Private</button>
-            <button type="button" className={`chip ${pub ? 'on' : ''}`} style={{ flex: 1, gap: 8 }} disabled={!org} onClick={() => org && setPub(true)}><IconGlobe s={16} /> Public</button>
-          </div>
+          <Segmented value={pub ? 'pub' : 'priv'} onChange={(v) => (v === 'priv' ? setPub(false) : org && setPub(true))}
+            options={[{ v: 'priv', label: <><IconLock s={16} /> Private</> }, { v: 'pub', label: <><IconGlobe s={16} /> Public</>, disabled: !org }]} />
           <div className="field-hint">{pub ? 'Listed on everyone\'s Rooms tab. Players tap Enter and you accept them.' : 'Hidden. Players need the room ID and password, then you accept them.'}</div>
         </div>
         {!pub && <Field label="Room password" type="text" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="At least 4 characters" hint="Share it with your players along with the room ID." />}
-        <Button size="lg" block arrow loading={busy} disabled={name.trim().length < 2 || (!pub && pw.length < 4)} type="submit">Create room</Button>
+        <Button kind="hot" size="lg" block loading={busy} disabled={name.trim().length < 2 || (!pub && pw.length < 4)} type="submit">Create room</Button>
       </form>
 
       {!org && (
-        <div className="frame soft cut">
-          <div className="inner cut" style={{ padding: 18, background: 'var(--bg2)' }}>
-            <div className="eyebrow">Public rooms</div>
-            <div className="display" style={{ fontSize: 24, margin: '6px 0' }}>Become an organiser</div>
+        <div className="card" style={{ background: 'var(--bg2)' }}>
+          <div style={{ padding: 18 }}>
+            <div style={{ fontSize: 17, fontWeight: 650, margin: '0 0 6px' }}>Want to host public games?</div>
             {profile?.application === 'pending' ? (
               <p className="muted" style={{ margin: 0 }}>Your application is with the TAG owner. You'll be able to host public rooms once it's approved.</p>
             ) : (
               <div className="stack">
                 <p className="muted" style={{ margin: 0 }}>{profile?.application === 'rejected' ? 'Your last application was not approved. You can apply again.' : 'Organisers can host rooms anyone can find. Tell the owner who you are and what you plan to run.'}</p>
-                <textarea className="input cut" style={{ ['--c' as any]: '7px' }} maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. I run the BEC Creative Spectrum games night, ~40 players weekly." />
+                <textarea className="input" style={{ background: 'var(--surface)', boxShadow: 'inset 0 0 0 1px var(--line2)' }} maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. I run the BEC Creative Spectrum games night, ~40 players weekly." />
                 <Button kind="ghost" loading={applying} disabled={note.trim().length < 10} onClick={apply}>Apply</Button>
               </div>
             )}

@@ -50,8 +50,8 @@ export function Chat({ roomId, channel, members, meId, height = 280, compact }: 
           return (
             <div key={m.id} className="row" style={{ alignItems: 'flex-end', gap: 8, flexDirection: mine ? 'row-reverse' : 'row' }}>
               {!compact && <Avatar src={u?.selfie} name={u?.username} size={26} />}
-              <div className="cut cut-sm" style={{ maxWidth: '78%', padding: '7px 11px', background: mine ? 'var(--accent)' : 'var(--surface2)', color: mine ? 'var(--accent-ink)' : 'var(--text)' }}>
-                {!mine && <div className="display" style={{ fontSize: 11, opacity: 0.7, letterSpacing: '0.12em' }}>@{u?.username ?? 'admin'}</div>}
+              <div style={{ maxWidth: '78%', padding: '8px 12px', borderRadius: mine ? '18px 18px 6px 18px' : '18px 18px 18px 6px', background: mine ? 'var(--accent)' : 'var(--surface2)', color: mine ? 'var(--accent-ink)' : 'var(--text)' }}>
+                {!mine && <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 600 }}>@{u?.username ?? 'admin'}</div>}
                 <div style={{ fontSize: 14, wordBreak: 'break-word' }}>{m.body}</div>
               </div>
             </div>

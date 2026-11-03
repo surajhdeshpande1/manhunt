@@ -21,7 +21,7 @@ export function RunnerQR({ roomId, token, username, selfie, onClose }: { roomId:
         <Avatar src={selfie} name={username} size={52} />
         <div>
           <div className="display" style={{ fontSize: 30 }}>@{username}</div>
-          <div style={{ fontFamily: 'Barlow Condensed', letterSpacing: '0.2em', fontSize: 13, fontWeight: 700, color: '#e63323' }}>RUNNER · CATCH TAG</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--runner)' }}>Runner · catch code</div>
         </div>
       </div>
       {src ? <img src={src} alt="Your catch QR code" style={{ width: 'min(82vw, 380px)', height: 'auto', imageRendering: 'pixelated' }} /> : <span className="spinner" />}
@@ -66,28 +66,28 @@ export function Scanner({ roomId, getFix, onClose, onCaught }: {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', inset: 0, zIndex: 600, background: '#000' }}>
       <video ref={video} playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
       <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
-        <div style={{ width: 'min(72vw, 300px)', aspectRatio: '1', position: 'relative', boxShadow: '0 0 0 100vmax rgba(6,10,20,.6)' }}>
+        <div style={{ width: 'min(72vw, 300px)', aspectRatio: '1', position: 'relative', boxShadow: '0 0 0 100vmax rgba(0,0,0,.6)', borderRadius: 28 }}>
           {['top:0;left:0;border-width:3px 0 0 3px', 'top:0;right:0;border-width:3px 3px 0 0', 'bottom:0;left:0;border-width:0 0 3px 3px', 'bottom:0;right:0;border-width:0 3px 3px 0'].map((c, i) => (
-            <span key={i} style={{ position: 'absolute', width: 34, height: 34, borderStyle: 'solid', borderColor: '#ffd000', ...Object.fromEntries(c.split(';').map((kv) => kv.split(':')).map(([k, v]) => [k.replace(/-(\w)/g, (_, x) => x.toUpperCase()), v])) }} />
+            <span key={i} style={{ position: 'absolute', width: 34, height: 34, borderStyle: 'solid', borderColor: '#fff', borderRadius: 4, ...Object.fromEntries(c.split(';').map((kv) => kv.split(':')).map(([k, v]) => [k.replace(/-(\w)/g, (_, x) => x.toUpperCase()), v])) }} />
           ))}
-          {st.k === 'scan' && <motion.div style={{ position: 'absolute', left: 8, right: 8, height: 2, background: '#ffd000', boxShadow: '0 0 14px #ffd000' }} animate={{ top: ['8%', '92%', '8%'] }} transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }} />}
+          {st.k === 'scan' && <motion.div style={{ position: 'absolute', left: 8, right: 8, height: 2, background: 'var(--hunter)', boxShadow: '0 0 16px var(--hunter)', borderRadius: 2 }} animate={{ top: ['8%', '92%', '8%'] }} transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }} />}
         </div>
       </div>
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: 'calc(env(safe-area-inset-top) + 14px) 16px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#eef2fa' }}>
         <div>
-          <div className="display" style={{ fontSize: 26, color: '#ffd000' }}>Scan to catch</div>
+          <div className="display" style={{ fontSize: 26, color: '#fff' }}>Scan to catch</div>
           <div style={{ fontSize: 13, opacity: 0.8 }}>Point at the runner's QR. You must be close.</div>
         </div>
         <button onClick={onClose} aria-label="Close scanner" style={{ width: 48, height: 48, display: 'grid', placeItems: 'center', color: '#fff' }}><X s={28} /></button>
       </div>
       <div style={{ position: 'absolute', left: 16, right: 16, bottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}>
-        {camErr && <div className="card card-pad" style={{ background: '#0d162b', color: '#eef2fa' }}>{camErr}</div>}
-        {st.k === 'check' && <div className="card card-pad row" style={{ background: '#0d162b', color: '#eef2fa', gap: 12 }}><span className="spinner" /> Verifying catch…</div>}
+        {camErr && <div className="card card-pad" style={{ background: '#141416', color: '#f5f5f7' }}>{camErr}</div>}
+        {st.k === 'check' && <div className="card card-pad row" style={{ background: '#141416', color: '#f5f5f7', gap: 12 }}><span className="spinner" /> Verifying catch…</div>}
         {st.k === 'ok' && (
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="card card-pad stack" style={{ background: '#ffd000', color: '#060a14' }}>
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="card card-pad stack" style={{ background: 'var(--hunter)', color: '#000' }}>
             <div className="display" style={{ fontSize: 34 }}>@{st.name} caught</div>
             <div style={{ fontWeight: 600 }}>Confirmed at {st.d} m. Everyone has been notified.</div>
-            <Button kind="quiet" onClick={onClose} style={{ background: '#060a14', color: '#ffd000' }}>Back to the hunt</Button>
+            <Button kind="quiet" onClick={onClose} style={{ background: '#000', color: '#fff' }}>Back to the hunt</Button>
           </motion.div>
         )}
         {st.k === 'err' && (

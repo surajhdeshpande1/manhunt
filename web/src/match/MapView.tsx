@@ -5,7 +5,7 @@ import { selfieUrl } from '../lib/supabase';
 import { cssVar } from '../lib/theme';
 
 const STYLE = 'https://tiles.openfreemap.org/styles/liberty';
-const OUT_RED = '#e63323';
+const OUT_RED = '#ff453a';
 export type Marker = { id: string; lat: number; lng: number; selfie?: string | null; role?: 'runner' | 'hunter' | null; label?: string; me?: boolean; stale?: boolean; alert?: boolean };
 export type MapHandle = { fit: (pts?: LngLat[]) => void; flyTo: (lat: number, lng: number, zoom?: number) => void };
 type Props = {
@@ -192,15 +192,17 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
 // marker styles (injected once)
 const css = `
 .tag-marker { display:flex; flex-direction:column; align-items:center; pointer-events:none; transition: transform .25s; }
-.tag-marker .tm-pin { width:38px; height:44px; background:var(--accent); clip-path:polygon(0 0,100% 0,100% 78%,50% 100%,0 78%); padding:2px; filter: drop-shadow(0 4px 8px rgba(0,0,0,.45)); }
-.tag-marker[data-role="runner"] .tm-pin { background:#ff6214; }
-.tag-marker[data-role="hunter"] .tm-pin { background:#ffd000; }
-.tag-marker .tm-img { width:100%; height:34px; background:#222 center/cover; clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px)); display:grid; place-items:center; font:700 12px 'Barlow Condensed'; color:#fff; }
-.tag-marker .tm-label { margin-top:2px; padding:1px 5px; background:#0e0d0c; color:#fff; font:700 10px/1.3 'Barlow Condensed'; letter-spacing:.12em; text-transform:uppercase; white-space:nowrap; }
-.tag-marker[data-me="1"] .tm-pin { animation: tmPulse 1.6s ease-in-out infinite; }
+.tag-marker .tm-pin { position:relative; width:40px; height:40px; border-radius:50%; background:var(--accent); padding:3px; box-shadow:0 0 0 2px #fff, 0 6px 16px rgba(0,0,0,.45); }
+.tag-marker .tm-pin::after { content:''; position:absolute; inset:-3px; border-radius:50%; border:2px solid currentColor; opacity:0; color:inherit; }
+.tag-marker[data-role="runner"] .tm-pin { background:#ff6a1a; color:#ff6a1a; }
+.tag-marker[data-role="hunter"] .tm-pin { background:#ffd400; color:#ffd400; }
+.tag-marker .tm-img { width:100%; height:100%; background:#222 center/cover; border-radius:50%; display:grid; place-items:center; font:700 12px 'Inter Variable', system-ui; color:#fff; }
+.tag-marker .tm-label { margin-top:5px; padding:2px 7px; border-radius:999px; background:rgba(0,0,0,.78); color:#fff; font:600 11px/1.35 'Inter Variable', system-ui; letter-spacing:-.005em; white-space:nowrap; backdrop-filter:blur(6px); }
+.tag-marker[data-me="1"] .tm-pin::after { animation: tmRing 2s cubic-bezier(.22,1,.36,1) infinite; }
 .tag-marker[data-stale="1"] { opacity:.45; }
-.tag-marker[data-alert="1"] .tm-pin { background:var(--danger); animation: tmPulse .6s ease-in-out infinite; }
-@keyframes tmPulse { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-4px); } }
+.tag-marker[data-alert="1"] .tm-pin { background:var(--danger); color:var(--danger); }
+.tag-marker[data-alert="1"] .tm-pin::after { animation: tmRing .9s cubic-bezier(.22,1,.36,1) infinite; }
+@keyframes tmRing { 0% { transform:scale(1); opacity:.9; } 100% { transform:scale(2.1); opacity:0; } }
 `;
 if (typeof document !== 'undefined' && !document.getElementById('tag-marker-css')) {
   const s = document.createElement('style'); s.id = 'tag-marker-css'; s.textContent = css; document.head.appendChild(s);

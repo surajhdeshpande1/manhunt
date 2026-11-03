@@ -56,7 +56,7 @@ export function TaskDeck({ s, refresh }: { s: RoomState; refresh: () => void }) 
             </div>
             <div className="row" style={{ gap: 3 }}>
               {Array.from({ length: Math.min(per, 15) }, (_, i) => (
-                <span key={i} style={{ width: 8, height: 22, background: i < me.tasks ? 'var(--accent)' : 'var(--surface3)', transform: 'skewX(-12deg)' }} />
+                <motion.span key={i} initial={false} animate={{ backgroundColor: i < me.tasks ? 'var(--accent)' : 'var(--surface3)', scaleY: i < me.tasks ? 1 : 0.7 }} transition={{ type: 'spring', damping: 18 }} style={{ width: 6, height: 22, borderRadius: 3, display: 'block' }} />
               ))}
             </div>
           </div>
