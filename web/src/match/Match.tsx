@@ -6,6 +6,7 @@ import { rpc } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { fmtClock, fmtDist, msUntil, serverNow, timeAgo } from '../lib/clock';
 import { haptic, keepAwake } from '../lib/feel';
+import { titleLabel } from '../lib/identity';
 import { haversine } from '../lib/geo';
 import type { GameEvent, Member, RoomState } from '../lib/types';
 import { MapView, type MapHandle, type Marker } from './MapView';
@@ -13,6 +14,7 @@ import { Chat, PushToTalk } from './Comms';
 import { RunnerQR, Scanner } from './QR';
 import { TaskDeck } from './Tasks';
 import type { Fix, GeoStatus } from './useRoom';
+import { Heartbeat, HunterAmbience, RadarGlyph, RunnerAmbience } from '../components/Ambience';
 
 type Geo = { fix: Fix | null; status: GeoStatus; latest: React.MutableRefObject<Fix | null> };
 const REASON: Record<string, string> = {
@@ -64,7 +66,7 @@ export function Match({ s, feed, geo, refresh, themeKey }: { s: RoomState; feed:
   const markers: Marker[] = useMemo(() => {
     const out: Marker[] = s.positions.filter((p) => p.id !== profile?.id).map((p) => {
       const m = byId.get(p.id);
-      return { id: p.id, lat: p.lat, lng: p.lng, selfie: m?.selfie, role: p.role, label: m?.username, stale: serverNow() - new Date(p.at).getTime() > 20000, alert: sosIds.has(p.id) || (isAdmin && !!m?.oob) };
+      return { id: p.id, lat: p.lat, lng: p.lng, selfie: m?.selfie, role: p.role, label: m?.username, title: titleLabel(m?.title), stale: serverNow() - new Date(p.at).getTime() > 20000, alert: sosIds.has(p.id) || (isAdmin && !!m?.oob) };
     });
     const f = geo.fix;
     if (f && !isAdmin && alive) out.push({ id: 'me', lat: f.lat, lng: f.lng, selfie: profile?.selfie_path, role, me: true });
@@ -93,7 +95,7 @@ export function Match({ s, feed, geo, refresh, themeKey }: { s: RoomState; feed:
         <MapView ref={mapRef} themeKey={themeKey} boundary={s.room.boundary} nogo={s.room.nogo} zone={s.room.zone} zoneNext={s.room.status === 'hunt' ? s.room.zone_next : null}
           markers={markers} me={!isAdmin && alive && geo.fix ? geo.fix : null}
           fitPad={wide ? { top: 150, bottom: 40, left: 40, right: 70 } : { top: 150, bottom: 210, left: 30, right: 70 }} />
-        <Hud s={s} geo={geo} isAdmin={isAdmin} alive={alive} onMenu={() => setMenu(true)} />
+        <Hud s={s} geo={geo} isAdmin={isAdmin} alive={alive} role={role} onMenu={() => setMenu(true)} />
         <div className="stack" style={{ position: 'absolute', right: 12, top: 'calc(env(safe-area-inset-top) + 132px)', gap: 8, zIndex: 20 }}>
           {!isAdmin && alive && <SOSButton roomId={s.room.id} getFix={() => geo.latest.current} />}
           <MapBtn label="Fit play area" onClick={() => mapRef.current?.fit()}><IconMap s={20} /></MapBtn>
@@ -104,9 +106,11 @@ export function Match({ s, feed, geo, refresh, themeKey }: { s: RoomState; feed:
       {wide ? (
         <aside style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 420, overflowY: 'auto', background: 'var(--bg2)', borderLeft: '1px solid var(--line)', padding: '20px 20px 40px' }}>{panel}</aside>
       ) : (
-        <Sheet peek={role === 'runner' && alive ? 196 : role === 'hunter' && alive ? 178 : 150}>{panel}</Sheet>
+        <Sheet peek={role === 'runner' && alive ? 184 : role === 'hunter' && alive ? 164 : 132}>{panel}</Sheet>
       )}
 
+      {!isAdmin && alive && role === 'runner' && <RunnerAmbience exposed={s.room.status === 'hunt' && s.reveal.active} intensity={s.room.status === 'paused' ? 0.4 : 0.85} />}
+      {!isAdmin && alive && role === 'hunter' && <HunterAmbience hunting={s.room.status === 'hunt'} intensity={s.room.status === 'paused' ? 0.4 : 0.8} />}
       <AnimatePresence>{oobLeft !== null && alive && <OobOverlay left={oobLeft} reason={me!.oob_reason} />}</AnimatePresence>
       <AnimatePresence>
         {qr && me?.qr && <RunnerQR key="qr" roomId={s.room.id} token={me.qr} username={profile!.username} selfie={profile!.selfie_path} onClose={() => setQr(false)} />}
@@ -143,25 +147,29 @@ export function RollingText({ text, style }: { text: string; style?: React.CSSPr
 }
 
 /* ---------- HUD ---------- */
-function Hud({ s, geo, isAdmin, alive, onMenu }: { s: RoomState; geo: Geo; isAdmin: boolean; alive: boolean; onMenu: () => void }) {
+function Hud({ s, geo, isAdmin, alive, role, onMenu }: { s: RoomState; geo: Geo; isAdmin: boolean; alive: boolean; role: string | null; onMenu: () => void }) {
   const r = s.room; const p = s.progress;
   const status = r.status === 'paused' ? 'paused' : r.status;
   const phase = status === 'hiding' ? { t: msUntil(r.hide_ends_at) > 0 ? 'Hide' : 'Hide over', v: msUntil(r.hide_ends_at) > 0 ? fmtClock(msUntil(r.hide_ends_at)) : isAdmin ? 'Ready' : 'Any second' }
     : status === 'hunt' ? { t: 'Hunt', v: fmtClock(msUntil(r.ends_at)) } : { t: 'Paused', v: '— —' };
   const rev = s.reveal;
   const revealMs = rev.active ? msUntil(rev.until) : msUntil(rev.next_at);
+  const [open, setOpen] = useState(false);
   return (
     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20, padding: 'calc(env(safe-area-inset-top) + 10px) 12px 0', pointerEvents: 'none' }}>
       <motion.div initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', damping: 22, stiffness: 260 }}
-        className="force-night" style={{ pointerEvents: 'auto', position: 'relative', overflow: 'hidden', borderRadius: 24, padding: '12px 14px 12px',
+        layout onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; haptic.tap(); setOpen((o) => !o); }} role="button" aria-expanded={open} aria-label="Match details"
+        className="force-night" style={{ pointerEvents: 'auto', position: 'relative', overflow: 'hidden', borderRadius: 22, padding: open ? '12px 14px 12px' : '8px 10px 10px 12px', cursor: 'pointer',
           background: `radial-gradient(90% 140% at 0% 0%, ${status === 'hunt' ? 'rgba(232,54,31,.32)' : status === 'hiding' ? 'rgba(255,176,32,.22)' : 'rgba(255,255,255,.08)'}, transparent 60%), rgba(8,6,5,.78)`,
           backdropFilter: 'blur(18px) saturate(1.3)', WebkitBackdropFilter: 'blur(18px) saturate(1.3)', boxShadow: 'inset 0 0 0 1px rgba(255,220,190,.12), 0 16px 40px -18px rgba(0,0,0,.8)' }}>
-        <div className="row between" style={{ marginBottom: 8, gap: 8 }}>
+        <motion.div layout="position" className="row between" style={{ marginBottom: open ? 8 : 6, gap: 8 }}>
           <div className="row" style={{ gap: 8, flex: 'none' }}>
             <span className={`tag ${status === 'hunt' ? 'live' : ''}`}>{status === 'hunt' && <span className="dot pulse" />}{phase.t}</span>
             <RollingText text={phase.v} style={{ fontSize: 'clamp(23px, 7.4vw, 30px)', fontWeight: 800, letterSpacing: '-0.04em', flex: 'none' }} />
           </div>
-          <div className="row" style={{ gap: 6 }}>
+          <div className="row" style={{ gap: 6, minWidth: 0 }}>
+            {!isAdmin && alive && role === 'runner' && <span className="hide-xs" title="Your pulse"><Heartbeat exposed={status === 'hunt' && rev.active} width={42} /></span>}
+            {!isAdmin && alive && role === 'hunter' && <RadarGlyph size={22} />}
             {status === 'hunt' && (
               <span className="tag" style={rev.active ? { background: 'var(--danger)', color: '#fff' } : undefined}>
                 {rev.active ? <><span className="dot pulse" /> <span className="hide-xs">Revealed </span>{fmtClock(revealMs)}</> : <><span className="hide-xs">Reveal </span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="show-xs"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>{fmtClock(revealMs)}</>}
@@ -169,13 +177,23 @@ function Hud({ s, geo, isAdmin, alive, onMenu }: { s: RoomState; geo: Geo; isAdm
             )}
             <button className="icon-btn" style={{ width: 36, height: 36 }} aria-label="Menu" onClick={onMenu}><IconMenu s={20} /></button>
           </div>
-        </div>
+        </motion.div>
+        {p && !open && (
+          <div style={{ position: 'relative', height: 4, borderRadius: 2, background: 'rgba(255,255,255,.1)' }} aria-label={`${Math.round(p.pct)} percent of tasks done, win at ${p.mark}`}>
+            <motion.div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 2, background: 'linear-gradient(90deg, #e8361f, #ff6a1a, #ffd400)', boxShadow: '0 0 8px rgba(255,106,26,.7)' }} animate={{ width: `${Math.min(100, p.pct)}%` }} />
+            <div style={{ position: 'absolute', left: `${p.mark}%`, top: -3, bottom: -3, width: 2, background: '#ffd400' }} />
+          </div>
+        )}
+        <AnimatePresence initial={false}>
+        {open && <motion.div key="more" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} style={{ overflow: 'hidden' }}>
         {p && <ProgressBar p={p} />}
         <div className="row" style={{ gap: 14, marginTop: 9, flexWrap: 'wrap', fontSize: 12, fontWeight: 600, color: 'rgba(255,240,230,.75)' }}>
           <span className="row" style={{ gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--runner)', boxShadow: '0 0 8px var(--runner)' }} />{p?.runners_alive}/{p?.runners} runners</span>
           <span className="row" style={{ gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--hunter)', boxShadow: '0 0 8px var(--hunter)' }} />{p?.hunters_alive} hunters</span>
           {r.zone && <span className="row" style={{ gap: 6 }}><span style={{ width: 9, height: 9, borderRadius: '50%', border: '1.5px solid currentColor' }} />{fmtDist(r.zone.r)}{status === 'hunt' && r.next_shrink_at ? `, shrinks in ${fmtClock(msUntil(r.next_shrink_at))}` : ''}</span>}
         </div>
+        </motion.div>}
+        </AnimatePresence>
       </motion.div>
       {!isAdmin && alive && geo.status !== 'ok' && (
         <div className="cut cut-sm" style={{ pointerEvents: 'auto', marginTop: 6, padding: '8px 12px', background: geo.status === 'denied' ? 'var(--danger)' : 'var(--surface2)', color: geo.status === 'denied' ? '#fff' : 'var(--text)', fontSize: 13, fontWeight: 600 }}>
@@ -298,6 +316,7 @@ function Rosters({ hunters, runners, myFix, positions }: { hunters: Member[]; ru
       <div className="center" style={{ flex: 'none', width: 66, opacity: m.alive ? 1 : 0.55 }}>
         <div style={{ padding: 2, background: m.alive ? (m.role === 'hunter' ? 'var(--hunter)' : 'var(--runner)') : 'var(--surface3)', borderRadius: '50%' }}><Avatar src={m.selfie} name={m.username} size={54} out={!m.alive} /></div>
         <div style={{ fontSize: 11, fontWeight: 600, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{m.username}</div>
+        {titleLabel(m.title) && <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gold)' }}>{titleLabel(m.title)}</div>}
         <div className="muted mono" style={{ fontSize: 10 }}>{!m.alive ? 'out' : m.role === 'runner' ? `${m.tasks} tasks` : `${m.catches} caught`}{d != null && d >= 3 && m.alive ? ` · ${fmtDist(d)}` : ''}</div>
       </div>
     );
@@ -385,7 +404,7 @@ function AdminPanel({ s, refresh, feed, byId, mapRef }: { s: RoomState; refresh:
                 <button onClick={() => p && mapRef.current?.flyTo(p.lat, p.lng, 18)} aria-label={`Show ${m.username}`}><Avatar src={m.selfie} name={m.username} size={36} out={!m.alive} /></button>
                 <div className="grow" style={{ minWidth: 0 }}>
                   <div className="row" style={{ gap: 6 }}>
-                    <b style={{ fontSize: 14 }}>@{m.username}</b>
+                    <b style={{ fontSize: 14 }}>@{m.username}</b>{titleLabel(m.title) && <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gold)', marginLeft: 6 }}>{titleLabel(m.title)}</span>}
                     <span className="tag" style={{ fontSize: 10, padding: '1px 5px', background: m.role === 'hunter' ? 'var(--hunter)' : 'var(--runner)', color: m.role === 'hunter' ? '#000' : '#170700' }}>{m.role === 'hunter' ? 'H' : 'R'}</span>
                     {m.oob && m.alive && <span className="tag bad" style={{ fontSize: 10, padding: '1px 5px' }}>Outside</span>}
                   </div>

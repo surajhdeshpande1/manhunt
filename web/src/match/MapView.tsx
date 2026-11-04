@@ -6,7 +6,7 @@ import { cssVar } from '../lib/theme';
 
 const STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 const OUT_RED = '#ff453a';
-export type Marker = { id: string; lat: number; lng: number; selfie?: string | null; role?: 'runner' | 'hunter' | null; label?: string; me?: boolean; stale?: boolean; alert?: boolean };
+export type Marker = { id: string; lat: number; lng: number; selfie?: string | null; role?: 'runner' | 'hunter' | null; label?: string; title?: string; me?: boolean; stale?: boolean; alert?: boolean };
 export type MapHandle = { fit: (pts?: LngLat[]) => void; flyTo: (lat: number, lng: number, zoom?: number) => void };
 type Props = {
   themeKey: string; boundary?: LngLat[] | null; nogo?: LngLat[][]; zone?: Zone | null; zoneNext?: Zone | null;
@@ -56,7 +56,7 @@ function recolor(map: MLMap) {
 function markerEl(m: Marker) {
   const el = document.createElement('div');
   el.className = 'tag-marker';
-  el.innerHTML = `<div class="tm-pin"><div class="tm-img"></div></div><div class="tm-label"></div>`;
+  el.innerHTML = `<div class="tm-pin"><div class="tm-img"></div></div><div class="tm-label"></div><div class="tm-title"></div>`;
   return el;
 }
 function updateMarkerEl(el: HTMLElement, m: Marker) {
@@ -66,6 +66,7 @@ function updateMarkerEl(el: HTMLElement, m: Marker) {
   const bg = url ? `url("${url}")` : '';
   if (img.dataset.bg !== bg) { img.style.backgroundImage = bg; img.dataset.bg = bg; img.textContent = url ? '' : (m.label || '?').slice(0, 2).toUpperCase(); }
   (el.querySelector('.tm-label') as HTMLElement).textContent = m.me ? 'YOU' : m.label || '';
+  const t = el.querySelector('.tm-title') as HTMLElement; t.textContent = m.title || ''; t.style.display = m.title ? '' : 'none';
 }
 
 export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
@@ -198,11 +199,19 @@ const css = `
 .tag-marker[data-role="hunter"] .tm-pin { background:#ffd400; color:#ffd400; }
 .tag-marker .tm-img { width:100%; height:100%; background:#222 center/cover; border-radius:50%; display:grid; place-items:center; font:700 12px 'Inter Variable', system-ui; color:#fff; }
 .tag-marker .tm-label { margin-top:5px; padding:2px 7px; border-radius:999px; background:rgba(0,0,0,.78); color:#fff; font:600 11px/1.35 'Inter Variable', system-ui; letter-spacing:-.005em; white-space:nowrap; backdrop-filter:blur(6px); }
+.tag-marker .tm-title { margin-top:2px; padding:1px 6px; border-radius:4px; font:800 9px/1.3 'Archivo Variable', system-ui; font-stretch:80%; letter-spacing:.08em; text-transform:uppercase; color:#000; background:#ffd400; }
+.tag-marker[data-role="runner"] .tm-title { background:#ff6a1a; color:#170700; }
 .tag-marker[data-me="1"] .tm-pin::after { animation: tmRing 2s cubic-bezier(.22,1,.36,1) infinite; }
 .tag-marker[data-stale="1"] { opacity:.45; }
 .tag-marker[data-alert="1"] .tm-pin { background:var(--danger); color:var(--danger); }
 .tag-marker[data-alert="1"] .tm-pin::after { animation: tmRing .9s cubic-bezier(.22,1,.36,1) infinite; }
 @keyframes tmRing { 0% { transform:scale(1); opacity:.9; } 100% { transform:scale(2.1); opacity:0; } }
+/* role life: runners glow like embers, hunters send sonar pings */
+.tag-marker[data-role="runner"] .tm-pin { animation: tmEmber 1.6s ease-in-out infinite; }
+.tag-marker[data-role="hunter"] .tm-pin::before { content:''; position:absolute; inset:-3px; border-radius:50%; border:1.5px solid #ffd400; animation: tmSonar 2.4s cubic-bezier(.2,.8,.3,1) infinite; }
+@keyframes tmEmber { 0%,100% { box-shadow:0 0 0 2px #fff, 0 0 10px 2px rgba(255,106,26,.55), 0 6px 16px rgba(0,0,0,.45); } 50% { box-shadow:0 0 0 2px #fff, 0 0 22px 7px rgba(232,54,31,.75), 0 6px 16px rgba(0,0,0,.45); } }
+@keyframes tmSonar { 0% { transform:scale(1); opacity:.95; } 100% { transform:scale(2.8); opacity:0; } }
+@media (prefers-reduced-motion: reduce) { .tag-marker .tm-pin, .tag-marker .tm-pin::before, .tag-marker .tm-pin::after { animation:none !important; } }
 `;
 if (typeof document !== 'undefined' && !document.getElementById('tag-marker-css')) {
   const s = document.createElement('style'); s.id = 'tag-marker-css'; s.textContent = css; document.head.appendChild(s);

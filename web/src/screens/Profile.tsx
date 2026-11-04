@@ -3,8 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CountUp, LightTrails } from '../components/Art';
 import { WinDial } from '../components/Diagrams';
+import { BadgeArt } from '../components/BadgeArt';
+import { STYLES, TITLES, titleLabel, type CardStyle } from '../lib/identity';
 import { Avatar, Button, Empty, Field, Modal, Section, Segmented, useToast } from '../components/ui';
 import { setAppearance, useAppearance, isDaytime, type Appearance } from '../lib/theme';
+import { setSound, sfx, useSoundOn } from '../lib/sound';
 import { callFunction, rpc } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { fmtDist } from '../lib/clock';
@@ -26,6 +29,7 @@ export default function Profile() {
   const nav = useNavigate();
   const { profile, signOut } = useSession();
   const [edit, setEdit] = useState(false);
+  const [custom, setCustom] = useState(false);
   if (!profile) return null;
   const earned = new Set(profile.badges.map((b) => b.code));
   const stats = [
@@ -37,11 +41,11 @@ export default function Profile() {
       {/* player card */}
       <motion.div className="card glow-edge force-night" initial={{ opacity: 0, y: 20, rotateX: 12 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         style={{ position: 'relative', overflow: 'hidden', borderRadius: 28, padding: '22px 20px 20px', marginTop: 8, transformPerspective: 900,
-          background: 'radial-gradient(130% 90% at 100% 0%, rgba(255,106,26,.38), transparent 55%), radial-gradient(90% 70% at 0% 100%, rgba(232,54,31,.3), transparent 60%), #0b0705' }}>
+          background: (STYLES[profile.card_style as CardStyle] ?? STYLES.ember).bg, color: (STYLES[profile.card_style as CardStyle] ?? STYLES.ember).ink }}>
         <div style={{ position: 'absolute', inset: 0, opacity: 0.6, pointerEvents: 'none' }}><LightTrails height="100%" dim /></div>
         <div className="row between" style={{ position: 'relative', alignItems: 'flex-start' }}>
           <button onClick={() => nav('/selfie')} aria-label="Retake selfie" style={{ position: 'relative', width: 112, height: 112, display: 'grid', placeItems: 'center' }}>
-            <motion.span aria-hidden style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'conic-gradient(#ffd400, #ff6a1a, #e8361f, #ffd400)' }} animate={{ rotate: 360 }} transition={{ duration: 6, repeat: Infinity, ease: 'linear' }} />
+            <motion.span aria-hidden style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: (STYLES[profile.card_style as CardStyle] ?? STYLES.ember).ring }} animate={{ rotate: 360 }} transition={{ duration: 6, repeat: Infinity, ease: 'linear' }} />
             <span style={{ position: 'absolute', inset: 4, borderRadius: '50%', background: '#000' }} />
             <span style={{ position: 'relative', borderRadius: '50%', overflow: 'hidden' }}><Avatar src={profile.selfie_path} name={profile.username} size={96} className="round" /></span>
             <span className="tag" style={{ position: 'absolute', bottom: -6, background: '#fff', color: '#000', fontSize: 10.5 }}>Retake</span>
@@ -52,9 +56,14 @@ export default function Profile() {
           </div>
         </div>
         <div style={{ position: 'relative', marginTop: 18 }}>
+          {titleLabel(profile.title) && <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: (STYLES[profile.card_style as CardStyle] ?? STYLES.ember).accent, marginBottom: 4 }}>{titleLabel(profile.title)}</div>}
           <div className="display" style={{ fontSize: 40, fontWeight: 850, letterSpacing: '-0.055em' }}>@{profile.username}</div>
           <div style={{ fontWeight: 600, marginTop: 2 }}>{profile.full_name}</div>
-          <div style={{ fontSize: 13, color: 'rgba(255,240,230,.62)', marginTop: 2 }}>{profile.college} · {profile.branch} · {YEAR[profile.year]} year</div>
+          <div style={{ fontSize: 13, opacity: 0.62, marginTop: 2 }}>{profile.college} · {profile.branch} · {YEAR[profile.year]} year</div>
+          <button onClick={() => setCustom(true)} className="row" style={{ marginTop: 14, gap: 8, padding: '8px 14px', borderRadius: 12, background: 'rgba(255,255,255,.1)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.14)', fontWeight: 600, fontSize: 13.5, color: 'inherit' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z" /></svg>
+            Customise card & title
+          </button>
         </div>
       </motion.div>
 
@@ -89,10 +98,10 @@ export default function Profile() {
             const on = earned.has(code);
             return (
               <motion.div key={code} title={`${b.name}: ${b.desc}`} className="center" whileTap={{ scale: 0.92, rotate: -3 }}
-                initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: on ? 1 : 0.38, scale: 1 }} transition={{ delay: 0.25 + i * 0.04, type: 'spring', damping: 16 }}
+                initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: on ? 1 : 0.7, scale: 1 }} transition={{ delay: 0.25 + i * 0.04, type: 'spring', damping: 16 }}
                 style={{ padding: '14px 4px 12px', borderRadius: 18, position: 'relative', overflow: 'hidden',
                   background: on ? 'radial-gradient(100% 80% at 50% 0%, rgba(255,106,26,.32), transparent 70%), var(--surface)' : 'var(--bg2)', boxShadow: on ? 'inset 0 0 0 1px rgba(255,140,60,.28)' : 'inset 0 0 0 1px var(--line)' }}>
-                <div className={on ? 'display text-flare' : 'display'} style={{ fontSize: 28, height: 32, color: on ? undefined : 'var(--faint)' }}>{b.glyph}</div>
+                <BadgeArt code={code} on={on} size={46} />
                 <div style={{ fontSize: 12, fontWeight: 650, marginTop: 4 }}>{b.name}</div>
                 <div className="muted" style={{ fontSize: 10, lineHeight: 1.25, padding: '0 2px' }}>{b.desc}</div>
               </motion.div>
@@ -107,6 +116,7 @@ export default function Profile() {
 
       <Section title="Appearance">
         <AppearancePicker />
+        <SoundToggle />
       </Section>
 
       <Section title="Account">
@@ -122,6 +132,7 @@ export default function Profile() {
         </div>
       </Section>
       <EditProfile open={edit} onClose={() => setEdit(false)} />
+      <Customise open={custom} onClose={() => setCustom(false)} />
     </div>
   );
 }
@@ -328,5 +339,74 @@ function AppearancePicker() {
           : a === 'day' ? 'High-contrast paper and ink. Easiest to read in bright sun.' : 'The cinematic night look, all the time.'}
       </div>
     </div>
+  );
+}
+
+function SoundToggle() {
+  const on = useSoundOn();
+  return (
+    <div className="card row between" style={{ padding: '12px 16px', borderRadius: 18 }}>
+      <div>
+        <div style={{ fontWeight: 600 }}>Sound effects</div>
+        <div className="muted" style={{ fontSize: 13 }}>Film score, hunt siren, catches and wins. Vibration stays on either way.</div>
+      </div>
+      <button role="switch" aria-checked={on} aria-label="Sound effects" onClick={() => { setSound(!on); if (!on) setTimeout(() => sfx.ping(), 50); }}
+        style={{ width: 52, height: 32, borderRadius: 16, flex: 'none', position: 'relative', background: on ? 'var(--grad-ember)' : 'var(--surface3)', transition: 'background .3s' }}>
+        <motion.span layout transition={{ type: 'spring', damping: 22, stiffness: 400 }} style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 26, height: 26, borderRadius: '50%', background: '#fff', boxShadow: '0 2px 6px rgba(0,0,0,.3)' }} />
+      </button>
+    </div>
+  );
+}
+
+function Customise({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { profile, refresh } = useSession();
+  const toast = useToast();
+  if (!profile) return null;
+  const titles = new Set(profile.unlocks?.titles ?? ['rookie']);
+  const styles = new Set(profile.unlocks?.styles ?? ['ember', 'police', 'midnight']);
+  async function save(p: { title?: string; style?: string }) {
+    try { await rpc('set_identity', { p_title: p.title ?? null, p_style: p.style ?? null }); haptic.ok(); await refresh(); }
+    catch (e: any) { toast(e.message, true); }
+  }
+  return (
+    <Modal open={open} onClose={onClose} title="Your card">
+      <div className="stack" style={{ gap: 22 }}>
+        <div className="stack" style={{ gap: 10 }}>
+          <div className="eyebrow sec-title">Card style</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+            {(Object.keys(STYLES) as CardStyle[]).map((k) => {
+              const st = STYLES[k]; const can = styles.has(k); const on = profile.card_style === k;
+              return (
+                <motion.button key={k} whileTap={can ? { scale: 0.96 } : undefined} disabled={!can} onClick={() => save({ style: k })}
+                  style={{ position: 'relative', height: 92, borderRadius: 18, background: st.bg, color: st.ink, textAlign: 'left', padding: 12, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+                    boxShadow: on ? `0 0 0 2px ${st.accent}, 0 12px 26px -12px ${st.accent}` : 'inset 0 0 0 1px rgba(255,255,255,.12)', opacity: can ? 1 : 0.5 }}>
+                  <span style={{ fontWeight: 700 }}>{st.label}</span>
+                  <span style={{ fontSize: 11.5, opacity: 0.7 }}>{can ? (on ? 'In use' : 'Tap to use') : `Locked · ${st.how}`}</span>
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="stack" style={{ gap: 10 }}>
+          <div className="eyebrow sec-title">Callsign title</div>
+          <div className="muted" style={{ fontSize: 13, marginTop: -4 }}>Shown under your name on the map and in every roster.</div>
+          <div className="stack" style={{ gap: 8 }}>
+            {Object.entries(TITLES).map(([k, t]) => {
+              const can = titles.has(k); const on = (profile.title || 'rookie') === k;
+              return (
+                <motion.button key={k} whileTap={can ? { scale: 0.98 } : undefined} disabled={!can} onClick={() => save({ title: k })} className="card row between"
+                  style={{ padding: '12px 14px', borderRadius: 16, textAlign: 'left', opacity: can ? 1 : 0.5, boxShadow: on ? 'inset 0 0 0 1.5px var(--gold)' : undefined }}>
+                  <div>
+                    <div className="display" style={{ fontSize: 20, color: on ? 'var(--gold)' : undefined }}>{t.label}</div>
+                    <div className="muted" style={{ fontSize: 12.5 }}>{t.how}</div>
+                  </div>
+                  <span className="tag" style={on ? { background: 'var(--gold)', color: '#000' } : undefined}>{on ? 'Equipped' : can ? 'Use' : 'Locked'}</span>
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </Modal>
   );
 }

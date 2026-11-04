@@ -8,6 +8,8 @@ import { Segmented, Avatar, Back, Button, IconCopy, IconMap, IconPhone, IconPlus
 import { rpc } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { haptic } from '../lib/feel';
+import { EVENTS, EventBadge, type EventKey } from '../components/Events';
+import { titleLabel } from '../lib/identity';
 import { polyAreaM2, type LngLat } from '../lib/geo';
 import { fmtDist } from '../lib/clock';
 import { MapView, type MapHandle } from './MapView';
@@ -33,6 +35,7 @@ function RoomHeader({ s, onLeave, leaveLabel = 'Leave' }: { s: RoomState; onLeav
         <button className="icon-btn" aria-label="Back to rooms" onClick={() => nav('/home')}><Back /></button>
         <div className="row" style={{ gap: 6 }}>
           <span className="tag ok"><span className="dot pulse" /> Lobby</span>
+          <EventBadge event={s.room.settings.event} />
           <span className="tag">{s.room.is_public ? 'Public' : 'Private'}</span>
         </div>
       </div>
@@ -304,7 +307,7 @@ function Roster({ s, refresh, onInvite }: { s: RoomState; refresh: () => void; o
               <div key={m.id} className="list-row">
                 <Avatar src={m.selfie} name={m.username} size={40} />
                 <div className="grow" style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 600 }}>@{m.username}</div>
+                  <div style={{ fontWeight: 600 }}>@{m.username}{titleLabel(m.title) && <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gold)', marginLeft: 6 }}>{titleLabel(m.title)}</span>}</div>
                   <div className="muted" style={{ fontSize: 12 }}>{m.branch} · {YEAR[m.year]}</div>
                 </div>
                 {m.phone && <a className="icon-btn muted" href={`tel:${m.phone}`} aria-label={`Call ${m.username}`} style={{ width: 34 }}><IconPhone s={18} /></a>}
@@ -472,6 +475,21 @@ function RulesEditor({ s, refresh }: { s: RoomState; refresh: () => void }) {
           </div>
         </Section>
       ))}
+      <Section title="Event theme">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: 8 }}>
+          {(Object.keys(EVENTS) as EventKey[]).map((k) => {
+            const on = (v.event ?? 'none') === k;
+            return (
+              <motion.button key={k} whileTap={{ scale: 0.95 }} onClick={() => { haptic.tap(); setV((o) => ({ ...o, event: k })); }}
+                style={{ borderRadius: 16, padding: 8, textAlign: 'left', background: 'var(--surface)', boxShadow: on ? '0 0 0 2px var(--accent)' : 'inset 0 0 0 1px var(--line)' }}>
+                <span style={{ display: 'block', height: 44, borderRadius: 10, background: EVENTS[k].swatch, marginBottom: 6 }} />
+                <span style={{ display: 'block', fontWeight: 650, fontSize: 13.5 }}>{EVENTS[k].label}</span>
+                <span className="muted" style={{ display: 'block', fontSize: 11 }}>{EVENTS[k].blurb}</span>
+              </motion.button>
+            );
+          })}
+        </div>
+      </Section>
       <Section title="Safety">
         <div className="card card-pad stack" style={{ gap: 8 }}>
           <div style={{ fontWeight: 600 }}>Curfew</div>

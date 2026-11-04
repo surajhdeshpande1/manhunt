@@ -77,7 +77,7 @@ export function Logo({ size = 44, className = '' }: { size?: number; className?:
     <span className={`display ${className}`} aria-label="TAG"
       style={{ fontSize: size, fontWeight: 800, letterSpacing: '-0.06em', display: 'inline-flex', alignItems: 'center', gap: size * 0.2, lineHeight: 1 }}>
       <LogoMark size={size * 0.56} />
-      <span style={{ transform: `translateY(-${size * 0.04}px)` }}>tag</span>
+      <span className="logo-word" style={{ transform: `translateY(-${size * 0.04}px)` }}>tag</span>
     </span>
   );
 }
@@ -110,15 +110,35 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 export const useToast = () => useContext(ToastCtx);
 
-/* ---------- Page transition ----------
-   A short rise-and-focus: content arrives from slightly below and out of focus. */
+/* ---------- Page transition: film cut ----------
+   A dark frame wipes off to the right behind a hot light streak, and the new scene
+   comes up out of a soft blur. ~0.5 s, never blocks input. */
+function FilmCut() {
+  const [on, setOn] = useState(true);
+  useEffect(() => { const t = setTimeout(() => setOn(false), 650); return () => clearTimeout(t); }, []);
+  if (!on || typeof document === 'undefined') return null;
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) return null;
+  const ease = [0.7, 0, 0.2, 1] as const;
+  return createPortal(
+    <div aria-hidden style={{ position: 'fixed', inset: 0, zIndex: 880, pointerEvents: 'none', overflow: 'hidden' }}>
+      <motion.div style={{ position: 'absolute', inset: 0, background: 'var(--bg)' }}
+        initial={{ clipPath: 'inset(0 0 0 0%)' }} animate={{ clipPath: 'inset(0 0 0 100%)' }} transition={{ duration: 0.5, ease }} />
+      <motion.div style={{ position: 'absolute', top: '-10%', bottom: '-10%', width: 3, rotate: 8, background: 'linear-gradient(180deg, transparent, #ffd400 30%, #ff6a1a 60%, transparent)',
+        boxShadow: '0 0 18px 4px rgba(255,106,26,.7), 0 0 50px 12px rgba(255,176,32,.25)' }}
+        initial={{ left: '-2%' }} animate={{ left: '102%' }} transition={{ duration: 0.5, ease }} />
+    </div>,
+    document.body,
+  );
+}
 export function Slash({ children, k, className = '' }: { children: ReactNode; k?: string; className?: string }) {
   return (
     <motion.div key={k} className={className} style={{ minHeight: '100%', position: 'relative' }}
-      initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }}
-      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      initial={{ opacity: 0.4, filter: 'blur(8px)' }}
+      animate={{ opacity: 1, filter: 'blur(0px)' }}
       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       onAnimationComplete={(e) => { const el = (e as any)?.target as HTMLElement | undefined; if (el?.style) el.style.filter = 'none'; }}>
+      <FilmCut />
       {children}
     </motion.div>
   );

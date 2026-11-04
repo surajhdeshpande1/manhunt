@@ -1,4 +1,5 @@
 @import '@fontsource-variable/inter/opsz.css';
+@import '@fontsource-variable/archivo/wdth.css';
 @import 'maplibre-gl/dist/maplibre-gl.css';
 
 /*
@@ -76,7 +77,7 @@
 
 :root {
   --runner: var(--flare); --runner-deep: var(--ember); --runner-tint: var(--apricot); --hunter: var(--police); --hunter-ink: #000000; --hot: var(--flare);
-  --font-display: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  --font-display: 'Archivo Variable', 'Inter Variable', system-ui, sans-serif;
   --font-body: 'Inter Variable', system-ui, -apple-system, sans-serif;
   --r-xl: 28px; --r-lg: 22px; --r: 16px; --r-sm: 12px; --r-xs: 9px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -101,7 +102,10 @@ img { display: block; max-width: 100%; }
 ::selection { background: var(--accent); color: var(--accent-ink); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
 
-.display { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.032em; line-height: 1.02; }
+.display { font-family: var(--font-display); font-weight: 800; font-stretch: 76%; letter-spacing: 0 !important; line-height: 0.98; }
+/* numbers stay in Inter so clocks and stats keep even digits */
+.display.mono, .mono .display, .display .mono, .logo-word { font-family: var(--font-body) !important; font-stretch: 100% !important; letter-spacing: -0.03em !important; }
+.logo-word { letter-spacing: -0.06em !important; }
 .eyebrow { font-family: var(--font-body); font-size: 13px; font-weight: 550; color: var(--muted); letter-spacing: -0.003em; }
 .mono { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
 .muted { color: var(--muted); }

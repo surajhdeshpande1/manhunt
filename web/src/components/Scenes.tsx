@@ -6,9 +6,9 @@ import { resolvedDay, useAppearance } from '../lib/theme';
 /* =====================================================================
    NIGHT CAMPUS — layered skyline, trees, lamps; paper-cut version by day
    ===================================================================== */
-export const NightCampus = memo(function NightCampus({ height = 180, seed = 3, moon = true, lamps = true, style }: { height?: number | string; seed?: number; moon?: boolean; lamps?: boolean; style?: React.CSSProperties }) {
+export const NightCampus = memo(function NightCampus({ height = 180, seed = 3, moon = true, lamps = true, night, style }: { height?: number | string; seed?: number; moon?: boolean; lamps?: boolean; night?: boolean; style?: React.CSSProperties }) {
   const id = useId().replace(/:/g, '');
-  const day = resolvedDay(useAppearance());
+  const day = !night && resolvedDay(useAppearance());
   const reduce = useReducedMotion();
   const W = 400, H = 200, G = 176;
   const { back, front, trees, lampX } = useMemo(() => {

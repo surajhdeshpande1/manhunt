@@ -96,39 +96,21 @@ function RoomsTab() {
   const active = mine.filter((r) => r.status !== 'ended' || r.is_admin);
   return (
     <div className="screen" style={{ gap: 28 }}>
-      <header style={{ position: 'relative', zIndex: 1 }}>
-        <div className="row between">
-          <Logo size={30} />
-          <div className="row" style={{ gap: 10 }}>
+      <header className="row between" style={{ position: 'relative', zIndex: 2 }}>
+        <Logo size={30} />
+        <div className="row" style={{ gap: 10 }}>
           <motion.button whileTap={{ scale: 0.9 }} onClick={() => setHow(true)} aria-label="How TAG works" style={{ width: 40, height: 40, borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'var(--quiet-fill)', boxShadow: 'inset 0 0 0 1px var(--line)', fontWeight: 700, color: 'var(--text)' }}>?</motion.button>
           <button onClick={() => nav('/home/profile')} aria-label="Your profile" style={{ borderRadius: '50%' }}><Avatar src={profile?.selfie_path} name={profile?.username} size={40} /></button>
-          </div>
         </div>
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} style={{ margin: '30px 0 0', fontSize: 15, fontWeight: 600, color: 'var(--tint-text)' }}>{greeting()}</motion.div>
-        <motion.h1 className="display text-flare" initial={{ opacity: 0, y: 14, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ delay: 0.08, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          style={{ fontSize: 52, margin: '2px 0 0', fontWeight: 850, letterSpacing: '-0.06em', width: 'fit-content', paddingRight: 6 }}>{profile?.full_name?.split(' ')[0] || profile?.username}</motion.h1>
-        <p className="muted" style={{ margin: '6px 0 0' }}>{(rooms?.filter((r) => r.status === 'lobby').length ?? 0) > 0 ? `${rooms!.filter((r) => r.status === 'lobby').length} public ${rooms!.filter((r) => r.status === 'lobby').length === 1 ? 'room is' : 'rooms are'} taking players.` : 'Join a room with its ID, or host your own.'}</p>
       </header>
 
-      {active.length > 0 && (
-        <Section title="Your rooms">
-          {active.map((r, i) => i === 0 ? (
-            <motion.button whileTap={{ scale: 0.98 }} key={r.id} onClick={() => nav(`/room/${r.id}`)} className="card glow-edge" style={{ textAlign: 'left', padding: 0, overflow: 'hidden', display: 'block', width: '100%' }}>
-              <div style={{ position: 'relative', height: 150, background: 'radial-gradient(120% 120% at 20% 100%, rgba(232,54,31,.35), transparent 60%)' }}>
-                <LightTrails height={150} />
-                <div style={{ position: 'absolute', top: 12, left: 14 }}><StatusTag s={r.status} /></div>
-              </div>
-              <div className="row" style={{ padding: '14px 16px 16px 18px', gap: 14 }}>
-                <div className="grow">
-                  <div className="display" style={{ fontSize: 22, fontWeight: 680 }}>{r.name}</div>
-                  <div className="muted" style={{ fontSize: 13.5, marginTop: 3 }}>
-                    {r.is_admin ? 'You’re the admin' : r.my_status === 'pending' ? 'Waiting for the admin to accept you' : 'You’re in'}, {r.players} {r.players === 1 ? 'player' : 'players'}
-                  </div>
-                </div>
-                <span className="row" style={{ gap: 6, fontWeight: 600, fontSize: 14.5 }}>Open <Chevron /></span>
-              </div>
-            </motion.button>
-          ) : (
+      {/* cinematic hero: your live game, or the invitation to start one */}
+      <Hero room={active[0]} name={profile?.full_name?.split(' ')[0] || profile?.username || ''} open={(rooms ?? []).filter((r) => r.status === 'lobby').length}
+        onOpen={(id) => nav(`/room/${id}`)} onHost={() => nav('/home/host')} onJoin={() => setPrivOpen(true)} />
+
+      {active.length > 1 && (
+        <Section title="Your other rooms">
+          {active.slice(1).map((r) => (
             <motion.button whileTap={{ scale: 0.98 }} key={r.id} onClick={() => nav(`/room/${r.id}`)} className="card row" style={{ textAlign: 'left', padding: '16px 16px 16px 18px', gap: 14, position: 'relative', overflow: 'hidden' }}>
               <div className="grow">
                 <div style={{ fontSize: 17, fontWeight: 650, letterSpacing: '-0.015em' }}>{r.name}</div>
@@ -185,6 +167,44 @@ function RoomsTab() {
       <PrivateJoin open={privOpen} onClose={() => setPrivOpen(false)} />
       <Modal open={how} onClose={() => setHow(false)} title="How TAG works"><HowItWorks onClose={() => setHow(false)} /></Modal>
     </div>
+  );
+}
+
+/* ---------- HERO ---------- */
+function Hero({ room, name, open, onOpen, onHost, onJoin }: { room?: MyRoom; name: string; open: number; onOpen: (id: string) => void; onHost: () => void; onJoin: () => void }) {
+  const ease = [0.22, 1, 0.36, 1] as const;
+  const live = room && room.status !== 'lobby' && room.status !== 'ended';
+  return (
+    <motion.section initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, ease }}
+      className="force-night" style={{ position: 'relative', margin: '0 -8px', borderRadius: 30, overflow: 'hidden', minHeight: 'min(64vh, 520px)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+        background: 'radial-gradient(120% 80% at 80% 0%, #1b2a6b 0%, transparent 55%), radial-gradient(100% 70% at 0% 100%, #5c0d0a, transparent 60%), #070405',
+        boxShadow: '0 30px 70px -30px rgba(232,54,31,.55), inset 0 0 0 1px rgba(255,220,190,.1)' }}>
+      <div aria-hidden style={{ position: 'absolute', inset: 0 }}><LightTrails height="100%" /></div>
+      <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}><NightCampus height={150} seed={room ? room.name.length : 2} night /></div>
+      <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 30%, rgba(0,0,0,.55) 62%, rgba(0,0,0,.9))' }} />
+      <div style={{ position: 'relative', padding: '0 20px 20px' }}>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, ease }} className="row" style={{ gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: '#ffb27a' }}>{greeting()}, {name}</span>
+          {room && <StatusTag s={room.status} />}
+        </motion.div>
+        <motion.h1 className="display" initial={{ opacity: 0, y: 18, filter: 'blur(10px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ delay: 0.3, duration: 0.8, ease }}
+          style={{ fontSize: 'clamp(44px, 14vw, 72px)', margin: 0, color: '#fff6f0', wordBreak: 'break-word' }}>
+          {room ? room.name : <>Tonight’s hunt<br /><span className="text-flare">starts with you.</span></>}
+        </motion.h1>
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} style={{ margin: '10px 0 16px', color: 'rgba(255,240,230,.72)', fontSize: 14.5, maxWidth: 360 }}>
+          {room ? `${room.is_admin ? 'You’re the admin' : room.my_status === 'pending' ? 'Waiting for the admin to let you in' : 'You’re in'} · ${room.players} ${room.players === 1 ? 'player' : 'players'}${live ? ' · match in progress' : ''}`
+            : open > 0 ? `${open} public ${open === 1 ? 'room is' : 'rooms are'} taking players right now.` : 'Host a room for your friends, or join one with its room ID.'}
+        </motion.p>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6, ease }} className="row" style={{ gap: 10 }}>
+          {room ? (
+            <Button kind="hot" size="lg" className="grow" onClick={() => onOpen(room.id)}>{live ? 'Back to the match' : 'Open room'}</Button>
+          ) : (<>
+            <Button kind="hot" size="lg" className="grow" onClick={onHost}>Host a game</Button>
+            <Button kind="ghost" size="lg" className="grow" onClick={onJoin} style={{ color: '#fff6f0', boxShadow: 'inset 0 0 0 1px rgba(255,230,210,.3)' }}>Join with ID</Button>
+          </>)}
+        </motion.div>
+      </div>
+    </motion.section>
   );
 }
 

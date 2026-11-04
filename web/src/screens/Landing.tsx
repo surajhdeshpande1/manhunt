@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTheme } from '../lib/theme';
 import { haptic } from '../lib/feel';
+import { sfx, whenUnlocked } from '../lib/sound';
 import { mulberry32 } from '../lib/rng';
 import { Sparks } from '../components/Art';
 import { LogoMark } from '../components/ui';
@@ -56,6 +57,9 @@ export default function Landing({ onDone }: { onDone: () => void }) {
   const finish = () => { if (!done.current) { done.current = true; onDone(); } };
 
   useEffect(() => {
+    const t0 = performance.now();
+    // the score starts the moment the phone allows audio (first tap), synced to the picture
+    whenUnlocked(() => { const s = (performance.now() - t0) / 1000; if (s < 8.5 && !done.current) sfx.intro(s); });
     if (reduce) { setAct(4); const t = setTimeout(finish, 1200); return () => clearTimeout(t); }
     const T = [
       setTimeout(() => setAct(1), 2200),
@@ -179,7 +183,7 @@ export default function Landing({ onDone }: { onDone: () => void }) {
             <>
               <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }}
                 style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><LogoMark size={36} /></motion.div>
-              <motion.div className="display text-flare" initial={{ opacity: 0, y: 16, filter: 'blur(16px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ delay: 0.1, duration: 0.9, ease }}
+              <motion.div className="display text-flare logo-word" initial={{ opacity: 0, y: 16, filter: 'blur(16px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ delay: 0.1, duration: 0.9, ease }}
                 style={{ fontSize: 'clamp(84px, 28vw, 120px)', fontWeight: 850, letterSpacing: '-0.07em', lineHeight: 0.9, paddingRight: 8 }}>tag</motion.div>
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 0.85, y: 0 }} transition={{ delay: 0.7, duration: 0.9, ease }}
                 style={{ marginTop: 18, fontSize: 16, fontWeight: 500, color: '#fff2e0', letterSpacing: '-0.01em' }}>Hide. Run. Don’t get caught.</motion.div>

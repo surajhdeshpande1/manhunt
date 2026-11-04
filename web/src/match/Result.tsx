@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom';
+import { HunterAmbience, RunnerAmbience } from '../components/Ambience';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -53,6 +55,7 @@ export function Result({ s }: { s: RoomState }) {
 
   return (
     <Slash>
+      {createPortal(s.room.winner === 'runners' ? <RunnerAmbience intensity={0.55} /> : s.room.winner === 'hunters' ? <HunterAmbience hunting={false} intensity={0.5} /> : null, document.body)}
       <div className="screen" style={{ gap: 26 }}>
         <div style={{ position: 'relative', paddingTop: 28, isolation: 'isolate', overflow: 'visible', contain: 'paint', margin: '0 -20px', padding: '28px 20px 0' }}>
           {v.win !== false && <div aria-hidden style={{ position: 'absolute', left: -20, right: -20, top: -80, height: 360, zIndex: -1, pointerEvents: 'none', maskImage: 'linear-gradient(#000 50%, transparent)', WebkitMaskImage: 'linear-gradient(#000 50%, transparent)' }}><LightTrails height="100%" /></div>}
@@ -110,7 +113,7 @@ export function Result({ s }: { s: RoomState }) {
         </Section>
         <p className="muted" style={{ fontSize: 12, margin: 0 }}>Everyone's location data from this match has been deleted.</p>
         <div className="stack">
-          <Button size="lg" block loading={sharing} onClick={share}><IconShare /> Share result</Button>
+          <Button size="lg" block loading={sharing} onClick={share}><IconShare /> Share poster</Button>
           <Button kind="ghost" block onClick={() => { refresh(); nav('/home'); }}>Back to rooms</Button>
         </div>
       </div>
@@ -122,36 +125,64 @@ async function loadImg(src: string | null) {
   if (!src) return null;
   return new Promise<HTMLImageElement | null>((res) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
 }
-async function renderCard(s: RoomState, title: string, reason: string, me: Member | undefined, selfie: string | null) {
+/** Movie-poster result image, 1080×1350 (Instagram portrait). */
+async function renderCard(s: RoomState, title: string, reason: string, me: Member | undefined, selfie: string | null): Promise<Blob> {
   await document.fonts.ready;
   const W = 1080, H = 1350; const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d')!;
   const runner = me?.role === 'runner';
-  const bg = '#000000', accent = runner ? '#ff6a1a' : me ? '#ffd400' : '#f5f5f7', text = '#f5f5f7', muted = '#8e8e93';
-  g.fillStyle = bg; g.fillRect(0, 0, W, H);
-  g.strokeStyle = 'rgba(243,237,226,.06)'; g.lineWidth = 1;
-  for (let x = 0; x < W; x += 54) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
-  for (let y = 0; y < H; y += 54) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
-  g.save(); g.translate(0, 470); g.transform(1, -0.09, 0, 1, 0, 0); g.fillStyle = accent; g.fillRect(-40, 0, W + 80, 200); g.restore();
-  g.fillStyle = muted; g.font = '600 34px "Inter Variable", system-ui'; g.fillText('TAG // LIVE MANHUNT', 80, 120);
-  g.fillStyle = text; g.font = '700 46px "Inter Variable", system-ui'; g.fillText(s.room.name.toUpperCase().slice(0, 30), 80, 180);
-  g.save(); g.translate(80, 610); g.transform(1, 0, -0.14, 1, 0, 0); g.fillStyle = bg; g.font = '800 220px "Inter Variable", system-ui'; g.fillText(title.toUpperCase(), 0, 0); g.restore();
-  g.fillStyle = text; g.font = '600 40px "Inter Variable", system-ui'; g.fillText(reason.toUpperCase(), 80, 760);
-  const p = s.progress;
-  if (p) {
-    g.fillStyle = '#2d2822'; g.fillRect(80, 820, W - 160, 26);
-    g.fillStyle = accent; g.fillRect(80, 820, ((W - 160) * Math.min(100, p.pct)) / 100, 26);
-    g.fillStyle = text; g.fillRect(80 + ((W - 160) * p.mark) / 100 - 3, 806, 6, 54);
-    g.font = '700 44px "Inter Variable", system-ui'; g.fillText(`${Math.round(p.pct)}%  ·  MARK ${p.mark}%`, 80, 910);
-  }
+  const accent = runner ? '#ff6a1a' : me ? '#ffd400' : '#ffb27a';
+  const DISPLAY = '"Archivo Variable", "Inter Variable", system-ui', BODY = '"Inter Variable", system-ui';
+  const cond = (f: string) => { g.font = f; try { (g as any).fontStretch = 'condensed'; } catch { /* older browsers */ } };
+  const plain = (f: string) => { g.font = f; try { (g as any).fontStretch = 'normal'; } catch { /* */ } };
+
+  // night sky
+  const sky = g.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#0b1033'); sky.addColorStop(0.45, '#2a0a18'); sky.addColorStop(0.8, '#120507'); sky.addColorStop(1, '#000');
+  g.fillStyle = sky; g.fillRect(0, 0, W, H);
+  const glow = g.createRadialGradient(W * 0.2, H * 0.95, 10, W * 0.2, H * 0.95, 900); glow.addColorStop(0, 'rgba(232,54,31,.55)'); glow.addColorStop(1, 'rgba(232,54,31,0)');
+  g.fillStyle = glow; g.fillRect(0, 0, W, H);
+  // stars
+  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 120; i++) { g.fillStyle = `rgba(255,242,224,${0.2 + rnd() * 0.6})`; g.beginPath(); g.arc(rnd() * W, rnd() * 620, rnd() * 1.8 + 0.4, 0, Math.PI * 2); g.fill(); }
+  // light trails
+  const trail = (pts: number[], c1: string, c2: string, w: number) => {
+    const gr = g.createLinearGradient(pts[0], pts[1], pts[6], pts[7]); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(0.4, c1); gr.addColorStop(1, c2);
+    g.strokeStyle = gr; g.lineCap = 'round';
+    for (const [lw, blur, a] of [[w * 3, 40, 0.5], [w, 12, 1]] as const) { g.save(); g.globalAlpha = a; g.lineWidth = lw; g.shadowColor = c2; g.shadowBlur = blur; g.beginPath(); g.moveTo(pts[0], pts[1]); g.bezierCurveTo(pts[2], pts[3], pts[4], pts[5], pts[6], pts[7]); g.stroke(); g.restore(); }
+  };
+  trail([-80, 1050, 260, 860, 520, 1100, 1160, 760], '#e8361f', '#ffb020', 10);
+  trail([1160, 300, 820, 420, 700, 160, 200, 520], '#ffb020', '#ffd400', 6);
+  // skyline
+  g.fillStyle = '#060304'; let x = -10;
+  while (x < W) { const w = 50 + rnd() * 90, h = 120 + rnd() * 260; g.fillRect(x, H - 150 - h, w, h + 150);
+    for (let yy = H - 140 - h; yy < H - 170; yy += 26) for (let xx = x + 10; xx < x + w - 12; xx += 20) if (rnd() > 0.72) { g.fillStyle = rnd() > 0.85 ? '#fff2e0' : '#ffb020'; g.fillRect(xx, yy, 7, 9); g.fillStyle = '#060304'; }
+    x += w + 4; }
+  g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, H - 330, W, 330);
+
+  // top billing
+  plain(`600 26px ${BODY}`); g.fillStyle = 'rgba(255,242,224,.7)'; g.textAlign = 'center';
+  (g as any).letterSpacing = '8px'; g.fillText('A  T A G  P R O D U C T I O N', W / 2, 86); (g as any).letterSpacing = '0px';
+  // selfie medallion
   const img = await loadImg(selfieUrl(selfie));
-  if (img) { g.save(); g.beginPath(); g.moveTo(80, 980); g.lineTo(300, 980); g.lineTo(320, 1000); g.lineTo(320, 1220); g.lineTo(100, 1220); g.lineTo(80, 1200); g.closePath(); g.clip(); g.drawImage(img, 80, 980, 240, 240); g.restore(); }
-  if (me) {
-    g.fillStyle = text; g.font = '700 60px "Inter Variable", system-ui'; g.fillText(`@${me.username}`.toUpperCase(), 360, 1040);
-    g.fillStyle = accent; g.font = '700 40px "Inter Variable", system-ui'; g.fillText(runner ? 'RUNNER' : 'HUNTER', 360, 1094);
-    g.fillStyle = muted; g.font = '600 40px "Inter Variable", system-ui';
-    g.fillText(`${runner ? `${me.tasks} TASKS` : `${me.catches} CATCHES`}  ·  ${fmtDist(me.distance ?? 0).toUpperCase()} MOVED`, 360, 1150);
-  }
-  g.fillStyle = muted; g.font = '600 30px "Inter Variable", system-ui'; g.fillText(location.host.toUpperCase(), 80, H - 70);
+  const cx = W / 2, cy = 300, R = 120;
+  const ring = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R); ring.addColorStop(0, '#ffd400'); ring.addColorStop(0.5, accent); ring.addColorStop(1, '#e8361f');
+  g.beginPath(); g.arc(cx, cy, R + 12, 0, Math.PI * 2); g.fillStyle = ring; g.shadowColor = accent; g.shadowBlur = 40; g.fill(); g.shadowBlur = 0;
+  g.beginPath(); g.arc(cx, cy, R + 4, 0, Math.PI * 2); g.fillStyle = '#000'; g.fill();
+  if (img) { g.save(); g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.clip(); g.drawImage(img, cx - R, cy - R, R * 2, R * 2); g.restore(); }
+  // title
+  const tg = g.createLinearGradient(0, 470, 0, 690); tg.addColorStop(0, '#fff7b0'); tg.addColorStop(0.45, title === 'Defeat' ? '#c9c2bc' : '#ffb020'); tg.addColorStop(1, title === 'Defeat' ? '#6f625a' : '#e8361f');
+  let size = 250; cond(`800 ${size}px ${DISPLAY}`); while (g.measureText(title.toUpperCase()).width > W - 120 && size > 120) { size -= 10; cond(`800 ${size}px ${DISPLAY}`); }
+  g.fillStyle = tg; g.shadowColor = 'rgba(232,54,31,.6)'; g.shadowBlur = 40; g.fillText(title.toUpperCase(), W / 2, 470 + size * 0.85); g.shadowBlur = 0;
+  plain(`600 40px ${BODY}`); g.fillStyle = '#fff2e0'; g.fillText(reason, W / 2, 470 + size * 0.85 + 70);
+  cond(`800 54px ${DISPLAY}`); g.fillStyle = accent; g.fillText(s.room.name.toUpperCase().slice(0, 28), W / 2, 470 + size * 0.85 + 150);
+  // credits block
+  const lines: string[] = [];
+  if (me) lines.push(`STARRING @${me.username.toUpperCase()} AS THE ${runner ? 'RUNNER' : 'HUNTER'}`);
+  if (me) lines.push(`${runner ? `${me.tasks} TASKS CLEARED` : `${me.catches} RUNNERS TAGGED`}   ·   ${fmtDist(me.distance ?? 0).toUpperCase()} ON FOOT`);
+  if (s.progress) lines.push(`SHARED BAR ${Math.round(s.progress.pct)}%   ·   WIN MARK ${s.progress.mark}%`);
+  lines.push(`DIRECTED BY @${(s.room.admin?.username || 'ADMIN').toUpperCase()}   ·   ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase()}`);
+  cond(`600 30px ${DISPLAY}`); g.fillStyle = 'rgba(255,242,224,.82)';
+  lines.forEach((l, i) => g.fillText(l, W / 2, H - 230 + i * 42));
+  plain(`600 24px ${BODY}`); g.fillStyle = 'rgba(255,242,224,.5)'; g.fillText(location.host, W / 2, H - 40);
   try { return await new Promise<Blob>((res, rej) => { try { c.toBlob((b) => (b ? res(b) : rej()), 'image/png'); } catch (e) { rej(e); } }); }
-  catch { if (selfie) return renderCard(s, title, reason, me, null); throw new Error('Could not draw the card'); }
+  catch { if (selfie) return renderCard(s, title, reason, me, null); throw new Error('Could not draw the poster'); }
 }

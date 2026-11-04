@@ -1,3 +1,4 @@
+import { RunnerAmbience } from '../components/Ambience';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -5,6 +6,7 @@ import { Button, X, useToast } from '../components/ui';
 import { rpc } from '../lib/supabase';
 import { fmtClock, msUntil } from '../lib/clock';
 import { haptic } from '../lib/feel';
+import { sfx } from '../lib/sound';
 import { GAMES, GAME_INFO } from '../games/Games';
 import { Sparks } from '../components/Art';
 import type { RoomState } from '../lib/types';
@@ -32,12 +34,12 @@ export function TaskDeck({ s, refresh }: { s: RoomState; refresh: () => void }) 
     if (!task) return;
     try {
       await rpc('complete_task', { p_room: s.room.id, p_seed: task.seed });
-      haptic.ok(); setResult({ ok: true, msg: `Task ${task.index} cleared` });
+      haptic.ok(); sfx.task(); setResult({ ok: true, msg: `Task ${task.index} cleared` });
     } catch (e: any) { setResult({ ok: false, msg: e.message }); }
     refresh();
   }
   async function fail(why: string) {
-    await rpc('fail_task', { p_room: s.room.id }).catch(() => {});
+    sfx.fail(); await rpc('fail_task', { p_room: s.room.id }).catch(() => {});
     setResult({ ok: false, msg: `${why}. 10 s penalty.` }); refresh();
   }
   function close() { setTask(null); setResult(null); }
@@ -68,7 +70,8 @@ export function TaskDeck({ s, refresh }: { s: RoomState; refresh: () => void }) 
       {createPortal(<AnimatePresence>
         {task && (
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }}
-            style={{ position: 'fixed', inset: 0, zIndex: 650, background: 'radial-gradient(130% 55% at 50% 0%, color-mix(in srgb, var(--accent) 26%, var(--bg)), var(--bg) 70%)', overflowY: 'auto' }} className="grid-bg">
+            style={{ position: 'fixed', inset: 0, zIndex: 650, background: 'radial-gradient(130% 55% at 50% 0%, color-mix(in srgb, var(--accent) 26%, var(--bg)), var(--bg) 70%)', overflowY: 'auto' }}>
+            <RunnerAmbience intensity={0.7} />
             <div className="screen" style={{ gap: 18 }}>
               <div className="row between">
                 <div>

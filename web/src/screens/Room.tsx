@@ -6,6 +6,7 @@ import { Button } from '../components/ui';
 import { useSession } from '../lib/session';
 import { setTheme, type ThemeName } from '../lib/theme';
 import { notify, haptic } from '../lib/feel';
+import { EventLayer } from '../components/Events';
 import type { GameEvent, RoomState } from '../lib/types';
 import { useRoom } from '../match/useRoom';
 import { AdminLobby, NotIn, PlayerLobby, Waiting } from '../match/Lobby';
@@ -95,6 +96,7 @@ export default function RoomScreen() {
             onDone={() => { if (revealKey) sessionStorage.setItem(revealKey, '1'); setSeen(true); }} />
         )}
       </AnimatePresence>
+      <EventLayer event={s.room.settings.event} />
       <CinemaLayer current={cinema.current} next={cinema.next} />
     </>
   );

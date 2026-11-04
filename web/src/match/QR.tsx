@@ -1,3 +1,4 @@
+import { HunterAmbience } from '../components/Ambience';
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import QrScanner from 'qr-scanner';
@@ -72,6 +73,7 @@ export function Scanner({ roomId, getFix, onClose, onCaught }: {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', inset: 0, zIndex: 600, background: '#000' }}>
       <video ref={video} playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+      <HunterAmbience hunting={st.k === 'scan'} intensity={0.75} />
       <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
         <div style={{ width: 'min(72vw, 300px)', aspectRatio: '1', position: 'relative', boxShadow: '0 0 0 100vmax rgba(0,0,0,.6)', borderRadius: 28 }}>
           {['top:0;left:0;border-width:3px 0 0 3px', 'top:0;right:0;border-width:3px 3px 0 0', 'bottom:0;left:0;border-width:0 0 3px 3px', 'bottom:0;right:0;border-width:0 3px 3px 0'].map((c, i) => (

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Avatar, Button } from '../components/ui';
 import { Grain, LensFlare, Silhouette, TornEdge } from '../components/Scenes';
 import { haptic } from '../lib/feel';
+import { sfx, unlocked } from '../lib/sound';
 import type { Member, Role } from '../lib/types';
 
 /* ---------- decrypt text ---------- */
@@ -29,7 +30,7 @@ export function Decrypt({ text, duration = 1400, className, style }: { text: str
 export function RoleReveal({ role, hunters, hideSecs, onDone }: { role: Role; hunters: Member[]; hideSecs: number; onDone: () => void }) {
   const [stage, setStage] = useState(0);
   useEffect(() => {
-    haptic.big();
+    haptic.big(); if (unlocked()) sfx.reveal(role === 'runner');
     const a = setTimeout(() => setStage(1), 1500);
     return () => clearTimeout(a);
   }, []);
@@ -174,7 +175,8 @@ function HuntGo({ done }: { done: () => void }) {
   const [n, setN] = useState(3);
   useEffect(() => {
     haptic.tap();
-    const t = setInterval(() => setN((x) => { if (x > 1) haptic.tap(); else haptic.big(); return x - 1; }), 800);
+    sfx.tick();
+    const t = setInterval(() => setN((x) => { if (x > 1) { haptic.tap(); sfx.tick(); } else { haptic.big(); sfx.siren(); } return x - 1; }), 800);
     return () => clearInterval(t);
   }, []);
   useAuto(done, 3900);
@@ -212,7 +214,7 @@ function HuntGo({ done }: { done: () => void }) {
 }
 
 function Eliminated({ who, by, done }: { who?: Member; by?: Member; done: () => void }) {
-  useEffect(() => { haptic.alarm(); }, []);
+  useEffect(() => { haptic.alarm(); sfx.caught(); }, []);
   useAuto(done, 2800);
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={done}
@@ -258,7 +260,7 @@ function Island({ children, tone, onClick }: { children: React.ReactNode; tone: 
 }
 
 function Alert({ title, sub, tone = 'accent', done }: { title: string; sub?: string; tone?: 'accent' | 'danger'; done: () => void }) {
-  useEffect(() => { haptic.warn(); }, []);
+  useEffect(() => { haptic.warn(); if (tone === 'danger') sfx.warn(); else sfx.ping(); }, []);
   useAuto(done, 2600);
   const c = tone === 'danger' ? 'var(--danger)' : 'var(--accent)';
   return (
@@ -274,7 +276,7 @@ function Alert({ title, sub, tone = 'accent', done }: { title: string; sub?: str
 }
 
 function ResultSlam({ title, sub, win, done }: { title: string; sub: string; win: boolean | null; done: () => void }) {
-  useEffect(() => { haptic.big(); }, []);
+  useEffect(() => { haptic.big(); if (win === false) sfx.lose(); else sfx.win(); }, []);
   useAuto(done, 3400);
   const tone = win === false ? 'rgba(255,255,255,.18)' : 'var(--accent)';
   return (
@@ -297,7 +299,7 @@ function ResultSlam({ title, sub, win, done }: { title: string; sub: string; win
 }
 
 function Broadcast({ text, done }: { text: string; done: () => void }) {
-  useEffect(() => { haptic.ok(); }, []);
+  useEffect(() => { haptic.ok(); sfx.ping(); }, []);
   useAuto(done, 6500);
   return (
     <Island tone="#f5f5f7" onClick={done}>
