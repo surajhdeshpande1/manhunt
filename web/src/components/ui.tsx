@@ -58,11 +58,16 @@ export function Avatar({ src, name, size = 40, out, className = '' }: { src?: st
 /* ---------- Logo ----------
    Two players at the moment of contact: the runner (blue) and the hunter (red) touching. */
 export function LogoMark({ size = 28, style }: { size?: number; style?: React.CSSProperties }) {
+  const id = useRef(`lm${Math.random().toString(36).slice(2, 7)}`).current;
   return (
     <svg width={size * 1.7} height={size} viewBox="0 0 34 20" aria-hidden style={{ display: 'block', overflow: 'visible', ...style }}>
-      <circle cx="10" cy="10" r="8.6" fill="var(--runner)" />
-      <circle cx="24" cy="10" r="8.6" fill="var(--hunter)" />
-      <circle cx="10" cy="10" r="8.6" fill="none" stroke="var(--bg)" strokeWidth="1.6" transform="translate(14 0)" />
+      <defs>
+        <linearGradient id={`${id}r`} x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stopColor="#e8361f" /><stop offset="100%" stopColor="#ff8a2a" /></linearGradient>
+        <linearGradient id={`${id}h`} x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stopColor="#ffb020" /><stop offset="100%" stopColor="#fff07a" /></linearGradient>
+      </defs>
+      <circle cx="10" cy="10" r="8.6" fill={`url(#${id}r)`} />
+      <circle cx="24" cy="10" r="8.6" fill={`url(#${id}h)`} />
+      <circle cx="24" cy="10" r="8.6" fill="none" stroke="#000" strokeWidth="1.6" />
     </svg>
   );
 }
@@ -204,7 +209,7 @@ export function Segmented<T extends string>({ value, onChange, options }: { valu
 export function Section({ title, right, children }: { title: string; right?: ReactNode; children: ReactNode }) {
   return (
     <section className="stack" style={{ gap: 10 }}>
-      <div className="row between"><div className="eyebrow">{title}</div>{right}</div>
+      <div className="row between"><div className="eyebrow sec-title">{title}</div>{right}</div>
       {children}
     </section>
   );

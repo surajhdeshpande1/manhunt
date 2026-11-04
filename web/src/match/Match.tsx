@@ -127,21 +127,39 @@ function MapBtn({ children, onClick, label }: { children: React.ReactNode; onCli
   return <button aria-label={label} onClick={() => { haptic.tap(); onClick(); }} className="cut cut-sm" style={{ width: 44, height: 44, display: 'grid', placeItems: 'center', background: 'var(--bg)', border: '1px solid var(--line2)' }}>{children}</button>;
 }
 
+/* ---------- rolling digits: each changed character slides in ---------- */
+export function RollingText({ text, style }: { text: string; style?: React.CSSProperties }) {
+  return (
+    <span className="mono display" style={{ display: 'inline-flex', lineHeight: 1, overflow: 'hidden', ...style }} aria-label={text}>
+      {text.split('').map((c, i) => (
+        <span key={i} style={{ position: 'relative', display: 'inline-block' }}>
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.span key={c} style={{ display: 'inline-block' }} initial={{ y: '-80%', opacity: 0 }} animate={{ y: '0%', opacity: 1 }} exit={{ y: '80%', opacity: 0 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>{c}</motion.span>
+          </AnimatePresence>
+        </span>
+      ))}
+    </span>
+  );
+}
+
 /* ---------- HUD ---------- */
 function Hud({ s, geo, isAdmin, alive, onMenu }: { s: RoomState; geo: Geo; isAdmin: boolean; alive: boolean; onMenu: () => void }) {
   const r = s.room; const p = s.progress;
   const status = r.status === 'paused' ? 'paused' : r.status;
-  const phase = status === 'hiding' ? { t: msUntil(r.hide_ends_at) > 0 ? 'Hide' : 'Hide over', v: msUntil(r.hide_ends_at) > 0 ? fmtClock(msUntil(r.hide_ends_at)) : isAdmin ? 'Press HUNT' : 'Hunt soon' }
+  const phase = status === 'hiding' ? { t: msUntil(r.hide_ends_at) > 0 ? 'Hide' : 'Hide over', v: msUntil(r.hide_ends_at) > 0 ? fmtClock(msUntil(r.hide_ends_at)) : isAdmin ? 'Ready' : 'Any second' }
     : status === 'hunt' ? { t: 'Hunt', v: fmtClock(msUntil(r.ends_at)) } : { t: 'Paused', v: '— —' };
   const rev = s.reveal;
   const revealMs = rev.active ? msUntil(rev.until) : msUntil(rev.next_at);
   return (
     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20, padding: 'calc(env(safe-area-inset-top) + 10px) 12px 0', pointerEvents: 'none' }}>
-      <div style={{ pointerEvents: 'auto', background: 'color-mix(in srgb, var(--bg) 86%, transparent)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '10px 12px 12px' }} className="cut">
+      <motion.div initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', damping: 22, stiffness: 260 }}
+        style={{ pointerEvents: 'auto', position: 'relative', overflow: 'hidden', borderRadius: 24, padding: '12px 14px 12px',
+          background: `radial-gradient(90% 140% at 0% 0%, ${status === 'hunt' ? 'rgba(232,54,31,.32)' : status === 'hiding' ? 'rgba(255,176,32,.22)' : 'rgba(255,255,255,.08)'}, transparent 60%), rgba(8,6,5,.78)`,
+          backdropFilter: 'blur(18px) saturate(1.3)', WebkitBackdropFilter: 'blur(18px) saturate(1.3)', boxShadow: 'inset 0 0 0 1px rgba(255,220,190,.12), 0 16px 40px -18px rgba(0,0,0,.8)' }}>
         <div className="row between" style={{ marginBottom: 8 }}>
           <div className="row" style={{ gap: 10, minWidth: 0 }}>
             <span className={`tag ${status === 'hunt' ? 'live' : ''}`}>{status === 'hunt' && <span className="dot pulse" />}{phase.t}</span>
-            <span className="display mono" style={{ fontSize: 26, lineHeight: 1 }}>{phase.v}</span>
+            <RollingText text={phase.v} style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.04em' }} />
           </div>
           <div className="row" style={{ gap: 6 }}>
             {status === 'hunt' && (
@@ -153,12 +171,12 @@ function Hud({ s, geo, isAdmin, alive, onMenu }: { s: RoomState; geo: Geo; isAdm
           </div>
         </div>
         {p && <ProgressBar p={p} />}
-        <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-          <span className="eyebrow" style={{ fontSize: 10 }}>Runners {p?.runners_alive}/{p?.runners}</span>
-          <span className="eyebrow" style={{ fontSize: 10 }}>· Hunters {p?.hunters_alive}</span>
-          {r.zone && <span className="eyebrow" style={{ fontSize: 10 }}>· Zone {fmtDist(r.zone.r)}{status === 'hunt' && r.next_shrink_at ? ` · shrinks ${fmtClock(msUntil(r.next_shrink_at))}` : ''}</span>}
+        <div className="row" style={{ gap: 14, marginTop: 9, flexWrap: 'wrap', fontSize: 12, fontWeight: 600, color: 'rgba(255,240,230,.75)' }}>
+          <span className="row" style={{ gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--runner)', boxShadow: '0 0 8px var(--runner)' }} />{p?.runners_alive}/{p?.runners} runners</span>
+          <span className="row" style={{ gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--hunter)', boxShadow: '0 0 8px var(--hunter)' }} />{p?.hunters_alive} hunters</span>
+          {r.zone && <span className="row" style={{ gap: 6 }}><span style={{ width: 9, height: 9, borderRadius: '50%', border: '1.5px solid currentColor' }} />{fmtDist(r.zone.r)}{status === 'hunt' && r.next_shrink_at ? `, shrinks in ${fmtClock(msUntil(r.next_shrink_at))}` : ''}</span>}
         </div>
-      </div>
+      </motion.div>
       {!isAdmin && alive && geo.status !== 'ok' && (
         <div className="cut cut-sm" style={{ pointerEvents: 'auto', marginTop: 6, padding: '8px 12px', background: geo.status === 'denied' ? 'var(--danger)' : 'var(--surface2)', color: geo.status === 'denied' ? '#fff' : 'var(--text)', fontSize: 13, fontWeight: 600 }}>
           {geo.status === 'denied' ? 'Location is blocked. Allow it in your browser settings to stay in the game.'
@@ -174,14 +192,18 @@ export function ProgressBar({ p, big }: { p: NonNullable<RoomState['progress']>;
   const h = big ? 14 : 7;
   return (
     <div>
-      <div style={{ position: 'relative', height: h, background: 'var(--surface3)' }}>
-        <div style={{ position: 'absolute', left: `${p.max_pct}%`, right: 0, top: 0, bottom: 0, background: 'repeating-linear-gradient(-45deg, transparent 0 4px, var(--line2) 4px 6px)' }} title="Out of reach" />
-        <motion.div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: 'var(--accent)', boxShadow: '0 0 12px var(--accent-glow)' }} animate={{ width: `${Math.min(100, p.pct)}%` }} transition={{ type: 'spring', damping: 20 }} />
-        <div style={{ position: 'absolute', left: `${p.mark}%`, top: -5, bottom: -5, width: 3, marginLeft: -1.5, background: 'var(--text)', boxShadow: '0 0 10px var(--text), 0 0 3px var(--accent)' }} />
+      <div style={{ position: 'relative', height: h, background: 'rgba(255,255,255,.08)', borderRadius: h }}>
+        <div style={{ position: 'absolute', left: `${p.max_pct}%`, right: 0, top: 0, bottom: 0, borderRadius: `0 ${h}px ${h}px 0`, background: 'repeating-linear-gradient(-45deg, transparent 0 4px, rgba(255,69,58,.35) 4px 6px)' }} title="Out of reach" />
+        <motion.div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: h, overflow: 'hidden', background: 'linear-gradient(90deg, #b3170f, #e8361f 35%, #ff6a1a 70%, #ffd400)', backgroundSize: '300% 100%', backgroundPosition: 'right', boxShadow: '0 0 16px rgba(255,106,26,.65)' }}
+          initial={{ width: 0 }} animate={{ width: `${Math.min(100, p.pct)}%` }} transition={{ type: 'spring', damping: 22, stiffness: 120 }}>
+          <motion.span aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, width: '40%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent)' }}
+            animate={{ left: ['-40%', '120%'] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut', repeatDelay: 0.8 }} />
+        </motion.div>
+        <div style={{ position: 'absolute', left: `${p.mark}%`, top: -6, bottom: -6, width: 4, marginLeft: -2, borderRadius: 2, background: '#ffd400', boxShadow: '0 0 12px #ffd400' }} />
       </div>
       <div className="row between" style={{ marginTop: 4 }}>
         <span className="display mono" style={{ fontSize: big ? 22 : 15 }}>{Math.round(p.pct)}%<span className="muted" style={{ fontSize: big ? 13 : 11, marginLeft: 6 }}>{p.done}/{p.total} tasks</span></span>
-        <span className="display mono muted" style={{ fontSize: big ? 15 : 12 }}>Mark {p.mark}%</span>
+        <span className="display mono" style={{ fontSize: big ? 15 : 12, color: '#ffd400' }}>Win at {p.mark}%</span>
       </div>
     </div>
   );
@@ -203,10 +225,11 @@ function Sheet({ children, peek }: { children: React.ReactNode; peek: number }) 
   }
   return (
     <motion.div drag="y" dragConstraints={{ top: 0, bottom: snaps[0] }} dragElastic={0.06} onDragEnd={end} animate={ctl} initial={{ y: snaps[0] }}
-      style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: full, zIndex: 30, background: 'var(--bg2)', borderTop: '1px solid var(--line2)', touchAction: 'none' }}
-      className="cut cut-lg">
+      style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: full, zIndex: 30, touchAction: 'none', borderRadius: '28px 28px 0 0',
+        background: 'radial-gradient(120% 40% at 50% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%), color-mix(in srgb, var(--bg2) 94%, transparent)',
+        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: 'inset 0 1px 0 var(--line2), 0 -20px 50px -20px rgba(0,0,0,.6)' }}>
       <button aria-label="Expand panel" onClick={() => setAt(at === 2 ? 0 : at + 1)} style={{ width: '100%', height: 26, display: 'grid', placeItems: 'center' }}>
-        <span style={{ width: 44, height: 4, background: 'var(--line2)' }} />
+        <span style={{ width: 44, height: 5, borderRadius: 3, background: 'var(--line2)' }} />
       </button>
       <div style={{ height: full - 26, overflowY: at === 2 ? 'auto' : 'hidden', padding: '0 18px calc(env(safe-area-inset-bottom) + 24px)', touchAction: at === 2 ? 'pan-y' : 'none' }}
         onPointerDownCapture={(e) => { if (at === 2) e.stopPropagation(); }}>
@@ -221,13 +244,11 @@ function RunnerPanel({ s, onQR, refresh }: { s: RoomState; onQR: () => void; ref
   return (
     <div className="stack" style={{ gap: 12 }}>
       <TaskDeck s={s} refresh={refresh} />
-      <button onClick={onQR} className="frame cut" style={{ textAlign: 'left' }}>
-        <div className="inner cut row" style={{ padding: '12px 14px', gap: 12 }}>
-          <IconQR s={26} />
-          <div className="grow"><div className="display" style={{ fontSize: 18 }}>My catch QR</div><div className="muted" style={{ fontSize: 12 }}>Show it to the hunter who tags you.</div></div>
-          <span className="accent display">→</span>
-        </div>
-      </button>
+      <motion.button whileTap={{ scale: 0.97 }} onClick={onQR} className="card row" style={{ textAlign: 'left', padding: '12px 14px', gap: 14 }}>
+        <span style={{ width: 46, height: 46, borderRadius: 14, display: 'grid', placeItems: 'center', background: '#fff', color: '#000', rotate: '-5deg', boxShadow: '0 10px 24px -12px #fff' }}><IconQR s={26} /></span>
+        <div className="grow"><div style={{ fontSize: 16.5, fontWeight: 650 }}>My catch code</div><div className="muted" style={{ fontSize: 12.5 }}>Show it to the hunter who tags you.</div></div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: 'var(--faint)' }}><path d="M9 5l7 7-7 7" /></svg>
+      </motion.button>
     </div>
   );
 }
@@ -238,11 +259,14 @@ function HunterPanel({ s, onScan, myFix, byId }: { s: RoomState; onScan: () => v
   const nearest = myFix && visible.length ? Math.min(...visible.map((p) => haversine(myFix.lat, myFix.lng, p.lat, p.lng))) : null;
   return (
     <div className="stack" style={{ gap: 12 }}>
-      <button onClick={() => { haptic.tap(); onScan(); }} disabled={!hunt} className="cut" style={{ minHeight: 76, background: hunt ? 'var(--accent)' : 'var(--surface2)', color: hunt ? 'var(--accent-ink)' : 'var(--muted)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+      <motion.button whileTap={hunt ? { scale: 0.96 } : undefined} onClick={() => { haptic.tap(); onScan(); }} disabled={!hunt}
+        style={{ position: 'relative', overflow: 'hidden', minHeight: 84, borderRadius: 22, background: hunt ? 'var(--grad-police)' : 'var(--surface2)', color: hunt ? '#000' : 'var(--muted)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, boxShadow: hunt ? '0 18px 40px -16px #ffd400, inset 0 1px 0 rgba(255,255,255,.7)' : 'none' }}>
+        {hunt && <span aria-hidden className="tape" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 8, opacity: 0.9 }} />}
+        {hunt && <motion.span aria-hidden style={{ position: 'absolute', inset: 0, borderRadius: 22, border: '2px solid #ffd400' }} animate={{ scale: [1, 1.06], opacity: [0.8, 0] }} transition={{ duration: 1.6, repeat: Infinity }} />}
         <IconScan s={32} />
-        <span className="display" style={{ fontSize: 30, fontWeight: 800 }}>{hunt ? 'Scan QR' : s.room.status === 'paused' ? 'Paused' : 'Hold position'}</span>
-      </button>
+        <span className="display" style={{ fontSize: 30, fontWeight: 850, letterSpacing: '-0.04em' }}>{hunt ? 'Scan to tag' : s.room.status === 'paused' ? 'Paused' : 'Hold position'}</span>
+      </motion.button>
       <div className="muted" style={{ fontSize: 13 }}>
         {!hunt ? 'Runners are hiding. The admin opens the hunt when the timer ends.'
           : s.reveal.active ? `${visible.length} runner${visible.length === 1 ? '' : 's'} visible now${nearest != null ? ` · nearest ≈ ${fmtDist(nearest)}` : ''}.`

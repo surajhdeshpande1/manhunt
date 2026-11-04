@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { LightTrails } from '../components/Art';
 import { Avatar, Button, IconShare, Section, Slash, useToast } from '../components/ui';
 import { fmtDist } from '../lib/clock';
 import { useSession } from '../lib/session';
@@ -51,15 +52,16 @@ export function Result({ s }: { s: RoomState }) {
   return (
     <Slash>
       <div className="screen" style={{ gap: 26 }}>
-        <div style={{ position: 'relative', paddingTop: 28 }}>
+        <div style={{ position: 'relative', paddingTop: 28, isolation: 'isolate' }}>
+          {v.win !== false && <div aria-hidden style={{ position: 'absolute', left: -20, right: -20, top: -80, height: 360, zIndex: -1, pointerEvents: 'none', maskImage: 'linear-gradient(#000 50%, transparent)', WebkitMaskImage: 'linear-gradient(#000 50%, transparent)' }}><LightTrails height="100%" /></div>}
           {[160, 260].map((d, i) => (
             <motion.span key={d} aria-hidden style={{ position: 'absolute', right: -d / 2.6, top: -d / 3, width: d, height: d, borderRadius: '50%', border: `1.5px solid ${v.win === false ? 'var(--line2)' : 'var(--accent)'}`, opacity: 0.35 - i * 0.12 }}
               initial={{ scale: 0.3, opacity: 0 }} animate={{ scale: 1, opacity: 0.35 - i * 0.12 }} transition={{ duration: 1.4, delay: 0.1 * i, ease: [0.22, 1, 0.36, 1] }} />
           ))}
           <div style={{ position: 'relative' }}>
             <div className="eyebrow">{s.room.name}, final result</div>
-            <motion.h1 className="display" initial={{ opacity: 0, y: 16, filter: 'blur(10px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              style={{ fontSize: 'min(19vw, 92px)', margin: '6px 0 0', fontWeight: 800, letterSpacing: '-0.055em', color: v.win === false ? 'var(--muted)' : v.win ? 'var(--accent)' : 'var(--text)' }}>{v.title}</motion.h1>
+            <motion.h1 initial={{ opacity: 0, y: 16, filter: 'blur(10px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              style={{ fontSize: 'min(19vw, 92px)', margin: '6px 0 0', fontWeight: 800, letterSpacing: '-0.055em', color: v.win === false ? 'var(--muted)' : v.win ? undefined : 'var(--text)', paddingRight: 8 }} className={`display ${v.win ? 'text-flare' : ''}`}>{v.title}</motion.h1>
             <div style={{ fontSize: 18, fontWeight: 550, marginTop: 6 }}>{reason}</div>
           </div>
         </div>

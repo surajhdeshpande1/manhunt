@@ -5,11 +5,12 @@ import Landing from './screens/Landing';
 import { Forgot, Permissions, ResetPassword, Selfie, SignIn, SignUp, Welcome } from './screens/Auth';
 import Home from './screens/Home';
 import { useSession } from './lib/session';
+import { Backdrop, Orbit } from './components/Art';
 
 const RoomScreen = lazy(() => import('./screens/Room'));
 
 function Splash() {
-  return <div style={{ position: 'fixed', inset: 0, display: 'grid', placeItems: 'center' }}><span className="spinner" style={{ color: 'var(--accent)' }} /></div>;
+  return <div style={{ position: 'fixed', inset: 0, display: 'grid', placeItems: 'center' }}><Orbit size={44} /></div>;
 }
 
 function RequireAuth({ children, allowNoSelfie }: { children: ReactNode; allowNoSelfie?: boolean }) {
@@ -38,6 +39,8 @@ export default function App() {
   if (recovering && loc.pathname !== '/reset') return <Navigate to="/reset" replace />;
   return (
     <>
+      <Backdrop />
+      <div style={{ position: 'relative', zIndex: 1, minHeight: '100%' }}>
       <AnimatePresence>{intro && loc.pathname !== '/reset' && <Landing key="intro" onDone={done} />}</AnimatePresence>
       {!intro || loc.pathname === '/reset' ? (
         <Suspense fallback={<Splash />}>
@@ -56,6 +59,7 @@ export default function App() {
           </Routes>
         </Suspense>
       ) : null}
+      </div>
     </>
   );
 }

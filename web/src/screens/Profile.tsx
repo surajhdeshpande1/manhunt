@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { CountUp, LightTrails } from '../components/Art';
 import { Avatar, Button, Empty, Field, Modal, Section, useToast } from '../components/ui';
 import { callFunction, rpc } from '../lib/supabase';
 import { useSession } from '../lib/session';
@@ -30,41 +32,58 @@ export default function Profile() {
   ];
   return (
     <div className="screen" style={{ gap: 28 }}>
-      <div className="row" style={{ gap: 16, alignItems: 'flex-end' }}>
-        <button onClick={() => nav('/selfie')} aria-label="Retake selfie" style={{ position: 'relative' }}>
-          <Avatar src={profile.selfie_path} name={profile.username} size={96} />
-          <span className="tag" style={{ position: 'absolute', bottom: -8, left: 8, background: 'var(--accent)', color: 'var(--accent-ink)', fontSize: 10 }}>Retake</span>
-        </button>
-        <div className="grow">
-          <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-            {profile.is_owner && <span className="tag live">Owner</span>}
-            {profile.is_organiser && !profile.is_owner && <span className="tag ok">Organiser</span>}
+      {/* player card */}
+      <motion.div className="card glow-edge" initial={{ opacity: 0, y: 20, rotateX: 12 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        style={{ position: 'relative', overflow: 'hidden', borderRadius: 28, padding: '22px 20px 20px', marginTop: 8, transformPerspective: 900,
+          background: 'radial-gradient(130% 90% at 100% 0%, rgba(255,106,26,.38), transparent 55%), radial-gradient(90% 70% at 0% 100%, rgba(232,54,31,.3), transparent 60%), #0b0705' }}>
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.6, pointerEvents: 'none' }}><LightTrails height="100%" dim /></div>
+        <div className="row between" style={{ position: 'relative', alignItems: 'flex-start' }}>
+          <button onClick={() => nav('/selfie')} aria-label="Retake selfie" style={{ position: 'relative', width: 112, height: 112, display: 'grid', placeItems: 'center' }}>
+            <motion.span aria-hidden style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'conic-gradient(#ffd400, #ff6a1a, #e8361f, #ffd400)' }} animate={{ rotate: 360 }} transition={{ duration: 6, repeat: Infinity, ease: 'linear' }} />
+            <span style={{ position: 'absolute', inset: 4, borderRadius: '50%', background: '#000' }} />
+            <span style={{ position: 'relative', borderRadius: '50%', overflow: 'hidden' }}><Avatar src={profile.selfie_path} name={profile.username} size={96} className="round" /></span>
+            <span className="tag" style={{ position: 'absolute', bottom: -6, background: '#fff', color: '#000', fontSize: 10.5 }}>Retake</span>
+          </button>
+          <div className="stack" style={{ gap: 6, alignItems: 'flex-end' }}>
+            {profile.is_owner && <span className="tag" style={{ background: 'var(--grad-police)', color: '#000' }}>Owner</span>}
+            {profile.is_organiser && <span className="tag" style={{ background: 'rgba(255,255,255,.1)', color: '#fff' }}>Organiser</span>}
           </div>
-          <div className="display" style={{ fontSize: 32, marginTop: 6 }}>@{profile.username}</div>
-          <div style={{ fontWeight: 600 }}>{profile.full_name}</div>
-          <div className="muted" style={{ fontSize: 13 }}>{profile.college} · {profile.branch} · {YEAR[profile.year]} year</div>
         </div>
+        <div style={{ position: 'relative', marginTop: 18 }}>
+          <div className="display" style={{ fontSize: 40, fontWeight: 850, letterSpacing: '-0.055em' }}>@{profile.username}</div>
+          <div style={{ fontWeight: 600, marginTop: 2 }}>{profile.full_name}</div>
+          <div style={{ fontSize: 13, color: 'rgba(255,240,230,.62)', marginTop: 2 }}>{profile.college} · {profile.branch} · {YEAR[profile.year]} year</div>
+        </div>
+      </motion.div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+        {stats.map((st, i) => {
+          const num = typeof st.v === 'number' ? st.v : parseFloat(String(st.v));
+          const unit = typeof st.v === 'number' ? '' : String(st.v).replace(/[\d.\s]/g, '');
+          const hot = st.k === 'Wins';
+          return (
+            <motion.div key={st.k} className="card" initial={{ opacity: 0, y: 12, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: 0.15 + i * 0.05, type: 'spring', damping: 20 }}
+              style={{ padding: '14px 12px', borderRadius: 18, ...(hot ? { background: 'var(--grad-ember)', boxShadow: '0 14px 30px -14px #ff6a1a' } : {}) }}>
+              <div className="display" style={{ fontSize: 30, fontWeight: 800 }}><CountUp value={isNaN(num) ? 0 : num} decimals={unit && num % 1 ? 1 : 0} />{unit && <span style={{ fontSize: 16, marginLeft: 3 }}>{unit}</span>}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: hot ? 'rgba(255,255,255,.8)' : 'var(--muted)' }}>{st.k}</div>
+            </motion.div>
+          );
+        })}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'var(--line)' }} className="cut">
-        {stats.map((s) => (
-          <div key={s.k} style={{ background: 'var(--surface)', padding: '14px 12px' }}>
-            <div className="display mono" style={{ fontSize: 28 }}>{s.v}</div>
-            <div className="eyebrow" style={{ fontSize: 10 }}>{s.k}</div>
-          </div>
-        ))}
-      </div>
-
-      <Section title={`Badges · ${earned.size}/${Object.keys(BADGES).length}`}>
+      <Section title={`Badges · ${earned.size} of ${Object.keys(BADGES).length}`}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-          {Object.entries(BADGES).map(([code, b]) => {
+          {Object.entries(BADGES).map(([code, b], i) => {
             const on = earned.has(code);
             return (
-              <div key={code} title={`${b.name}: ${b.desc}`} className="cut center" style={{ padding: '12px 4px', background: on ? 'var(--surface2)' : 'var(--bg2)', opacity: on ? 1 : 0.45 }}>
-                <div className="display" style={{ fontSize: 26, color: on ? 'var(--accent)' : 'var(--faint)', height: 30 }}>{b.glyph}</div>
-                <div className="display" style={{ fontSize: 12, marginTop: 4 }}>{b.name}</div>
-                <div className="muted" style={{ fontSize: 10, lineHeight: 1.2 }}>{b.desc}</div>
-              </div>
+              <motion.div key={code} title={`${b.name}: ${b.desc}`} className="center" whileTap={{ scale: 0.92, rotate: -3 }}
+                initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: on ? 1 : 0.38, scale: 1 }} transition={{ delay: 0.25 + i * 0.04, type: 'spring', damping: 16 }}
+                style={{ padding: '14px 4px 12px', borderRadius: 18, position: 'relative', overflow: 'hidden',
+                  background: on ? 'radial-gradient(100% 80% at 50% 0%, rgba(255,106,26,.32), transparent 70%), var(--surface)' : 'var(--bg2)', boxShadow: on ? 'inset 0 0 0 1px rgba(255,140,60,.28)' : 'inset 0 0 0 1px var(--line)' }}>
+                <div className={on ? 'display text-flare' : 'display'} style={{ fontSize: 28, height: 32, color: on ? undefined : 'var(--faint)' }}>{b.glyph}</div>
+                <div style={{ fontSize: 12, fontWeight: 650, marginTop: 4 }}>{b.name}</div>
+                <div className="muted" style={{ fontSize: 10, lineHeight: 1.25, padding: '0 2px' }}>{b.desc}</div>
+              </motion.div>
             );
           })}
         </div>

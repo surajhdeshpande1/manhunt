@@ -6,6 +6,7 @@ import { rpc } from '../lib/supabase';
 import { fmtClock, msUntil } from '../lib/clock';
 import { haptic } from '../lib/feel';
 import { GAMES, GAME_INFO } from '../games/Games';
+import { Sparks } from '../components/Art';
 import type { RoomState } from '../lib/types';
 
 type Task = { seed: number; kind: number; index: number; of: number };
@@ -47,7 +48,7 @@ export function TaskDeck({ s, refresh }: { s: RoomState; refresh: () => void }) 
 
   return (
     <>
-      <div className="frame cut" style={{ background: can ? 'var(--accent)' : 'var(--line2)' }}>
+      <div className="frame cut" style={{ background: can ? 'var(--grad-flare)' : 'var(--line2)', boxShadow: can ? '0 16px 40px -20px #ff6a1a' : 'none' }}>
         <div className="inner cut" style={{ padding: 14 }}>
           <div className="row between" style={{ marginBottom: 10 }}>
             <div>
@@ -60,19 +61,19 @@ export function TaskDeck({ s, refresh }: { s: RoomState; refresh: () => void }) 
               ))}
             </div>
           </div>
-          <Button block disabled={!can} loading={busy} onClick={start}>{label}</Button>
+          <Button kind="hot" block disabled={!can} loading={busy} onClick={start}>{label}</Button>
         </div>
       </div>
 
       {createPortal(<AnimatePresence>
         {task && (
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }}
-            style={{ position: 'fixed', inset: 0, zIndex: 650, background: 'var(--bg)', overflowY: 'auto' }} className="grid-bg">
+            style={{ position: 'fixed', inset: 0, zIndex: 650, background: 'radial-gradient(130% 55% at 50% 0%, color-mix(in srgb, var(--accent) 26%, #000), #000 70%)', overflowY: 'auto' }} className="grid-bg">
             <div className="screen" style={{ gap: 18 }}>
               <div className="row between">
                 <div>
                   <div className="eyebrow">Task {task.index} of {task.of}</div>
-                  <div className="display" style={{ fontSize: 34 }}>{GAME_INFO[task.kind].name}</div>
+                  <div className="display" style={{ fontSize: 40, fontWeight: 850, letterSpacing: "-0.05em" }}>{GAME_INFO[task.kind].name}</div>
                 </div>
                 <button className="icon-btn" aria-label="Close task" onClick={close}><X /></button>
               </div>
@@ -81,7 +82,7 @@ export function TaskDeck({ s, refresh }: { s: RoomState; refresh: () => void }) 
               <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, flex: 1 }}>
                 {!result ? <Game kind={task.kind} seed={task.seed} onWin={win} onFail={fail} /> : (
                   <motion.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="center stack" style={{ gap: 12, alignSelf: 'center' }}>
-                    <div className="display" style={{ fontSize: 64, fontWeight: 800, color: result.ok ? 'var(--accent)' : 'var(--danger)' }}>{result.ok ? '+1 TASK' : 'FAILED'}</div>
+                    <div style={{ position: 'relative' }}>{result.ok && <Sparks n={16} radius={140} />}<div className={`display ${result.ok ? 'text-flare' : ''}`} style={{ fontSize: 72, fontWeight: 850, letterSpacing: '-0.05em', color: result.ok ? undefined : 'var(--danger)', paddingRight: 6 }}>{result.ok ? '+1 task' : 'Failed'}</div></div>
                     <div className="muted">{result.msg}</div>
                     <Button onClick={close}>{result.ok ? 'Back to the map' : 'OK'}</Button>
                   </motion.div>

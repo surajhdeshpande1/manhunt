@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { LightTrails } from '../components/Art';
 import { Segmented, Avatar, Back, Button, IconCopy, IconMap, IconPhone, IconPlus, IconShare, IconUndo, Modal, Section, Slash, useToast } from '../components/ui';
 import { rpc } from '../lib/supabase';
 import { useSession } from '../lib/session';
@@ -22,7 +23,10 @@ function RoomHeader({ s, onLeave, leaveLabel = 'Leave' }: { s: RoomState; onLeav
     try { if (navigator.share) await navigator.share({ title: 'TAG', text }); else { await navigator.clipboard.writeText(text); toast('Copied'); } } catch { /* cancelled */ }
   }
   return (
-    <header style={{ marginBottom: 18 }}>
+    <header style={{ marginBottom: 18, position: 'relative', isolation: 'isolate' }}>
+      <div aria-hidden style={{ position: 'absolute', left: -20, right: -20, top: -90, height: 330, zIndex: -1, pointerEvents: 'none', maskImage: 'linear-gradient(#000 40%, transparent)', WebkitMaskImage: 'linear-gradient(#000 40%, transparent)' }}>
+        <LightTrails height="100%" dim />
+      </div>
       <div className="row between" style={{ marginLeft: -10 }}>
         <button className="icon-btn" aria-label="Back to rooms" onClick={() => nav('/home')}><Back /></button>
         <div className="row" style={{ gap: 6 }}>
@@ -30,7 +34,8 @@ function RoomHeader({ s, onLeave, leaveLabel = 'Leave' }: { s: RoomState; onLeav
           <span className="tag">{s.room.is_public ? 'Public' : 'Private'}</span>
         </div>
       </div>
-      <h1 className="display" style={{ fontSize: 40, margin: '6px 0 10px', wordBreak: 'break-word' }}>{s.room.name}</h1>
+      <motion.h1 className="display" initial={{ opacity: 0, y: 14, filter: 'blur(10px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        style={{ fontSize: 46, margin: '8px 0 12px', wordBreak: 'break-word', fontWeight: 850, letterSpacing: '-0.055em', lineHeight: 0.95 }}>{s.room.name}</motion.h1>
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         {code && !s.room.is_public && (
           <motion.button whileTap={{ scale: 0.96 }} className="row" style={{ gap: 10, padding: '7px 12px 7px 14px', background: 'var(--surface2)', borderRadius: 14 }}

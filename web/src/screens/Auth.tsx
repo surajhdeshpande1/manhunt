@@ -1,39 +1,58 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Button, Field, Logo, Slash, useToast, Back, IconTarget, IconMap, IconSOS } from '../components/ui';
 import { callFunction, cleanError, rpc, supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { useTheme } from '../lib/theme';
 import { haptic } from '../lib/feel';
-import { FieldScene } from '../components/FieldScene';
+import { LightTrails } from '../components/Art';
 
 /* ---------- Welcome ---------- */
+const WORDS = ['Hide.', 'Run.', 'Hunt.', 'Tag.'];
+function Kinetic() {
+  const [i, setI] = useState(0);
+  useEffect(() => { const t = setInterval(() => setI((x) => (x + 1) % WORDS.length), 1700); return () => clearInterval(t); }, []);
+  return (
+    <span style={{ display: 'block', position: 'relative', height: '0.98em', overflow: 'hidden' }}>
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.span key={i} className={i === 2 ? 'text-police' : 'text-flare'} style={{ display: 'block', paddingRight: 8 }}
+          initial={{ y: '100%', rotate: 4, opacity: 0 }} animate={{ y: '0%', rotate: 0, opacity: 1 }} exit={{ y: '-100%', rotate: -3, opacity: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>{WORDS[i]}</motion.span>
+      </AnimatePresence>
+    </span>
+  );
+}
+
 export function Welcome() {
   useTheme('neutral');
   const nav = useNavigate();
-  const rise = (i: number) => ({ initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.1 + i * 0.08, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const } });
+  const rise = (i: number) => ({ initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.15 + i * 0.09, duration: 0.8, ease: [0.22, 1, 0.36, 1] as const } });
   return (
     <Slash>
-      <div className="screen" style={{ gap: 22 }}>
-        <motion.div {...rise(0)}><Logo size={30} /></motion.div>
-        <motion.div {...rise(1)} style={{ borderRadius: 28, overflow: 'hidden', boxShadow: 'inset 0 0 0 1px var(--line)', position: 'relative', margin: '0 -4px' }}>
-          <FieldScene height={320} />
-          <div className="row" style={{ position: 'absolute', left: 16, right: 16, bottom: 14, gap: 16, fontSize: 13, fontWeight: 550 }}>
-            <span className="row" style={{ gap: 7 }}><span className="dot" style={{ color: 'var(--runner)' }} />Runners hide</span>
-            <span className="row" style={{ gap: 7 }}><span className="dot" style={{ color: 'var(--hunter)' }} />Hunters track</span>
-          </div>
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: '62vh', maskImage: 'linear-gradient(#000 55%, transparent)', WebkitMaskImage: 'linear-gradient(#000 55%, transparent)', pointerEvents: 'none' }}>
+        <LightTrails height="100%" />
+      </div>
+      <div className="screen" style={{ gap: 20, minHeight: '100dvh' }}>
+        <motion.div {...rise(0)} className="row between">
+          <Logo size={30} />
+          <span className="tag" style={{ background: 'rgba(0,0,0,.45)', boxShadow: 'inset 0 0 0 1px var(--line2)', color: 'var(--text)', backdropFilter: 'blur(8px)' }}><span className="dot pulse" style={{ color: 'var(--ok)' }} /> Played outdoors</span>
         </motion.div>
         <div style={{ marginTop: 'auto' }}>
-          <motion.h1 {...rise(2)} className="display" style={{ fontSize: 'clamp(38px, 11vw, 52px)', margin: 0, fontWeight: 760 }}>
-            Your campus<br />is the map.
+          <motion.div {...rise(1)} style={{ fontSize: 15, fontWeight: 600, color: 'var(--runner-tint)', marginBottom: 10 }}>Your campus is the map.</motion.div>
+          <motion.h1 {...rise(2)} className="display" style={{ fontSize: 'clamp(72px, 24vw, 112px)', margin: 0, fontWeight: 850, letterSpacing: '-0.065em', lineHeight: 0.92 }}>
+            <Kinetic />
           </motion.h1>
-          <motion.p {...rise(3)} style={{ maxWidth: 360, margin: '14px 0 0', fontSize: 16, color: 'var(--muted)', lineHeight: 1.5 }}>
-            A real-world chase, played on foot. Runners clear tasks before time runs out. Hunters follow them on a live map and scan their code to catch them.
+          <motion.p {...rise(3)} style={{ maxWidth: 360, margin: '18px 0 0', fontSize: 16, color: 'var(--muted)', lineHeight: 1.5 }}>
+            A real-world chase on foot. Runners clear tasks before time runs out. Hunters follow them on a live map and scan their code to tag them.
           </motion.p>
+          <motion.div {...rise(4)} className="row" style={{ gap: 18, marginTop: 18, fontSize: 13.5, fontWeight: 600 }}>
+            <span className="row" style={{ gap: 8 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--grad-ember)', boxShadow: '0 0 12px #ff6a1a' }} />Runners</span>
+            <span className="row" style={{ gap: 8 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--grad-police)', boxShadow: '0 0 12px #ffd400' }} />Hunters</span>
+          </motion.div>
         </div>
-        <motion.div {...rise(4)} className="stack" style={{ gap: 10 }}>
-          <Button size="lg" block onClick={() => nav('/signup')}>Create account</Button>
+        <motion.div {...rise(5)} className="stack" style={{ gap: 10, marginTop: 8 }}>
+          <Button kind="hot" size="lg" block onClick={() => nav('/signup')}>Create account</Button>
           <Button size="lg" kind="ghost" block onClick={() => nav('/signin')}>I already have an account</Button>
         </motion.div>
       </div>
@@ -41,15 +60,31 @@ export function Welcome() {
   );
 }
 
-function Header({ title, step, back = -1 as number | string }: { title: string; step?: string; back?: number | string }) {
+export function Steps({ n, of = 3 }: { n: number; of?: number }) {
+  return (
+    <div className="row" style={{ gap: 6 }} aria-label={`Step ${n} of ${of}`}>
+      {Array.from({ length: of }, (_, i) => (
+        <span key={i} style={{ position: 'relative', width: 30, height: 5, borderRadius: 3, background: 'var(--surface3)', overflow: 'hidden' }}>
+          {i < n && <motion.span initial={{ scaleX: i === n - 1 ? 0 : 1 }} animate={{ scaleX: 1 }} transition={{ delay: 0.3, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            style={{ position: 'absolute', inset: 0, background: 'var(--grad-flare)', transformOrigin: 'left', boxShadow: '0 0 10px rgba(255,106,26,.7)' }} />}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function Header({ title, step, back = -1 as number | string }: { title: string; step?: number; back?: number | string }) {
   const nav = useNavigate();
   return (
-    <div style={{ marginBottom: 24 }}>
+    <div style={{ marginBottom: 26, position: 'relative' }}>
       <div className="row between" style={{ marginLeft: -10 }}>
         <button className="icon-btn" aria-label="Back" onClick={() => (typeof back === 'number' ? nav(back) : nav(back))}><Back /></button>
-        {step && <div className="eyebrow">{step}</div>}
+        {step && <Steps n={step} />}
       </div>
-      <h1 className="display" style={{ fontSize: 42, margin: '10px 0 0', fontWeight: 780 }}>{title}</h1>
+      <motion.h1 className="display" initial={{ opacity: 0, x: -16, filter: 'blur(8px)' }} animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        style={{ fontSize: 46, margin: '14px 0 0', fontWeight: 820, letterSpacing: '-0.05em' }}>{title}</motion.h1>
+      <motion.span aria-hidden initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.25, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        style={{ display: 'block', width: 56, height: 4, borderRadius: 2, marginTop: 14, background: 'var(--grad-flare)', transformOrigin: 'left', boxShadow: '0 0 14px rgba(255,106,26,.6)' }} />
     </div>
   );
 }
@@ -100,7 +135,7 @@ export function SignUp() {
   return (
     <Slash>
       <form className="screen" onSubmit={submit} noValidate>
-        <Header title="Create account" step="Step 1 of 3" />
+        <Header title="Create account" step={1} />
         <div className="stack" style={{ gap: 16 }}>
           <Field label="Full name" autoComplete="name" value={f.full_name} onChange={(e) => set('full_name', e.target.value)} error={err.full_name} placeholder="Suraj Deshpande" />
           <Field label="Username" autoComplete="username" autoCapitalize="none" value={f.username} error={err.username}
@@ -127,7 +162,7 @@ export function SignUp() {
           </div>
         </div>
         <div style={{ marginTop: 28 }}>
-          <Button size="lg" block arrow loading={busy} type="submit">Continue</Button>
+          <Button kind="hot" size="lg" block arrow loading={busy} type="submit">Continue</Button>
           <p className="muted center" style={{ marginTop: 14, fontSize: 13 }}>Already playing? <Link to="/signin">Sign in</Link></p>
         </div>
       </form>
@@ -164,7 +199,7 @@ export function SignIn() {
           <Link to="/forgot" style={{ alignSelf: 'flex-end', fontSize: 14 }}>Forgot password?</Link>
         </div>
         <div style={{ marginTop: 'auto', paddingTop: 28 }}>
-          <Button size="lg" block arrow loading={busy} type="submit" disabled={!email || !pw}>Sign in</Button>
+          <Button kind="hot" size="lg" block arrow loading={busy} type="submit" disabled={!email || !pw}>Sign in</Button>
         </div>
       </form>
     </Slash>
@@ -297,17 +332,17 @@ export function Permissions() {
   return (
     <Slash>
       <div className="screen">
-        <div className="eyebrow" style={{ marginBottom: 8 }}>Step 2 of 3</div>
-        <h1 className="display" style={{ fontSize: 44, margin: '0 0 8px' }}>Gear check</h1>
+        <div style={{ marginBottom: 14 }}><Steps n={2} /></div>
+        <h1 className="display" style={{ fontSize: 46, margin: '0 0 8px', fontWeight: 820, letterSpacing: '-0.05em' }}>Gear <span className="text-flare">check</span></h1>
         <p className="muted" style={{ marginTop: 0 }}>TAG is played outdoors on real streets. It needs three things from your phone.</p>
         <div className="stack" style={{ gap: 10, marginTop: 12 }}>
           {rows.map((r, i) => (
             <motion.div key={r.t} className="frame soft cut" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 + i * 0.08 }}>
               <div className="inner cut row" style={{ padding: 16, alignItems: 'flex-start', gap: 14 }}>
-                <div style={{ color: 'var(--accent)', marginTop: 2 }}>{r.icon}</div>
+                <div style={{ width: 44, height: 44, flex: 'none', borderRadius: 14, display: 'grid', placeItems: 'center', color: '#fff', background: ['var(--grad-ember)', 'var(--grad-flare)', 'var(--grad-police)'][i], boxShadow: `0 8px 22px -8px ${['#ff6a1a', '#ffb020', '#ffd400'][i]}` }}>{r.icon}</div>
                 <div className="grow">
                   <div className="row between">
-                    <div className="display" style={{ fontSize: 20 }}>{r.t}</div>
+                    <div style={{ fontSize: 17, fontWeight: 650 }}>{r.t}</div>
                     <span className={`tag ${r.s === 'granted' ? 'ok' : r.s === 'denied' ? 'bad' : ''}`}>
                       {r.s === 'granted' ? 'On' : r.s === 'denied' ? 'Blocked' : r.s === 'unsupported' ? 'N/A' : 'Needed'}
                     </span>
@@ -322,8 +357,8 @@ export function Permissions() {
           <p className="danger" style={{ fontSize: 14 }}>Something was blocked. Open your browser's site settings for this page, allow it, then reload.</p>
         )}
         <div style={{ marginTop: 'auto', paddingTop: 24 }} className="stack">
-          {!all ? <Button size="lg" block loading={busy} onClick={askAll}>Allow access</Button>
-            : <Button size="lg" block arrow onClick={() => nav('/setup/selfie', { replace: true })} disabled={cam === 'denied'}>Take my selfie</Button>}
+          {!all ? <Button kind="hot" size="lg" block loading={busy} onClick={askAll}>Allow access</Button>
+            : <Button kind="hot" size="lg" block arrow onClick={() => nav('/setup/selfie', { replace: true })} disabled={cam === 'denied'}>Take my selfie</Button>}
         </div>
       </div>
     </Slash>
@@ -384,7 +419,7 @@ export function Selfie({ retake = false }: { retake?: boolean }) {
   return (
     <Slash>
       <div className="screen">
-        {!retake && <div className="eyebrow" style={{ marginBottom: 8 }}>Step 3 of 3</div>}
+        {!retake && <div style={{ marginBottom: 14 }}><Steps n={3} /></div>}
         <h1 className="display" style={{ fontSize: 44, margin: '0 0 8px' }}>{retake ? 'New selfie' : 'Show your face'}</h1>
         <p className="muted" style={{ marginTop: 0 }}>Live camera only. Other players and the admin use it to recognise you on the field.</p>
         <div className="frame cut cut-lg" style={{ aspectRatio: '1', marginTop: 8, position: 'relative' }}>
@@ -404,10 +439,10 @@ export function Selfie({ retake = false }: { retake?: boolean }) {
         </div>
         <div style={{ marginTop: 'auto', paddingTop: 24 }} className="stack">
           {!preview ? (
-            <Button size="lg" block onClick={capture} disabled={!!camErr}>Capture</Button>
+            <Button kind="hot" size="lg" block onClick={capture} disabled={!!camErr}>Capture</Button>
           ) : (
             <>
-              <Button size="lg" block arrow loading={busy} onClick={save}>{retake ? 'Save selfie' : 'Enter TAG'}</Button>
+              <Button kind="hot" size="lg" block arrow loading={busy} onClick={save}>{retake ? 'Save selfie' : 'Enter TAG'}</Button>
               <Button kind="ghost" block onClick={again} disabled={busy}>Retake</Button>
             </>
           )}

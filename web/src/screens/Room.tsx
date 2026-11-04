@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Orbit } from '../components/Art';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Button } from '../components/ui';
@@ -70,7 +71,7 @@ export default function RoomScreen() {
   if (!s) {
     return (
       <div className="screen" style={{ justifyContent: 'center', alignItems: 'center', gap: 16, textAlign: 'center' }}>
-        {error ? (<><p>{error}</p><Button kind="ghost" onClick={() => nav('/home')}>Back to rooms</Button></>) : <span className="spinner" style={{ color: 'var(--accent)' }} />}
+        {error ? (<><p>{error}</p><Button kind="ghost" onClick={() => nav('/home')}>Back to rooms</Button></>) : <Orbit size={48} />}
       </div>
     );
   }

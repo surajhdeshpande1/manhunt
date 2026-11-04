@@ -7,7 +7,7 @@ import { useSession } from '../lib/session';
 import { useTheme } from '../lib/theme';
 import { haptic } from '../lib/feel';
 import { timeAgo } from '../lib/clock';
-import { FieldScene } from '../components/FieldScene';
+import { LightTrails, CountUp } from '../components/Art';
 import Profile from './Profile';
 
 export default function Home() {
@@ -39,11 +39,11 @@ function TabBar() {
         {tabs.map((t) => (
           <NavLink key={t.to} to={t.to} end={t.end} onClick={() => haptic.tap()}
             style={({ isActive }) => ({ position: 'relative', height: 54, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
-              color: isActive ? 'var(--accent-ink)' : 'var(--muted)', textDecoration: 'none', transition: 'color .35s var(--ease-out)', borderRadius: 18 })}>
+              color: isActive ? '#fff' : 'var(--muted)', textDecoration: 'none', transition: 'color .35s var(--ease-out)', borderRadius: 18 })}>
             {({ isActive }) => (
               <>
-                {isActive && <motion.span layoutId="tabbar" transition={{ type: 'spring', damping: 26, stiffness: 360 }}
-                  style={{ position: 'absolute', inset: 0, borderRadius: 18, background: 'var(--accent)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.35), 0 6px 18px -6px var(--accent-glow)' }} />}
+                {isActive && <motion.span layoutId="tabbar" transition={{ type: 'spring', damping: 24, stiffness: 340 }}
+                  style={{ position: 'absolute', inset: 0, borderRadius: 18, background: 'var(--grad-ember)', boxShadow: 'inset 0 1px 0 rgba(255,230,200,.45), 0 8px 22px -6px rgba(255,90,20,.7)' }} />}
                 <span style={{ position: 'relative' }}>
                   {t.icon}
                   {t.badge > 0 && <span style={{ position: 'absolute', top: -5, right: -9, minWidth: 17, height: 17, padding: '0 5px', borderRadius: 9, background: 'var(--danger)', color: '#fff', fontSize: 10.5, fontWeight: 750, display: 'grid', placeItems: 'center', boxShadow: '0 0 0 2px var(--surface)' }}>{t.badge}</span>}
@@ -98,16 +98,18 @@ function RoomsTab() {
           <Logo size={30} />
           <button onClick={() => nav('/home/profile')} aria-label="Your profile" style={{ borderRadius: '50%' }}><Avatar src={profile?.selfie_path} name={profile?.username} size={40} /></button>
         </div>
-        <h1 className="display" style={{ fontSize: 34, margin: '30px 0 0', fontWeight: 720 }}>{greeting()}, {profile?.full_name?.split(' ')[0] || profile?.username}</h1>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} style={{ margin: '30px 0 0', fontSize: 15, fontWeight: 600, color: 'var(--runner-tint)' }}>{greeting()}</motion.div>
+        <motion.h1 className="display text-flare" initial={{ opacity: 0, y: 14, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ delay: 0.08, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          style={{ fontSize: 52, margin: '2px 0 0', fontWeight: 850, letterSpacing: '-0.06em', width: 'fit-content', paddingRight: 6 }}>{profile?.full_name?.split(' ')[0] || profile?.username}</motion.h1>
         <p className="muted" style={{ margin: '6px 0 0' }}>{(rooms?.filter((r) => r.status === 'lobby').length ?? 0) > 0 ? `${rooms!.filter((r) => r.status === 'lobby').length} public ${rooms!.filter((r) => r.status === 'lobby').length === 1 ? 'room is' : 'rooms are'} taking players.` : 'Join a room with its ID, or host your own.'}</p>
       </header>
 
       {active.length > 0 && (
         <Section title="Your rooms">
           {active.map((r, i) => i === 0 ? (
-            <motion.button whileTap={{ scale: 0.98 }} key={r.id} onClick={() => nav(`/room/${r.id}`)} className="card" style={{ textAlign: 'left', padding: 0, overflow: 'hidden', display: 'block', width: '100%' }}>
-              <div style={{ position: 'relative', height: 150 }}>
-                <FieldScene height={150} />
+            <motion.button whileTap={{ scale: 0.98 }} key={r.id} onClick={() => nav(`/room/${r.id}`)} className="card glow-edge" style={{ textAlign: 'left', padding: 0, overflow: 'hidden', display: 'block', width: '100%' }}>
+              <div style={{ position: 'relative', height: 150, background: 'radial-gradient(120% 120% at 20% 100%, rgba(232,54,31,.35), transparent 60%)' }}>
+                <LightTrails height={150} />
                 <div style={{ position: 'absolute', top: 12, left: 14 }}><StatusTag s={r.status} /></div>
               </div>
               <div className="row" style={{ padding: '14px 16px 16px 18px', gap: 14 }}>
@@ -152,7 +154,7 @@ function RoomsTab() {
       )}
 
       <motion.button whileTap={{ scale: 0.98 }} onClick={() => setPrivOpen(true)} className="card row" style={{ textAlign: 'left', padding: 16, gap: 14 }}>
-        <div style={{ width: 46, height: 46, display: 'grid', placeItems: 'center', background: 'var(--surface2)', color: 'var(--text)', borderRadius: '50%' }}><IconLock s={20} /></div>
+        <div style={{ width: 48, height: 48, display: 'grid', placeItems: 'center', background: 'var(--grad-police)', color: '#000', borderRadius: 16, boxShadow: '0 10px 24px -10px #ffd400', rotate: '-6deg' }}><IconLock s={21} /></div>
         <div className="grow">
           <div style={{ fontSize: 16.5, fontWeight: 650 }}>Join a private room</div>
           <div className="muted" style={{ fontSize: 13.5 }}>Enter the room ID and password from your admin.</div>
@@ -222,7 +224,8 @@ function Ring({ pct, label, sub }: { pct: number; label: string; sub: string }) 
     <div style={{ position: 'relative', width: 60, height: 60, flex: 'none' }} aria-label={`${label} ${sub} players`}>
       <svg width="60" height="60" viewBox="0 0 60 60" style={{ transform: 'rotate(-90deg)' }}>
         <circle cx="30" cy="30" r={R} fill="none" stroke="var(--surface3)" strokeWidth="4" />
-        <motion.circle cx="30" cy="30" r={R} fill="none" stroke="var(--accent)" strokeWidth="4" strokeLinecap="round" strokeDasharray={C}
+        <defs><linearGradient id="ringg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#ffd400" /><stop offset="100%" stopColor="#e8361f" /></linearGradient></defs>
+        <motion.circle cx="30" cy="30" r={R} fill="none" stroke="url(#ringg)" strokeWidth="4" strokeLinecap="round" strokeDasharray={C}
           initial={{ strokeDashoffset: C }} animate={{ strokeDashoffset: C * (1 - pct / 100) }} transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1], delay: 0.15 }} />
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', lineHeight: 1 }}>
@@ -299,7 +302,7 @@ function HostTab() {
   return (
     <div className="screen" style={{ gap: 24 }}>
       <header style={{ position: 'relative', zIndex: 1, paddingTop: 12 }}>
-        <h1 className="display" style={{ fontSize: 34, margin: '18px 0 10px', fontWeight: 720 }}>Host a game</h1>
+        <h1 className="display" style={{ fontSize: 52, margin: '18px 0 12px', fontWeight: 850, letterSpacing: '-0.06em', lineHeight: 0.95 }}>Run the<br /><span className="text-flare" style={{ paddingRight: 6 }}>whole game.</span></h1>
         <p className="muted" style={{ margin: 0, maxWidth: 400 }}>As admin you draw the play area, set the rules and assign roles, then watch the whole map while everyone else plays.</p>
       </header>
 

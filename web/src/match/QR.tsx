@@ -11,21 +11,28 @@ export const qrPayload = (roomId: string, token: string) => `TAG1:${roomId}:${to
 export function RunnerQR({ roomId, token, username, selfie, onClose }: { roomId: string; token: string; username: string; selfie: string | null; onClose: () => void }) {
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
-    QRCode.toDataURL(qrPayload(roomId, token), { errorCorrectionLevel: 'M', margin: 1, width: 720, color: { dark: '#0e0d0c', light: '#ffffff' } }).then(setSrc);
+    QRCode.toDataURL(qrPayload(roomId, token), { errorCorrectionLevel: 'M', margin: 1, width: 720, color: { dark: '#000000', light: '#ffffff' } }).then(setSrc);
   }, [roomId, token]);
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      style={{ position: 'fixed', inset: 0, zIndex: 600, background: '#ffffff', color: '#0e0d0c', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 18 }}>
-      <button onClick={onClose} aria-label="Close" style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 12px)', right: 12, width: 48, height: 48, display: 'grid', placeItems: 'center', color: '#0e0d0c' }}><X s={28} /></button>
-      <div className="row" style={{ gap: 12 }}>
+      style={{ position: 'fixed', inset: 0, zIndex: 600, color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 22,
+        background: 'radial-gradient(120% 70% at 50% 110%, #e8361f, transparent 60%), radial-gradient(90% 60% at 50% -10%, rgba(255,176,32,.45), transparent 60%), #0b0503' }}>
+      <button onClick={onClose} aria-label="Close" style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 12px)', right: 12, width: 48, height: 48, display: 'grid', placeItems: 'center', color: '#fff' }}><X s={28} /></button>
+      <motion.div className="row" style={{ gap: 12 }} initial={{ y: -14, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}>
         <Avatar src={selfie} name={username} size={52} />
         <div>
-          <div className="display" style={{ fontSize: 30 }}>@{username}</div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--runner)' }}>Runner · catch code</div>
+          <div className="display" style={{ fontSize: 32, fontWeight: 850, letterSpacing: '-0.05em' }}>@{username}</div>
+          <div style={{ fontSize: 14, fontWeight: 650, color: '#ffb27a' }}>Runner, catch code</div>
         </div>
-      </div>
-      {src ? <img src={src} alt="Your catch QR code" style={{ width: 'min(82vw, 380px)', height: 'auto', imageRendering: 'pixelated' }} /> : <span className="spinner" />}
-      <p style={{ maxWidth: 320, textAlign: 'center', margin: 0, color: '#6e6357' }}>Caught? Hold this up for the hunter to scan. Turn your brightness up.</p>
+      </motion.div>
+      <motion.div initial={{ scale: 0.85, opacity: 0, rotate: -4 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} transition={{ type: 'spring', damping: 16, stiffness: 200 }}
+        style={{ position: 'relative', padding: 5, borderRadius: 30, overflow: 'hidden', boxShadow: '0 30px 80px -20px rgba(255,90,20,.7)' }}>
+        <motion.span aria-hidden style={{ position: 'absolute', inset: '-45%', background: 'conic-gradient(#ffd400, #ff6a1a, #e8361f, #b3170f, #ffd400)' }} animate={{ rotate: 360 }} transition={{ duration: 5, repeat: Infinity, ease: 'linear' }} />
+        <div style={{ position: 'relative', background: '#fff', borderRadius: 25, padding: 14 }}>
+          {src ? <img src={src} alt="Your catch QR code" style={{ width: 'min(74vw, 340px)', height: 'auto', imageRendering: 'pixelated', display: 'block' }} /> : <span className="spinner" style={{ color: '#000' }} />}
+        </div>
+      </motion.div>
+      <p style={{ maxWidth: 320, textAlign: 'center', margin: 0, color: 'rgba(255,240,230,.75)' }}>Caught? Hold this up for the hunter to scan. Turn your brightness up.</p>
     </motion.div>
   );
 }
@@ -68,7 +75,7 @@ export function Scanner({ roomId, getFix, onClose, onCaught }: {
       <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
         <div style={{ width: 'min(72vw, 300px)', aspectRatio: '1', position: 'relative', boxShadow: '0 0 0 100vmax rgba(0,0,0,.6)', borderRadius: 28 }}>
           {['top:0;left:0;border-width:3px 0 0 3px', 'top:0;right:0;border-width:3px 3px 0 0', 'bottom:0;left:0;border-width:0 0 3px 3px', 'bottom:0;right:0;border-width:0 3px 3px 0'].map((c, i) => (
-            <span key={i} style={{ position: 'absolute', width: 34, height: 34, borderStyle: 'solid', borderColor: '#fff', borderRadius: 4, ...Object.fromEntries(c.split(';').map((kv) => kv.split(':')).map(([k, v]) => [k.replace(/-(\w)/g, (_, x) => x.toUpperCase()), v])) }} />
+            <span key={i} style={{ position: 'absolute', width: 34, height: 34, borderStyle: 'solid', borderColor: '#ffd400', borderRadius: 4, ...Object.fromEntries(c.split(';').map((kv) => kv.split(':')).map(([k, v]) => [k.replace(/-(\w)/g, (_, x) => x.toUpperCase()), v])) }} />
           ))}
           {st.k === 'scan' && <motion.div style={{ position: 'absolute', left: 8, right: 8, height: 2, background: 'var(--hunter)', boxShadow: '0 0 16px var(--hunter)', borderRadius: 2 }} animate={{ top: ['8%', '92%', '8%'] }} transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }} />}
         </div>
