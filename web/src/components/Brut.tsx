@@ -8,8 +8,8 @@ import { mulberry32 } from '../lib/rng';
   Buildings are flat blocks with outlines. Nothing glows; things move.
 */
 
-export const INK = '#14110f';
-export const C = { flare: '#ff6a1a', ember: '#e8361f', police: '#ffd400', cream: '#fff2e0', brick: '#a61b12', ink: INK, night: '#0e0c0b' };
+export const INK = '#0b0b0c';
+export const C = { flare: '#d9541e', ember: '#b23a2b', police: '#c9a227', cream: '#ede6da', brick: '#8e2e22', ink: INK, night: '#0b0b0c' };
 
 /* ---------- cut-out figures ---------- */
 type Frame = { head: [number, number]; limbs: number[][] };
@@ -74,7 +74,7 @@ export function useBlocks(seed: number, width: number, minH: number, maxH: numbe
     return out;
   }, [seed, width, minH, maxH]);
 }
-export function BlocksG({ blocks, ground, palette, ink = INK, lit = '#ffd400' }: { blocks: ReturnType<typeof useBlocks>; ground: number; palette: string[]; ink?: string; lit?: string }) {
+export function BlocksG({ blocks, ground, palette, ink = INK, lit = '#c9a227' }: { blocks: ReturnType<typeof useBlocks>; ground: number; palette: string[]; ink?: string; lit?: string }) {
   return (
     <g stroke={ink} strokeWidth="2.5" strokeLinejoin="round">
       {blocks.map((b, i) => (
@@ -97,8 +97,8 @@ export const BlockCity = memo(function BlockCity({ height = 160, seed = 3, day, 
   return (
     <svg viewBox={`0 0 ${W} 200`} width="100%" height={height} preserveAspectRatio="xMidYMax slice" aria-hidden style={{ display: 'block', ...style }}>
       <circle cx="318" cy="52" r="26" fill={C.flare} stroke={ink} strokeWidth="2.5" />
-      <BlocksG blocks={back} ground={G} palette={day ? ['#f5d9b8', '#efc9a0', '#f8e4c9'] : ['#2a211b', '#33281f', '#241c17']} ink={ink} lit={day ? '#ffd400' : '#ffb020'} />
-      <BlocksG blocks={front} ground={G} palette={day ? ['#ff8a3d', '#ffd400', '#fff2e0', '#e8361f'] : ['#1a1411', '#140f0d', '#201814']} ink={ink} lit={day ? INK : '#ffd400'} />
+      <BlocksG blocks={back} ground={G} palette={day ? ['#e2dacd', '#d8cfc0', '#ebe4d8'] : ['#232327', '#2a2a30', '#1d1d21']} ink={ink} lit={day ? '#c9a227' : '#c98a2e'} />
+      <BlocksG blocks={front} ground={G} palette={day ? ['#e0784a', '#c9a227', '#ede6da', '#b23a2b'] : ['#151518', '#111113', '#19191c']} ink={ink} lit={day ? INK : '#c9a227'} />
       <rect x="-4" y={G} width={W + 8} height="20" fill={day ? INK : '#000'} />
     </svg>
   );
@@ -116,15 +116,15 @@ export const ChaseScene = memo(function ChaseScene({ height = 260, seed = 4, day
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={height} preserveAspectRatio="xMidYMax slice" aria-hidden style={{ display: 'block', overflow: 'hidden' }}>
       <circle cx="320" cy="70" r="34" fill={C.flare} stroke={ink} strokeWidth="3" />
       <motion.g animate={loop} transition={tr(26)}>
-        <BlocksG blocks={back} ground={G} palette={day ? ['#f5d9b8', '#efc9a0', '#f8e4c9'] : ['#2a211b', '#33281f', '#241c17']} ink={ink} lit={day ? '#ffd400' : '#ffb020'} />
+        <BlocksG blocks={back} ground={G} palette={day ? ['#e2dacd', '#d8cfc0', '#ebe4d8'] : ['#232327', '#2a2a30', '#1d1d21']} ink={ink} lit={day ? '#c9a227' : '#c98a2e'} />
       </motion.g>
       <motion.g animate={loop} transition={tr(11)}>
-        <BlocksG blocks={front} ground={G} palette={day ? ['#ff8a3d', '#ffd400', '#fff2e0'] : ['#1a1411', '#140f0d', '#201814']} ink={ink} lit={day ? INK : '#ffd400'} />
+        <BlocksG blocks={front} ground={G} palette={day ? ['#e0784a', '#c9a227', '#ede6da'] : ['#151518', '#111113', '#19191c']} ink={ink} lit={day ? INK : '#c9a227'} />
       </motion.g>
       <rect x="-4" y={G} width={W + 8} height="60" fill={ink} />
       {/* road dashes rushing past */}
       <motion.g animate={reduce ? undefined : { x: [0, -80] }} transition={tr(0.9)}>
-        {Array.from({ length: 8 }, (_, i) => <rect key={i} x={i * 80} y={G + 22} width="40" height="5" fill={day ? '#fff2e0' : '#3a2f27'} />)}
+        {Array.from({ length: 8 }, (_, i) => <rect key={i} x={i * 80} y={G + 22} width="40" height="5" fill={day ? '#ede6da' : '#3a2f27'} />)}
       </motion.g>
       {/* the chase: runner ahead, hunter closing and falling back */}
       <motion.g animate={reduce ? undefined : { x: [0, 26, -8, 0] }} transition={{ duration: 5 / speed, repeat: Infinity, ease: 'easeInOut' }}>
@@ -153,7 +153,7 @@ export function Burst({ size = 260, fill = C.police, ink = INK, text, delay = 0 
 /** The chase in a framed panel: outline, hard shadow, flat. Text never sits on top of it. */
 export function ArtPanel({ height = 220, seed = 4, day, children, style }: { height?: number | string; seed?: number; day?: boolean; children?: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div style={{ position: 'relative', height, borderRadius: 12, overflow: 'hidden', background: day ? '#ffe3c2' : '#1b1512', boxShadow: '0 0 0 2.5px var(--edge), 5px 5px 0 2.5px var(--hard-card, #000)', marginRight: 5, marginBottom: 5, ...style }}>
+    <div style={{ position: 'relative', height, borderRadius: 12, overflow: 'hidden', background: day ? '#e9dccb' : '#141416', boxShadow: '0 0 0 1px var(--line2)', marginRight: 5, marginBottom: 5, ...style }}>
       <ChaseScene height="100%" seed={seed} day={day} />
       {children}
     </div>

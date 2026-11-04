@@ -62,9 +62,9 @@ export function LogoMark({ size = 28, style }: { size?: number; style?: React.CS
   // two players at the moment of contact: flat cut-paper discs with a hard shadow
   return (
     <svg width={size * 1.7} height={size} viewBox="0 0 34 20" aria-hidden style={{ display: 'block', overflow: 'visible', ...style }}>
-      <g transform="translate(1.6 1.6)" fill="#14110f"><circle cx="10" cy="10" r="8.6" /><circle cx="24" cy="10" r="8.6" /></g>
-      <circle cx="10" cy="10" r="8.6" fill="#ff6a1a" stroke="#14110f" strokeWidth="1.8" />
-      <circle cx="24" cy="10" r="8.6" fill="#ffd400" stroke="#14110f" strokeWidth="1.8" />
+      <g transform="translate(1.6 1.6)" fill="#0b0b0c"><circle cx="10" cy="10" r="8.6" /><circle cx="24" cy="10" r="8.6" /></g>
+      <circle cx="10" cy="10" r="8.6" fill="#d9541e" stroke="#0b0b0c" strokeWidth="1.8" />
+      <circle cx="24" cy="10" r="8.6" fill="#c9a227" stroke="#0b0b0c" strokeWidth="1.8" />
     </svg>
   );
 }
@@ -117,7 +117,7 @@ function FilmCut() {
   const ease = [0.75, 0, 0.2, 1] as const;
   return createPortal(
     <div aria-hidden style={{ position: 'fixed', inset: 0, zIndex: 880, pointerEvents: 'none', overflow: 'hidden' }}>
-      <motion.div style={{ position: 'absolute', inset: 0, background: '#ff6a1a', borderRight: '4px solid #14110f', willChange: 'transform' }}
+      <motion.div style={{ position: 'absolute', inset: 0, background: '#d9541e', borderRight: '4px solid #0b0b0c', willChange: 'transform' }}
         initial={{ x: '0%' }} animate={{ x: '101%' }} transition={{ duration: 0.42, ease, delay: 0.04 }} />
       <motion.div style={{ position: 'absolute', inset: 0, background: 'var(--bg)', willChange: 'transform' }}
         initial={{ x: '0%' }} animate={{ x: '101%' }} transition={{ duration: 0.38, ease }} />
@@ -152,10 +152,10 @@ export function Modal({ open, onClose, title, children, full }: { open: boolean;
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
           <motion.div role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}
             style={{ width: '100%', maxWidth: 560, maxHeight: full ? '100%' : '90%', height: full ? '100%' : undefined, overflow: 'auto', background: 'var(--bg2)',
-              borderRadius: full ? 0 : '16px 16px 0 0', borderTop: full ? 0 : '3px solid var(--edge)', borderLeft: full ? 0 : '3px solid var(--edge)', borderRight: full ? 0 : '3px solid var(--edge)',
+              borderRadius: full ? 0 : '16px 16px 0 0', boxShadow: full ? 'none' : '0 0 0 1px var(--line2), 0 -30px 60px -30px rgba(0,0,0,.6)',
               padding: `12px 22px calc(env(safe-area-inset-bottom) + 24px)` }}
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 32, stiffness: 340, mass: 0.85 }}>
-            {!full && <div aria-hidden style={{ width: 44, height: 6, borderRadius: 2, background: 'var(--edge)', margin: '0 auto 16px' }} />}
+            {!full && <div aria-hidden style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--line2)', margin: '0 auto 16px' }} />}
             {title && (
               <div className="row between" style={{ marginBottom: 20 }}>
                 <div className="display" style={{ fontSize: 30 }}>{title}</div>
@@ -203,14 +203,14 @@ let segId = 0;
 export function Segmented<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { v: T; label: ReactNode; disabled?: boolean }[] }) {
   const [id] = useState(() => `seg${segId++}`);
   return (
-    <div role="tablist" style={{ display: 'grid', gridTemplateColumns: `repeat(${options.length}, 1fr)`, padding: 4, gap: 4, borderRadius: 10, background: 'var(--surface)', boxShadow: '0 0 0 2.5px var(--edge)' }}>
+    <div role="tablist" style={{ display: 'grid', gridTemplateColumns: `repeat(${options.length}, 1fr)`, padding: 4, gap: 4, borderRadius: 10, background: 'var(--surface)', boxShadow: '0 0 0 1px var(--line2)' }}>
       {options.map((o) => {
         const on = o.v === value;
         return (
           <button key={o.v} type="button" role="tab" aria-selected={on} disabled={o.disabled} onClick={() => { haptic.tap(); onChange(o.v); }}
             style={{ position: 'relative', height: 44, minWidth: 0, borderRadius: 7, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.03em', fontSize: 'clamp(11.5px, 3.4vw, 13.5px)', padding: '0 4px', whiteSpace: 'nowrap',
-              color: on ? '#14110f' : 'var(--muted)', opacity: o.disabled ? 0.4 : 1, transition: 'color .3s var(--ease-out)' }}>
-            {on && <motion.span layoutId={id} transition={{ type: 'spring', damping: 32, stiffness: 460 }} style={{ position: 'absolute', inset: 0, borderRadius: 7, background: 'var(--seg, #ff6a1a)', boxShadow: '0 0 0 2px #14110f' }} />}
+              color: on ? 'var(--bg)' : 'var(--muted)', opacity: o.disabled ? 0.4 : 1, transition: 'color .3s var(--ease-out)' }}>
+            {on && <motion.span layoutId={id} transition={{ type: 'spring', damping: 32, stiffness: 460 }} style={{ position: 'absolute', inset: 0, borderRadius: 7, background: 'var(--seg)' }} />}
             <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8 }}>{o.label}</span>
           </button>
         );
@@ -232,7 +232,7 @@ export function Empty({ title, body, children }: { title: string; body?: string;
   return (
     <div className="card center" style={{ padding: 0, position: 'relative', overflow: 'hidden' }}>
       <NightCampus height={110} seed={title.length} />
-      <div style={{ padding: '14px 22px 28px', borderTop: '2.5px solid var(--edge)' }}>
+      <div style={{ padding: '14px 22px 28px', borderTop: '1px solid var(--line2)' }}>
         <div className="display" style={{ fontSize: 24, marginBottom: 8 }}>{title}</div>
         {body && <div className="muted" style={{ maxWidth: 320, margin: '0 auto', fontSize: 14.5 }}>{body}</div>}
         {children && <div style={{ marginTop: 16 }}>{children}</div>}

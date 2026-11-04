@@ -50,7 +50,7 @@ export function TaskDeck({ s, refresh }: { s: RoomState; refresh: () => void }) 
 
   return (
     <>
-      <div className="frame cut" style={{ background: can ? 'var(--grad-flare)' : 'var(--line2)', boxShadow: can ? '0 16px 40px -20px #ff6a1a' : 'none' }}>
+      <div className="frame cut" style={{ background: can ? 'var(--grad-flare)' : 'var(--line2)', boxShadow: can ? '0 16px 40px -20px #d9541e' : 'none' }}>
         <div className="inner cut" style={{ padding: 14 }}>
           <div className="row between" style={{ marginBottom: 10 }}>
             <div>

@@ -36,18 +36,18 @@ function TabBar() {
   return (
     <nav aria-label="Main" style={{ position: 'fixed', left: 0, right: 0, bottom: 'calc(env(safe-area-inset-bottom) + 12px)', zIndex: 100, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
       <div style={{ pointerEvents: 'auto', display: 'grid', gridTemplateColumns: 'repeat(3, 96px)', gap: 4, padding: 5, borderRadius: 12,
-        background: 'var(--surface)', boxShadow: '0 0 0 2.5px var(--edge), 5px 5px 0 2.5px var(--edge)' }}>
+        background: 'color-mix(in srgb, var(--surface) 96%, transparent)', boxShadow: '0 0 0 1px var(--line2), 0 20px 40px -18px rgba(0,0,0,.7)' }}>
         {tabs.map((t) => (
           <NavLink key={t.to} to={t.to} end={t.end} onClick={() => haptic.tap()}
             style={({ isActive }) => ({ position: 'relative', height: 54, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
-              color: isActive ? '#14110f' : 'var(--muted)', textDecoration: 'none', transition: 'color .25s var(--ease-out)', borderRadius: 8 })}>
+              color: isActive ? 'var(--bg)' : 'var(--muted)', textDecoration: 'none', transition: 'color .25s var(--ease-out)', borderRadius: 8 })}>
             {({ isActive }) => (
               <>
                 {isActive && <motion.span layoutId="tabbar" transition={{ type: 'spring', damping: 30, stiffness: 420 }}
-                  style={{ position: 'absolute', inset: 0, borderRadius: 8, background: 'var(--flare)', boxShadow: '0 0 0 2px #14110f' }} />}
+                  style={{ position: 'absolute', inset: 0, borderRadius: 8, background: 'var(--text)' }} />}
                 <span style={{ position: 'relative' }}>
                   {t.icon}
-                  {t.badge > 0 && <span style={{ position: 'absolute', top: -5, right: -9, minWidth: 17, height: 17, padding: '0 5px', borderRadius: 4, background: 'var(--danger)', color: '#fff', fontSize: 10.5, fontWeight: 850, display: 'grid', placeItems: 'center', boxShadow: '0 0 0 2px #14110f' }}>{t.badge}</span>}
+                  {t.badge > 0 && <span style={{ position: 'absolute', top: -5, right: -9, minWidth: 17, height: 17, padding: '0 5px', borderRadius: 4, background: 'var(--danger)', color: '#fff', fontSize: 10.5, fontWeight: 850, display: 'grid', placeItems: 'center', boxShadow: '0 0 0 2px #0b0b0c' }}>{t.badge}</span>}
                 </span>
                 <span style={{ position: 'relative', fontSize: 11, fontWeight: 850, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t.label}</span>
               </>
@@ -98,7 +98,7 @@ function RoomsTab() {
       <header className="row between" style={{ position: 'relative', zIndex: 2 }}>
         <Logo size={30} />
         <div className="row" style={{ gap: 10 }}>
-          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setHow(true)} aria-label="How TAG works" style={{ width: 42, height: 42, borderRadius: 8, display: 'grid', placeItems: 'center', background: 'var(--surface)', boxShadow: '0 0 0 2.5px var(--edge), 3px 3px 0 2.5px var(--edge)', fontWeight: 900, fontSize: 18, color: 'var(--text)' }}>?</motion.button>
+          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setHow(true)} aria-label="How TAG works" style={{ width: 42, height: 42, borderRadius: 8, display: 'grid', placeItems: 'center', background: 'var(--surface)', boxShadow: '0 0 0 1px var(--line2)', fontWeight: 900, fontSize: 18, color: 'var(--text)' }}>?</motion.button>
           <button onClick={() => nav('/home/profile')} aria-label="Your profile" style={{ borderRadius: 8 }}><Avatar src={profile?.selfie_path} name={profile?.username} size={40} /></button>
         </div>
       </header>
@@ -141,7 +141,7 @@ function RoomsTab() {
       )}
 
       <motion.button whileTap={{ scale: 0.98 }} onClick={() => setPrivOpen(true)} className="card row" style={{ textAlign: 'left', padding: 16, gap: 14 }}>
-        <div style={{ width: 48, height: 48, display: 'grid', placeItems: 'center', background: 'var(--police)', color: '#000', borderRadius: 8, boxShadow: '0 0 0 2.5px #14110f', rotate: '-4deg' }}><IconLock s={21} /></div>
+        <div style={{ width: 48, height: 48, display: 'grid', placeItems: 'center', background: 'var(--police)', color: '#000', borderRadius: 8, boxShadow: '0 0 0 2.5px #0b0b0c', rotate: '-4deg' }}><IconLock s={21} /></div>
         <div className="grow">
           <div style={{ fontSize: 16.5, fontWeight: 650 }}>Join a private room</div>
           <div className="muted" style={{ fontSize: 13.5 }}>Enter the room ID and password from your admin.</div>
@@ -176,7 +176,7 @@ function Hero({ room, name, open, onOpen, onHost, onJoin }: { room?: MyRoom; nam
   const day = resolvedDay(useAppearance());
   return (
     <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease }} className="card" style={{ overflow: 'hidden', padding: 0 }}>
-      <div aria-hidden style={{ height: 'clamp(150px, 26vh, 210px)', borderBottom: '2.5px solid var(--edge)', background: day ? '#ffe3c2' : '#1b1512' }}><ChaseScene height="100%" seed={room ? room.name.length : 2} day={day} /></div>
+      <div aria-hidden style={{ height: 'clamp(150px, 26vh, 210px)', borderBottom: '1px solid var(--line2)', background: day ? '#e9dccb' : '#141416' }}><ChaseScene height="100%" seed={room ? room.name.length : 2} day={day} /></div>
       <div style={{ padding: '20px 20px 22px' }}>
         <div className="row" style={{ gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
           <span className="eyebrow" style={{ color: 'var(--tint-text)' }}>{greeting()}, {name}</span>
@@ -245,7 +245,7 @@ function Ring({ pct, label, sub }: { pct: number; label: string; sub: string }) 
     <div style={{ position: 'relative', width: 60, height: 60, flex: 'none' }} aria-label={`${label} ${sub} players`}>
       <svg width="60" height="60" viewBox="0 0 60 60" style={{ transform: 'rotate(-90deg)' }}>
         <circle cx="30" cy="30" r={R} fill="none" stroke="var(--surface3)" strokeWidth="4" />
-        <defs><linearGradient id="ringg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#ffd400" /><stop offset="100%" stopColor="#e8361f" /></linearGradient></defs>
+        <defs><linearGradient id="ringg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#c9a227" /><stop offset="100%" stopColor="#b23a2b" /></linearGradient></defs>
         <motion.circle cx="30" cy="30" r={R} fill="none" stroke="url(#ringg)" strokeWidth="4" strokeLinecap="round" strokeDasharray={C}
           initial={{ strokeDashoffset: C }} animate={{ strokeDashoffset: C * (1 - pct / 100) }} transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1], delay: 0.15 }} />
       </svg>

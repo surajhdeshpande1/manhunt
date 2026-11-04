@@ -41,24 +41,24 @@ export default function Profile() {
     <div className="screen" style={{ gap: 30 }}>
       {/* player card: a flat cut-paper ID */}
       <motion.div initial={{ opacity: 0, y: 18, rotate: -1.5 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ duration: 0.5, ease: [0.2, 0.9, 0.25, 1] }}
-        style={{ position: 'relative', overflow: 'hidden', padding: '22px 20px 24px', margin: '8px 5px 5px 0', borderRadius: 12, background: ST.bg, color: ST.ink, boxShadow: '0 0 0 3px var(--edge), 6px 6px 0 3px var(--edge)' }}>
-        <div aria-hidden className="halftone" style={{ position: 'absolute', right: -20, top: -20, width: 180, height: 180, color: ST.ink, opacity: 0.18, borderRadius: '50%' }} />
+        style={{ position: 'relative', overflow: 'hidden', padding: '22px 20px 24px', margin: '8px 5px 5px 0', borderRadius: 12, background: ST.bg, color: ST.ink, boxShadow: '0 0 0 1px var(--line2)' }}>
+        <div aria-hidden className="halftone" style={{ position: 'absolute', right: -30, top: -30, width: 190, height: 190, color: ST.accent, opacity: 0.22, borderRadius: '50%' }} />
         <div className="row between" style={{ position: 'relative', alignItems: 'flex-start' }}>
-          <button onClick={() => nav('/selfie')} aria-label="Retake selfie" style={{ position: 'relative', borderRadius: 10, boxShadow: `0 0 0 3px ${ST.ring}, 5px 5px 0 3px ${ST.ring}`, overflow: 'visible' }}>
+          <button onClick={() => nav('/selfie')} aria-label="Retake selfie" style={{ position: 'relative', borderRadius: 12, boxShadow: `0 0 0 2px ${ST.ring}`, overflow: 'visible' }}>
             <Avatar src={profile.selfie_path} name={profile.username} size={100} />
-            <span className="tag" style={{ position: 'absolute', bottom: -10, left: 8, background: '#fff2e0', color: '#14110f', boxShadow: '0 0 0 2px #14110f' }}>Retake</span>
+            <span className="tag" style={{ position: 'absolute', bottom: -10, left: 8, background: '#ede6da', color: '#0b0b0c', boxShadow: 'none' }}>Retake</span>
           </button>
           <div className="stack" style={{ gap: 8, alignItems: 'flex-end' }}>
-            {profile.is_owner && <span className="tag" style={{ background: '#14110f', color: '#ffd400', boxShadow: 'none' }}>Owner</span>}
-            {profile.is_organiser && <span className="tag" style={{ background: '#fff2e0', color: '#14110f', boxShadow: '0 0 0 2px #14110f' }}>Organiser</span>}
+            {profile.is_owner && <span className="tag" style={{ color: '#c9a227', boxShadow: '0 0 0 1px rgba(201,162,39,.5)' }}>Owner</span>}
+            {profile.is_organiser && <span className="tag" style={{ color: '#ede6da', boxShadow: '0 0 0 1px rgba(237,230,218,.3)' }}>Organiser</span>}
           </div>
         </div>
         <div style={{ position: 'relative', marginTop: 24 }}>
-          {titleLabel(profile.title) && <div style={{ display: 'inline-block', fontSize: 12, fontWeight: 900, letterSpacing: '.12em', textTransform: 'uppercase', background: ST.ink, color: ST.bg, padding: '3px 8px', marginBottom: 8 }}>{titleLabel(profile.title)}</div>}
+          {titleLabel(profile.title) && <div style={{ display: 'inline-block', fontSize: 12, fontWeight: 900, letterSpacing: '.12em', textTransform: 'uppercase', background: 'transparent', color: ST.accent, padding: 0, marginBottom: 8 }}>{titleLabel(profile.title)}</div>}
           <div className="display" style={{ fontSize: 'clamp(34px, 11vw, 46px)', wordBreak: 'break-word' }}>@{profile.username}</div>
           <div style={{ fontWeight: 750, marginTop: 6, fontSize: 16 }}>{profile.full_name}</div>
           <div style={{ fontSize: 13.5, opacity: 0.75, marginTop: 2, fontWeight: 550 }}>{profile.college} · {profile.branch} · {YEAR[profile.year]} year</div>
-          <button onClick={() => setCustom(true)} className="row" style={{ marginTop: 18, gap: 8, padding: '10px 14px', borderRadius: 8, background: ST.ink, color: ST.bg, fontWeight: 800, fontSize: 13.5, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <button onClick={() => setCustom(true)} className="row" style={{ marginTop: 18, gap: 8, padding: '10px 14px', borderRadius: 10, background: 'transparent', color: ST.ink, boxShadow: '0 0 0 1px rgba(237,230,218,.22)', fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z" /></svg>
             Customise card & title
           </button>
@@ -98,7 +98,7 @@ export default function Profile() {
               <motion.div key={code} title={`${b.name}: ${b.desc}`} className="center" whileTap={{ scale: 0.92, rotate: -3 }}
                 initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: on ? 1 : 0.7, scale: 1 }} transition={{ delay: 0.25 + i * 0.04, type: 'spring', damping: 16 }}
                 style={{ padding: '14px 4px 12px', borderRadius: 10, position: 'relative', overflow: 'hidden',
-                  background: on ? 'var(--surface)' : 'var(--bg2)', boxShadow: on ? '0 0 0 2px var(--edge), 3px 3px 0 2px var(--flare)' : '0 0 0 2px var(--line)' }}>
+                  background: on ? 'var(--surface)' : 'transparent', boxShadow: on ? '0 0 0 1px var(--line2)' : '0 0 0 1px var(--line)' }}>
                 <BadgeArt code={code} on={on} size={46} />
                 <div style={{ fontSize: 12, fontWeight: 650, marginTop: 4 }}>{b.name}</div>
                 <div className="muted" style={{ fontSize: 10, lineHeight: 1.25, padding: '0 2px' }}>{b.desc}</div>
@@ -349,8 +349,8 @@ function SoundToggle() {
         <div className="muted" style={{ fontSize: 13 }}>Film score, hunt siren, catches and wins. Vibration stays on either way.</div>
       </div>
       <button role="switch" aria-checked={on} aria-label="Sound effects" onClick={() => { setSound(!on); if (!on) setTimeout(() => sfx.ping(), 50); }}
-        style={{ width: 52, height: 32, flex: 'none', position: 'relative', background: on ? 'var(--flare)' : 'var(--surface3)', boxShadow: '0 0 0 2.5px var(--edge)', borderRadius: 8, transition: 'background .2s' }}>
-        <motion.span layout transition={{ type: 'spring', damping: 22, stiffness: 400 }} style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 26, height: 26, borderRadius: 4, background: '#fff2e0', boxShadow: '0 0 0 2px #14110f' }} />
+        style={{ width: 52, height: 32, flex: 'none', position: 'relative', background: on ? 'var(--flare)' : 'var(--surface3)', boxShadow: '0 0 0 1px var(--line2)', borderRadius: 8, transition: 'background .2s' }}>
+        <motion.span layout transition={{ type: 'spring', damping: 22, stiffness: 400 }} style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 26, height: 26, borderRadius: 4, background: '#ede6da', boxShadow: '0 0 0 2px #0b0b0c' }} />
       </button>
     </div>
   );
@@ -377,7 +377,7 @@ function Customise({ open, onClose }: { open: boolean; onClose: () => void }) {
               return (
                 <motion.button key={k} whileTap={can ? { scale: 0.96 } : undefined} disabled={!can} onClick={() => save({ style: k })}
                   style={{ position: 'relative', height: 92, borderRadius: 12, background: st.bg, color: st.ink, textAlign: 'left', padding: 12, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-                    boxShadow: on ? '0 0 0 3px var(--edge), 4px 4px 0 3px var(--flare)' : '0 0 0 2px var(--line2)', opacity: can ? 1 : 0.5 }}>
+                    boxShadow: on ? '0 0 0 1px var(--line2)' : '0 0 0 2px var(--line2)', opacity: can ? 1 : 0.5 }}>
                   <span style={{ fontWeight: 700 }}>{st.label}</span>
                   <span style={{ fontSize: 11.5, opacity: 0.7 }}>{can ? (on ? 'In use' : 'Tap to use') : `Locked · ${st.how}`}</span>
                 </motion.button>

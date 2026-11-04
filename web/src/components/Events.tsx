@@ -6,11 +6,11 @@ import { mulberry32 } from '../lib/rng';
    over the room screens without changing the team colours. */
 export type EventKey = 'none' | 'diwali' | 'halloween' | 'fest' | 'holi';
 export const EVENTS: Record<EventKey, { label: string; blurb: string; swatch: string }> = {
-  none: { label: 'None', blurb: 'Just the night.', swatch: 'linear-gradient(135deg, #171412, #2e2723)' },
-  diwali: { label: 'Diwali', blurb: 'Diyas and gold sparks.', swatch: 'radial-gradient(circle at 50% 70%, #ffd400, #ff8a3d 40%, #5c0d0a 80%)' },
-  halloween: { label: 'Halloween', blurb: 'Bats over the campus.', swatch: 'radial-gradient(circle at 50% 40%, #ff8a3d, #a63a12 45%, #0b0807 80%)' },
-  fest: { label: 'College fest', blurb: 'Confetti in team colours.', swatch: 'conic-gradient(#ff6a1a, #ffd400, #fff2e0, #3d4fd6, #ff6a1a)' },
-  holi: { label: 'Holi', blurb: 'Clouds of colour.', swatch: 'conic-gradient(#ff4fd8, #ffd400, #3ddc97, #2e6bff, #ff4fd8)' },
+  none: { label: 'None', blurb: 'Just the night.', swatch: 'linear-gradient(135deg, #171412, #2a2a2f)' },
+  diwali: { label: 'Diwali', blurb: 'Diyas and gold sparks.', swatch: 'radial-gradient(circle at 50% 70%, #c9a227, #e0784a 40%, #3a1712 80%)' },
+  halloween: { label: 'Halloween', blurb: 'Bats over the campus.', swatch: 'radial-gradient(circle at 50% 40%, #e0784a, #8e3a1c 45%, #0b0807 80%)' },
+  fest: { label: 'College fest', blurb: 'Confetti in team colours.', swatch: 'conic-gradient(#d9541e, #c9a227, #ede6da, #3d4fd6, #d9541e)' },
+  holi: { label: 'Holi', blurb: 'Clouds of colour.', swatch: 'conic-gradient(#ff4fd8, #c9a227, #7fa38a, #3e5c8a, #ff4fd8)' },
 };
 
 function Diya({ x, d, s }: { x: number; d: number; s: number }) {
@@ -18,10 +18,10 @@ function Diya({ x, d, s }: { x: number; d: number; s: number }) {
     <motion.div style={{ position: 'absolute', left: `${x}%`, bottom: -40, width: 26 * s, height: 40 * s }}
       initial={{ y: 0, opacity: 0 }} animate={{ y: -window.innerHeight * 0.55, opacity: [0, 1, 1, 0] }} transition={{ duration: 14 + d * 6, delay: d * 9, repeat: Infinity, ease: 'linear' }}>
       <svg viewBox="0 0 26 40" width="100%" height="100%">
-        <defs><radialGradient id="dg"><stop offset="0%" stopColor="#fff7b0" /><stop offset="60%" stopColor="#ffb020" stopOpacity=".6" /><stop offset="100%" stopColor="#ff6a1a" stopOpacity="0" /></radialGradient></defs>
+        <defs><radialGradient id="dg"><stop offset="0%" stopColor="#e6d79a" /><stop offset="60%" stopColor="#c98a2e" stopOpacity=".6" /><stop offset="100%" stopColor="#d9541e" stopOpacity="0" /></radialGradient></defs>
         <circle cx="13" cy="14" r="13" fill="url(#dg)" />
-        <path d="M13 4 C 17 10, 17 16, 13 19 C 9 16, 9 10, 13 4Z" fill="#ffe14d" />
-        <path d="M3 26 Q 13 38 23 26 Z" fill="#a63a12" />
+        <path d="M13 4 C 17 10, 17 16, 13 19 C 9 16, 9 10, 13 4Z" fill="#d9b84a" />
+        <path d="M3 26 Q 13 38 23 26 Z" fill="#8e3a1c" />
       </svg>
     </motion.div>
   );
@@ -53,7 +53,7 @@ export const EventLayer = memo(function EventLayer({ event }: { event?: string |
       <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(70% 30% at 50% 0%, rgba(255,138,61,.16), transparent 70%)' }} />
       {items.slice(0, 5).map((it, i) => <Bat key={i} y={4 + it.y * 0.5} d={it.d} s={it.s} />)}
       <svg viewBox="0 0 100 100" width="120" height="120" style={{ position: 'absolute', top: 0, right: 0, opacity: 0.22 }}>
-        <g fill="none" stroke="#fff2e0" strokeWidth="0.7">{[20, 40, 60, 80].map((r2) => <path key={r2} d={`M100 ${r2} Q ${100 - r2 * 0.5} ${r2 * 0.5} ${100 - r2} 0`} />)}
+        <g fill="none" stroke="#ede6da" strokeWidth="0.7">{[20, 40, 60, 80].map((r2) => <path key={r2} d={`M100 ${r2} Q ${100 - r2 * 0.5} ${r2 * 0.5} ${100 - r2} 0`} />)}
           {[0, 25, 50, 75].map((a) => <line key={a} x1="100" y1="0" x2={100 - 100 * Math.cos((a * Math.PI) / 180)} y2={100 * Math.sin((a * Math.PI) / 180)} />)}</g>
       </svg>
     </div>
@@ -61,7 +61,7 @@ export const EventLayer = memo(function EventLayer({ event }: { event?: string |
   if (event === 'fest') return (
     <div aria-hidden style={wrap}>
       {items.map((it, i) => (
-        <motion.span key={i} style={{ position: 'absolute', left: `${it.x}%`, top: -20, width: 7 * it.s, height: 12 * it.s, borderRadius: 2, background: ['#ff6a1a', '#ffd400', '#fff2e0', '#3d4fd6'][it.c] }}
+        <motion.span key={i} style={{ position: 'absolute', left: `${it.x}%`, top: -20, width: 7 * it.s, height: 12 * it.s, borderRadius: 2, background: ['#d9541e', '#c9a227', '#ede6da', '#3d4fd6'][it.c] }}
           animate={{ y: [0, window.innerHeight + 40], rotate: [0, 360 * (it.c % 2 ? 1 : -1)], x: [0, (it.d - 0.5) * 80] }} transition={{ duration: 7 + it.d * 6, delay: it.d * 7, repeat: Infinity, ease: 'linear' }} />
       ))}
     </div>
@@ -71,7 +71,7 @@ export const EventLayer = memo(function EventLayer({ event }: { event?: string |
     <div aria-hidden style={wrap}>
       {items.slice(0, 7).map((it, i) => (
         <motion.span key={i} style={{ position: 'absolute', left: `${it.x - 15}%`, top: `${it.y + 10}%`, width: 220 * it.s, height: 220 * it.s, borderRadius: '50%',
-          background: `radial-gradient(circle, ${['#ff4fd8', '#ffd400', '#3ddc97', '#2e6bff'][it.c]}55, transparent 65%)` }}
+          background: `radial-gradient(circle, ${['#ff4fd8', '#c9a227', '#7fa38a', '#3e5c8a'][it.c]}55, transparent 65%)` }}
           animate={{ scale: [0.6, 1.15, 0.6], opacity: [0, 0.8, 0] }} transition={{ duration: 6 + it.d * 5, delay: it.d * 6, repeat: Infinity }} />
       ))}
     </div>

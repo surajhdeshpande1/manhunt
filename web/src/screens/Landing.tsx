@@ -71,11 +71,11 @@ export default function Landing({ onDone }: { onDone: () => void }) {
       <motion.div style={{ position: 'absolute', inset: 0 }} initial={{ opacity: 0 }} animate={{ opacity: act >= 1 ? 1 : 0 }} transition={{ duration: 0.01 }}>
         <motion.svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMax slice" width="100%" height="100%" style={{ position: 'absolute', inset: 0 }} aria-hidden
           animate={hunter && act === 1 ? { x: [0, -2, 2, -1, 0] } : { x: 0 }} transition={{ duration: 0.25, repeat: hunter && act === 1 ? Infinity : 0, repeatDelay: 0.6 }}>
-          <rect width={W} height={H} fill={C.flare} />
+          <rect width={W} height={H} fill="#111113" />
           {/* sun-moon with a hard shadow */}
           <circle cx="292" cy="250" r="78" fill={INK} transform="translate(8 8)" />
           <circle cx="292" cy="250" r="78" fill={C.cream} stroke={INK} strokeWidth="4" />
-          <g className="scroll-slow" style={play}><BlocksG blocks={back} ground={G} palette={['#a61b12', '#c4321c', '#8a1610']} ink={INK} lit={C.police} /></g>
+          <g className="scroll-slow" style={play}><BlocksG blocks={back} ground={G} palette={['#1f1f23', '#26262b', '#1a1a1e']} ink={INK} lit={C.police} /></g>
           <g className="scroll-fast" style={play}><BlocksG blocks={front} ground={G} palette={[INK, '#221a16', '#2c211b']} ink={INK} lit={C.police} /></g>
           <rect x="-10" y={G} width={W + 20} height={H - G} fill={INK} />
           <g className="scroll-road" style={play}>{Array.from({ length: 12 }, (_, i) => <rect key={i} x={i * 80} y={G + 46} width="44" height="8" fill={C.police} />)}</g>
@@ -131,7 +131,7 @@ export default function Landing({ onDone }: { onDone: () => void }) {
       </div>
 
       {/* film progress */}
-      <div style={{ position: 'absolute', left: 22, right: 22, bottom: 'calc(env(safe-area-inset-bottom) + 22px)', zIndex: 12, height: 12, background: INK, border: `2.5px solid ${C.cream}`, overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', left: 22, right: 22, bottom: 'calc(env(safe-area-inset-bottom) + 22px)', zIndex: 12, height: 4, background: 'rgba(237,230,218,.14)', overflow: 'hidden' }}>
         <motion.div style={{ height: '100%', background: C.flare, transformOrigin: 'left' }} initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: reduce ? 1.2 : 10, ease: 'linear' }} />
       </div>
     </motion.div>

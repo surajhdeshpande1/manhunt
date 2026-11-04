@@ -5,7 +5,7 @@ import { selfieUrl } from '../lib/supabase';
 import { cssVar } from '../lib/theme';
 
 const STYLE = 'https://tiles.openfreemap.org/styles/liberty';
-const OUT_RED = '#ff453a';
+const OUT_RED = '#c44536';
 export type Marker = { id: string; lat: number; lng: number; selfie?: string | null; role?: 'runner' | 'hunter' | null; label?: string; title?: string; me?: boolean; stale?: boolean; alert?: boolean };
 export type MapHandle = { fit: (pts?: LngLat[]) => void; flyTo: (lat: number, lng: number, zoom?: number) => void };
 type Props = {
@@ -19,35 +19,47 @@ const empty = { type: 'FeatureCollection', features: [] } as any;
 const poly = (rings: LngLat[][]) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: rings } });
 const fc = (features: any[]) => ({ type: 'FeatureCollection', features });
 
+/** Calm, high-detail recolour of the OpenFreeMap "liberty" style.
+ *  Keeps the real hierarchy: campus grounds, buildings with outlines, footpaths (dashed), road classes,
+ *  parks, sports pitches, water and place / building / street names. Only icons and transit clutter go. */
 function recolor(map: MLMap) {
   const v = (n: string) => cssVar(n);
-  const bg = v('--map-bg'), water = v('--map-water'), road = v('--map-road'), road2 = v('--map-road2'), build = v('--map-build'), park = v('--map-park'), label = v('--map-label');
+  const bg = v('--map-bg'), land = v('--map-land'), campus = v('--map-campus'), water = v('--map-water'), road = v('--map-road'), road2 = v('--map-road2'),
+    path = v('--map-path'), build = v('--map-build'), buildLine = v('--map-build-line'), park = v('--map-park'), label = v('--map-label'), label2 = v('--map-label2');
   for (const l of map.getStyle().layers || []) {
     const id = l.id.toLowerCase();
     const set = (p: string, val: any) => { try { map.setPaintProperty(l.id, p as any, val); } catch { /* skip */ } };
-    const hide = () => { try { map.setLayoutProperty(l.id, 'visibility', 'none'); } catch { /* skip */ } };
+    const lay = (p: string, val: any) => { try { map.setLayoutProperty(l.id, p as any, val); } catch { /* skip */ } };
     if (id.startsWith('tag-')) continue;
     switch (l.type) {
       case 'background': set('background-color', bg); break;
       case 'fill':
-        if (/water|ocean|lake|river/.test(id)) set('fill-color', water);
-        else if (/building/.test(id)) { set('fill-color', build); set('fill-outline-color', road); }
-        else if (/park|grass|wood|forest|landcover|green|cemetery|pitch|golf/.test(id)) { set('fill-color', park); set('fill-opacity', 0.8); }
-        else if (/aeroway|pier|road|bridge/.test(id)) set('fill-color', road);
-        else { set('fill-color', bg); set('fill-opacity', 0.6); }
+        if (/water|ocean|lake|river/.test(id)) { set('fill-color', water); set('fill-opacity', 1); }
+        else if (/building/.test(id)) { try { map.setLayerZoomRange(l.id, 13, 24); } catch { /* skip */ } set('fill-color', build); set('fill-outline-color', buildLine); set('fill-opacity', 1); }
+        else if (/school|university|college|hospital/.test(id)) { set('fill-color', campus); set('fill-opacity', 1); }
+        else if (/pitch|track|stadium|sport/.test(id)) { set('fill-color', park); set('fill-opacity', 1); set('fill-outline-color', path); }
+        else if (/park|grass|wood|forest|landcover|green|cemetery|golf|meadow|scrub|farm/.test(id)) { set('fill-color', park); set('fill-opacity', 0.9); }
+        else if (/aeroway|pier|road|bridge|area/.test(id)) { set('fill-color', road); set('fill-opacity', 1); }
+        else { set('fill-color', land); set('fill-opacity', 1); }
         break;
       case 'line':
-        if (/water|river|stream|canal/.test(id)) set('line-color', water);
-        else if (/boundary|admin/.test(id)) { set('line-color', road); set('line-opacity', 0.6); }
-        else if (/motorway|trunk|primary|major/.test(id)) set('line-color', road2);
+        if (/water|river|stream|canal|drain/.test(id)) set('line-color', water);
+        else if (/boundary|admin/.test(id)) { set('line-color', label2); set('line-opacity', 0.35); }
+        else if (/casing/.test(id)) set('line-color', bg);
+        else if (/service/.test(id)) set('line-color', road);
+        else if (/path|pedestrian|footway|cycle|steps/.test(id)) { set('line-color', path); set('line-opacity', 0.9); }
+        else if (/park_outline|pitch|landuse/.test(id)) { set('line-color', path); set('line-opacity', 0.4); }
+        else if (/rail/.test(id)) { set('line-color', label2); set('line-opacity', 0.5); }
+        else if (/motorway|trunk|primary|secondary|major/.test(id)) set('line-color', road2);
         else set('line-color', road);
-        if (/casing/.test(id)) set('line-color', bg);
         break;
-      case 'fill-extrusion': hide(); break;
-      case 'raster': case 'hillshade': hide(); break;
+      case 'fill-extrusion': lay('visibility', 'none'); break; // flat 2D buildings are drawn by the 'building' layer at every zoom
+      case 'raster': case 'hillshade': lay('visibility', 'none'); break;
       case 'symbol':
-        if (/poi|shield|aerodrome|airport|transit|station|oneway|mountain/.test(id)) { hide(); break; }
-        set('text-color', label); set('text-halo-color', bg); set('text-halo-width', 1.2); set('icon-opacity', 0);
+        if (/shield|aerodrome|airport|transit|station|oneway|mountain|peak|ferry/.test(id)) { lay('visibility', 'none'); break; }
+        set('text-color', /poi|housenum/.test(id) ? label2 : label); set('text-halo-color', bg); set('text-halo-width', 1.4);
+        if (/poi/.test(id)) { set('icon-opacity', 0.55); }
+        else set('icon-opacity', 0);
         break;
     }
   }
@@ -93,7 +105,7 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
 
   useEffect(() => {
     const m = new maplibregl.Map({
-      container: box.current!, style: STYLE, center: [75.6905, 16.1805], zoom: 15, attributionControl: { compact: true },
+      container: box.current!, style: STYLE, center: [75.6905, 16.1805], zoom: 15, maxZoom: 20, attributionControl: { compact: true },
       interactive: p.interactive !== false, pitchWithRotate: false, dragRotate: false, maxPitch: 0,
     });
     m.touchZoomRotate.disableRotation();
@@ -111,7 +123,7 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
       // everything players must stay out of is tinted translucent red; the map stays readable underneath
       m.addLayer({ id: 'tag-mask', type: 'fill', source: 'tag-mask', paint: { 'fill-color': OUT_RED, 'fill-opacity': 0.16 } });
       m.addLayer({ id: 'tag-mask-b', type: 'fill', source: 'tag-mask-b', paint: { 'fill-color': OUT_RED, 'fill-opacity': 0.12 } });
-      m.addLayer({ id: 'tag-boundary-line-casing', type: 'line', source: 'tag-boundary', paint: { 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': 0.85 } });
+      m.addLayer({ id: 'tag-boundary-line-casing', type: 'line', source: 'tag-boundary', paint: { 'line-color': '#0b0b0c', 'line-width': 5, 'line-opacity': 0.55 } });
       m.addLayer({ id: 'tag-boundary-line', type: 'line', source: 'tag-boundary', paint: { 'line-color': OUT_RED, 'line-width': 3 } });
       m.addLayer({ id: 'tag-nogo-fill', type: 'fill', source: 'tag-nogo', paint: { 'fill-color': OUT_RED, 'fill-opacity': 0.38 } });
       m.addLayer({ id: 'tag-nogo-line', type: 'line', source: 'tag-nogo', paint: { 'line-color': '#9b1208', 'line-width': 2, 'line-dasharray': [2, 1.5] } });
@@ -193,14 +205,14 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
 // marker styles (injected once)
 const css = `
 .tag-marker { display:flex; flex-direction:column; align-items:center; pointer-events:none; transition: transform .25s; }
-.tag-marker .tm-pin { position:relative; width:42px; height:42px; border-radius:9px; background:var(--accent); padding:3px; box-shadow:0 0 0 2.5px #14110f, 3px 3px 0 2.5px #14110f; }
+.tag-marker .tm-pin { position:relative; width:42px; height:42px; border-radius:9px; background:var(--accent); padding:3px; box-shadow:0 0 0 2px #0b0b0c, 0 8px 18px -6px rgba(0,0,0,.6); }
 .tag-marker .tm-pin::after { content:''; position:absolute; inset:-3px; border-radius:10px; border:2px solid currentColor; opacity:0; color:inherit; }
-.tag-marker[data-role="runner"] .tm-pin { background:#ff6a1a; color:#ff6a1a; }
-.tag-marker[data-role="hunter"] .tm-pin { background:#ffd400; color:#ffd400; }
+.tag-marker[data-role="runner"] .tm-pin { background:#d9541e; color:#d9541e; }
+.tag-marker[data-role="hunter"] .tm-pin { background:#c9a227; color:#c9a227; }
 .tag-marker .tm-img { width:100%; height:100%; background:#222 center/cover; border-radius:6px; display:grid; place-items:center; font:800 12px 'Inter Variable', system-ui; color:#fff; }
-.tag-marker .tm-label { margin-top:7px; padding:2px 7px; border-radius:4px; background:#14110f; color:#fff2e0; font:800 11px/1.35 'Inter Variable', system-ui; white-space:nowrap; box-shadow:0 0 0 1.5px #fff2e0; }
-.tag-marker .tm-title { margin-top:3px; padding:1px 6px; border-radius:3px; box-shadow:0 0 0 1.5px #14110f; font:800 9px/1.3 'Archivo Variable', system-ui; font-stretch:80%; letter-spacing:.08em; text-transform:uppercase; color:#000; background:#ffd400; }
-.tag-marker[data-role="runner"] .tm-title { background:#ff6a1a; color:#170700; }
+.tag-marker .tm-label { margin-top:7px; padding:2px 7px; border-radius:4px; background:rgba(11,11,12,.88); color:#ede6da; font:700 11px/1.35 'Inter Variable', system-ui; white-space:nowrap; box-shadow:0 0 0 1px rgba(237,230,218,.18); }
+.tag-marker .tm-title { margin-top:3px; padding:1px 6px; border-radius:3px; box-shadow:0 0 0 1.5px #0b0b0c; font:800 9px/1.3 'Archivo Variable', system-ui; font-stretch:80%; letter-spacing:.08em; text-transform:uppercase; color:#000; background:#c9a227; }
+.tag-marker[data-role="runner"] .tm-title { background:#d9541e; color:#0b0b0c; }
 .tag-marker[data-me="1"] .tm-pin::after { animation: tmRing 2s cubic-bezier(.22,1,.36,1) infinite; }
 .tag-marker[data-stale="1"] { opacity:.45; }
 .tag-marker[data-alert="1"] .tm-pin { background:var(--danger); color:var(--danger); }
@@ -208,8 +220,8 @@ const css = `
 @keyframes tmRing { 0% { transform:scale(1); opacity:.9; } 100% { transform:scale(2.1); opacity:0; } }
 /* role life: runners glow like embers, hunters send sonar pings */
 .tag-marker[data-role="runner"] .tm-pin { animation: tmEmber 1.6s ease-in-out infinite; }
-.tag-marker[data-role="hunter"] .tm-pin::before { content:''; position:absolute; inset:-3px; border-radius:10px; border:3px solid #ffd400; animation: tmSonar 2.4s cubic-bezier(.2,.8,.3,1) infinite; }
-@keyframes tmEmber { 0%,100% { transform:translate(0,0); box-shadow:0 0 0 2.5px #14110f, 3px 3px 0 2.5px #14110f; } 50% { transform:translate(-2px,-2px); box-shadow:0 0 0 2.5px #14110f, 5px 5px 0 2.5px #e8361f; } }
+.tag-marker[data-role="hunter"] .tm-pin::before { content:''; position:absolute; inset:-3px; border-radius:10px; border:2px solid #c9a227; animation: tmSonar 2.4s cubic-bezier(.2,.8,.3,1) infinite; }
+@keyframes tmEmber { 0%,100% { transform:scale(1); } 50% { transform:scale(1.06); } }
 @keyframes tmSonar { 0% { transform:scale(1); opacity:.95; } 100% { transform:scale(2.8); opacity:0; } }
 @media (prefers-reduced-motion: reduce) { .tag-marker .tm-pin, .tag-marker .tm-pin::before, .tag-marker .tm-pin::after { animation:none !important; } }
 `;

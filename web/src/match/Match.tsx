@@ -160,7 +160,7 @@ function Hud({ s, geo, isAdmin, alive, role, onMenu }: { s: RoomState; geo: Geo;
       <motion.div initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', damping: 22, stiffness: 260 }}
         layout onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; haptic.tap(); setOpen((o) => !o); }} role="button" aria-expanded={open} aria-label="Match details"
         className="force-night" style={{ pointerEvents: 'auto', position: 'relative', overflow: 'hidden', borderRadius: 12, padding: open ? '12px 14px 12px' : '8px 10px 10px 12px', cursor: 'pointer',
-          background: '#14110f', boxShadow: `0 0 0 2.5px #fff2e0, 4px 4px 0 2.5px ${status === 'hunt' ? (role === 'hunter' ? '#ffd400' : '#ff6a1a') : status === 'hiding' ? '#ffd400' : '#fff2e0'}`, marginRight: 4 }}>
+          background: 'rgba(17,17,19,.94)', boxShadow: `0 0 0 1px rgba(237,230,218,.14), inset 0 -2px 0 ${status === 'hunt' ? (role === 'hunter' ? '#c9a227' : '#d9541e') : status === 'hiding' ? '#c9a227' : 'transparent'}, 0 16px 40px -18px rgba(0,0,0,.8)` }}>
         <motion.div layout="position" className="row between" style={{ marginBottom: open ? 8 : 6, gap: 8 }}>
           <div className="row" style={{ gap: 8, flex: 'none' }}>
             <span className={`tag ${status === 'hunt' ? 'live' : ''}`}>{status === 'hunt' && <span className="dot pulse" />}{phase.t}</span>
@@ -178,9 +178,9 @@ function Hud({ s, geo, isAdmin, alive, role, onMenu }: { s: RoomState; geo: Geo;
           </div>
         </motion.div>
         {p && !open && (
-          <div style={{ position: 'relative', height: 8, borderRadius: 1, background: '#2e2723', boxShadow: '0 0 0 1.5px #fff2e0' }} aria-label={`${Math.round(p.pct)} percent of tasks done, win at ${p.mark}`}>
-            <motion.div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#ff6a1a' }} animate={{ width: `${Math.min(100, p.pct)}%` }} transition={{ type: 'spring', damping: 26, stiffness: 140 }} />
-            <div style={{ position: 'absolute', left: `${p.mark}%`, top: -4, bottom: -4, width: 4, marginLeft: -2, background: '#ffd400', boxShadow: '0 0 0 1.5px #14110f' }} />
+          <div style={{ position: 'relative', height: 8, borderRadius: 1, background: '#2a2a2f', boxShadow: '0 0 0 1.5px #ede6da' }} aria-label={`${Math.round(p.pct)} percent of tasks done, win at ${p.mark}`}>
+            <motion.div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#d9541e' }} animate={{ width: `${Math.min(100, p.pct)}%` }} transition={{ type: 'spring', damping: 26, stiffness: 140 }} />
+            <div style={{ position: 'absolute', left: `${p.mark}%`, top: -4, bottom: -4, width: 4, marginLeft: -2, background: '#c9a227', boxShadow: '0 0 0 1.5px #0b0b0c' }} />
           </div>
         )}
         <AnimatePresence initial={false}>
@@ -209,11 +209,11 @@ export function ProgressBar({ p, big }: { p: NonNullable<RoomState['progress']>;
   const h = big ? 18 : 12;
   return (
     <div>
-      <div style={{ position: 'relative', height: h, background: 'var(--surface2)', boxShadow: '0 0 0 2.5px var(--edge)', borderRadius: 2 }}>
+      <div style={{ position: 'relative', height: h, background: 'var(--surface2)', boxShadow: '0 0 0 1px var(--line2)', borderRadius: 2 }}>
         <div style={{ position: 'absolute', left: `${p.max_pct}%`, right: 0, top: 0, bottom: 0, background: 'repeating-linear-gradient(-45deg, transparent 0 5px, var(--danger) 5px 7px)', opacity: 0.6 }} title="Out of reach" />
-        <motion.div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: 'var(--flare)', borderRight: '2.5px solid var(--edge)' }}
+        <motion.div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: 'var(--flare)', borderRight: '1px solid var(--bg)' }}
           initial={{ width: 0 }} animate={{ width: `${Math.min(100, p.pct)}%` }} transition={{ type: 'spring', damping: 24, stiffness: 120 }} />
-        <div style={{ position: 'absolute', left: `${p.mark}%`, top: -6, bottom: -6, width: 6, marginLeft: -3, background: 'var(--police)', boxShadow: '0 0 0 2px #14110f' }} />
+        <div style={{ position: 'absolute', left: `${p.mark}%`, top: -6, bottom: -6, width: 6, marginLeft: -3, background: 'var(--police)', boxShadow: '0 0 0 2px #0b0b0c' }} />
       </div>
       <div className="row between" style={{ marginTop: 10 }}>
         <span className="mono" style={{ fontSize: big ? 22 : 16, fontWeight: 900 }}>{Math.round(p.pct)}%<span className="muted" style={{ fontSize: big ? 13 : 12, marginLeft: 6, fontWeight: 650 }}>{p.done}/{p.total} tasks</span></span>
@@ -240,9 +240,9 @@ function Sheet({ children, peek }: { children: React.ReactNode; peek: number }) 
   return (
     <motion.div drag="y" dragConstraints={{ top: 0, bottom: snaps[0] }} dragElastic={0.06} onDragEnd={end} animate={ctl} initial={{ y: snaps[0] }}
       style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: full, zIndex: 30, touchAction: 'none', borderRadius: '16px 16px 0 0',
-        background: 'var(--bg2)', borderTop: '3px solid var(--edge)', boxShadow: '0 -4px 0 0 var(--hard-card)' }}>
+        background: 'var(--bg2)', boxShadow: '0 0 0 1px var(--line2), 0 -24px 50px -24px rgba(0,0,0,.7)' }}>
       <button aria-label="Expand panel" onClick={() => setAt(at === 2 ? 0 : at + 1)} style={{ width: '100%', height: 26, display: 'grid', placeItems: 'center' }}>
-        <span style={{ width: 48, height: 6, borderRadius: 2, background: 'var(--edge)' }} />
+        <span style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--line2)' }} />
       </button>
       <div style={{ height: full - 26, overflowY: at === 2 ? 'auto' : 'hidden', padding: '6px 20px calc(env(safe-area-inset-bottom) + 28px)', touchAction: at === 2 ? 'pan-y' : 'none' }}
         onPointerDownCapture={(e) => { if (at === 2) e.stopPropagation(); }}>
@@ -258,7 +258,7 @@ function RunnerPanel({ s, onQR, refresh }: { s: RoomState; onQR: () => void; ref
     <div className="stack" style={{ gap: 12 }}>
       <TaskDeck s={s} refresh={refresh} />
       <motion.button whileTap={{ scale: 0.97 }} onClick={onQR} className="card row" style={{ textAlign: 'left', padding: '12px 14px', gap: 14 }}>
-        <span style={{ width: 48, height: 48, borderRadius: 8, display: 'grid', placeItems: 'center', background: '#fff2e0', color: '#14110f', rotate: '-4deg', boxShadow: '0 0 0 2.5px #14110f' }}><IconQR s={26} /></span>
+        <span style={{ width: 48, height: 48, borderRadius: 8, display: 'grid', placeItems: 'center', background: '#ede6da', color: '#0b0b0c', rotate: '-4deg', boxShadow: '0 0 0 2.5px #0b0b0c' }}><IconQR s={26} /></span>
         <div className="grow"><div style={{ fontSize: 17, fontWeight: 850 }}>My catch code</div><div className="muted" style={{ fontSize: 12.5 }}>Show it to the hunter who tags you.</div></div>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: 'var(--faint)' }}><path d="M9 5l7 7-7 7" /></svg>
       </motion.button>
@@ -364,8 +364,8 @@ function AdminPanel({ s, refresh, feed, byId, mapRef }: { s: RoomState; refresh:
           {sos.map((e) => (
             <div key={e.id} className="cut row" style={{ background: 'var(--danger)', color: '#fff', padding: '10px 12px', gap: 10 }}>
               <div className="grow"><div className="display" style={{ fontSize: 18 }}>SOS · @{e.data.username}</div><div style={{ fontSize: 12, opacity: 0.85 }}>{timeAgo(e.at)} ago</div></div>
-              {e.data.lat != null && <button className="tag" style={{ background: '#fff', color: '#c4170c', padding: '6px 10px' }} onClick={() => mapRef.current?.flyTo(e.data.lat, e.data.lng, 18)}>Locate</button>}
-              {e.data.phone && <a className="tag" style={{ background: '#fff', color: '#c4170c', padding: '6px 10px', textDecoration: 'none' }} href={`tel:${e.data.phone}`}>Call</a>}
+              {e.data.lat != null && <button className="tag" style={{ background: '#fff', color: '#8e2e22', padding: '6px 10px' }} onClick={() => mapRef.current?.flyTo(e.data.lat, e.data.lng, 18)}>Locate</button>}
+              {e.data.phone && <a className="tag" style={{ background: '#fff', color: '#8e2e22', padding: '6px 10px', textDecoration: 'none' }} href={`tel:${e.data.phone}`}>Call</a>}
             </div>
           ))}
         </div>
@@ -400,7 +400,7 @@ function AdminPanel({ s, refresh, feed, byId, mapRef }: { s: RoomState; refresh:
                 <div className="grow" style={{ minWidth: 0 }}>
                   <div className="row" style={{ gap: 6 }}>
                     <b style={{ fontSize: 14 }}>@{m.username}</b>{titleLabel(m.title) && <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gold)', marginLeft: 6 }}>{titleLabel(m.title)}</span>}
-                    <span className="tag" style={{ fontSize: 10, padding: '1px 5px', background: m.role === 'hunter' ? 'var(--hunter)' : 'var(--runner)', color: m.role === 'hunter' ? '#000' : '#170700' }}>{m.role === 'hunter' ? 'H' : 'R'}</span>
+                    <span className="tag" style={{ fontSize: 10, padding: '1px 5px', background: m.role === 'hunter' ? 'var(--hunter)' : 'var(--runner)', color: m.role === 'hunter' ? '#000' : '#0b0b0c' }}>{m.role === 'hunter' ? 'H' : 'R'}</span>
                     {m.oob && m.alive && <span className="tag bad" style={{ fontSize: 10, padding: '1px 5px' }}>Outside</span>}
                   </div>
                   <div className="muted" style={{ fontSize: 11 }}>

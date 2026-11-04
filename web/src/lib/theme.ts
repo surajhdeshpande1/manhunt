@@ -21,7 +21,7 @@ export function resolvedDay(a: Appearance = read()) {
 function apply() {
   const day = resolvedDay();
   document.documentElement.dataset.day = day ? '1' : '0';
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', day ? '#fff7ec' : '#000000');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', day ? '#efe9df' : '#000000');
 }
 export function setAppearance(a: Appearance) {
   try { localStorage.setItem(KEY, a); } catch { /* private mode */ }

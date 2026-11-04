@@ -126,7 +126,7 @@ async function renderCard(s: RoomState, title: string, reason: string, me: Membe
   await document.fonts.ready;
   const W = 1080, H = 1350; const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d')!;
   const runner = me?.role === 'runner';
-  const accent = runner ? '#ff6a1a' : me ? '#ffd400' : '#ffb27a';
+  const accent = runner ? '#d9541e' : me ? '#c9a227' : '#e0a27a';
   const DISPLAY = '"Archivo Variable", "Inter Variable", system-ui', BODY = '"Inter Variable", system-ui';
   const cond = (f: string) => { g.font = f; try { (g as any).fontStretch = 'condensed'; } catch { /* older browsers */ } };
   const plain = (f: string) => { g.font = f; try { (g as any).fontStretch = 'normal'; } catch { /* */ } };
@@ -145,12 +145,12 @@ async function renderCard(s: RoomState, title: string, reason: string, me: Membe
     g.strokeStyle = gr; g.lineCap = 'round';
     for (const [lw, blur, a] of [[w * 3, 40, 0.5], [w, 12, 1]] as const) { g.save(); g.globalAlpha = a; g.lineWidth = lw; g.shadowColor = c2; g.shadowBlur = blur; g.beginPath(); g.moveTo(pts[0], pts[1]); g.bezierCurveTo(pts[2], pts[3], pts[4], pts[5], pts[6], pts[7]); g.stroke(); g.restore(); }
   };
-  trail([-80, 1050, 260, 860, 520, 1100, 1160, 760], '#e8361f', '#ffb020', 10);
-  trail([1160, 300, 820, 420, 700, 160, 200, 520], '#ffb020', '#ffd400', 6);
+  trail([-80, 1050, 260, 860, 520, 1100, 1160, 760], '#b23a2b', '#c98a2e', 10);
+  trail([1160, 300, 820, 420, 700, 160, 200, 520], '#c98a2e', '#c9a227', 6);
   // skyline
   g.fillStyle = '#060304'; let x = -10;
   while (x < W) { const w = 50 + rnd() * 90, h = 120 + rnd() * 260; g.fillRect(x, H - 150 - h, w, h + 150);
-    for (let yy = H - 140 - h; yy < H - 170; yy += 26) for (let xx = x + 10; xx < x + w - 12; xx += 20) if (rnd() > 0.72) { g.fillStyle = rnd() > 0.85 ? '#fff2e0' : '#ffb020'; g.fillRect(xx, yy, 7, 9); g.fillStyle = '#060304'; }
+    for (let yy = H - 140 - h; yy < H - 170; yy += 26) for (let xx = x + 10; xx < x + w - 12; xx += 20) if (rnd() > 0.72) { g.fillStyle = rnd() > 0.85 ? '#ede6da' : '#c98a2e'; g.fillRect(xx, yy, 7, 9); g.fillStyle = '#060304'; }
     x += w + 4; }
   g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, H - 330, W, 330);
 
@@ -160,15 +160,15 @@ async function renderCard(s: RoomState, title: string, reason: string, me: Membe
   // selfie medallion
   const img = await loadImg(selfieUrl(selfie));
   const cx = W / 2, cy = 300, R = 120;
-  const ring = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R); ring.addColorStop(0, '#ffd400'); ring.addColorStop(0.5, accent); ring.addColorStop(1, '#e8361f');
+  const ring = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R); ring.addColorStop(0, '#c9a227'); ring.addColorStop(0.5, accent); ring.addColorStop(1, '#b23a2b');
   g.beginPath(); g.arc(cx, cy, R + 12, 0, Math.PI * 2); g.fillStyle = ring; g.shadowColor = accent; g.shadowBlur = 40; g.fill(); g.shadowBlur = 0;
   g.beginPath(); g.arc(cx, cy, R + 4, 0, Math.PI * 2); g.fillStyle = '#000'; g.fill();
   if (img) { g.save(); g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.clip(); g.drawImage(img, cx - R, cy - R, R * 2, R * 2); g.restore(); }
   // title
-  const tg = g.createLinearGradient(0, 470, 0, 690); tg.addColorStop(0, '#fff7b0'); tg.addColorStop(0.45, title === 'Defeat' ? '#c9c2bc' : '#ffb020'); tg.addColorStop(1, title === 'Defeat' ? '#6f625a' : '#e8361f');
+  const tg = g.createLinearGradient(0, 470, 0, 690); tg.addColorStop(0, '#e6d79a'); tg.addColorStop(0.45, title === 'Defeat' ? '#c9c2bc' : '#c98a2e'); tg.addColorStop(1, title === 'Defeat' ? '#6f625a' : '#b23a2b');
   let size = 250; cond(`800 ${size}px ${DISPLAY}`); while (g.measureText(title.toUpperCase()).width > W - 120 && size > 120) { size -= 10; cond(`800 ${size}px ${DISPLAY}`); }
   g.fillStyle = tg; g.shadowColor = 'rgba(232,54,31,.6)'; g.shadowBlur = 40; g.fillText(title.toUpperCase(), W / 2, 470 + size * 0.85); g.shadowBlur = 0;
-  plain(`600 40px ${BODY}`); g.fillStyle = '#fff2e0'; g.fillText(reason, W / 2, 470 + size * 0.85 + 70);
+  plain(`600 40px ${BODY}`); g.fillStyle = '#ede6da'; g.fillText(reason, W / 2, 470 + size * 0.85 + 70);
   cond(`800 54px ${DISPLAY}`); g.fillStyle = accent; g.fillText(s.room.name.toUpperCase().slice(0, 28), W / 2, 470 + size * 0.85 + 150);
   // credits block
   const lines: string[] = [];

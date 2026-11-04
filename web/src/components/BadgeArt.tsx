@@ -3,8 +3,8 @@ import { motion } from 'framer-motion';
 
 /* Illustrated medals. Each badge has its own emblem; the rim colour tells you the rarity. */
 const RIM: Record<string, [string, string]> = {
-  first_blood: ['#ff6a1a', '#a61b12'], hat_trick: ['#ffd400', '#c9a400'], ghost: ['#fff2e0', '#8c9bff'], full_clear: ['#3ddc97', '#0e6b4a'],
-  first_win: ['#f2b33d', '#a66b00'], veteran: ['#ffb27a', '#5c0d0a'], road_runner: ['#ff8a3d', '#e8361f'], marathon: ['#8c9bff', '#1b2a6b'],
+  first_blood: ['#d9541e', '#8e2e22'], hat_trick: ['#c9a227', '#9e8020'], ghost: ['#ede6da', '#8c9bff'], full_clear: ['#7fa38a', '#0e6b4a'],
+  first_win: ['#b8923a', '#a66b00'], veteran: ['#e0a27a', '#3a1712'], road_runner: ['#e0784a', '#b23a2b'], marathon: ['#8c9bff', '#1b2a6b'],
 };
 function Emblem({ code, c }: { code: string; c: string }) {
   const s = { fill: 'none', stroke: c, strokeWidth: 3, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
@@ -22,17 +22,17 @@ function Emblem({ code, c }: { code: string; c: string }) {
 }
 export function BadgeArt({ code, on, size = 64 }: { code: string; on: boolean; size?: number }) {
   const id = useId().replace(/:/g, '');
-  const [a, b] = RIM[code] ?? ['#ffb27a', '#5c0d0a'];
+  const [a, b] = RIM[code] ?? ['#e0a27a', '#3a1712'];
   return (
     <svg width={size} height={size * 1.2} viewBox="0 0 64 76" aria-hidden style={{ display: 'block', margin: '0 auto', overflow: 'visible' }}>
       <defs>
-        <linearGradient id={`${id}r`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor={on ? a : '#5a524c'} /><stop offset="100%" stopColor={on ? b : '#2e2723'} /></linearGradient>
+        <linearGradient id={`${id}r`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor={on ? a : '#5a524c'} /><stop offset="100%" stopColor={on ? b : '#2a2a2f'} /></linearGradient>
         <radialGradient id={`${id}f`} cx="50%" cy="35%" r="65%"><stop offset="0%" stopColor={on ? '#2a1a12' : '#1a1715'} /><stop offset="100%" stopColor="#0b0807" /></radialGradient>
         <linearGradient id={`${id}s`} x1="0" x2="1"><stop offset="0%" stopColor="#fff" stopOpacity="0" /><stop offset="50%" stopColor="#fff" stopOpacity=".55" /><stop offset="100%" stopColor="#fff" stopOpacity="0" /></linearGradient>
         <clipPath id={`${id}c`}><circle cx="32" cy="32" r="27" /></clipPath>
       </defs>
       {/* ribbon tails */}
-      <path d="M22 52 L18 74 L26 69 L30 76 L32 56Z" fill={on ? b : '#2e2723'} />
+      <path d="M22 52 L18 74 L26 69 L30 76 L32 56Z" fill={on ? b : '#2a2a2f'} />
       <path d="M42 52 L46 74 L38 69 L34 76 L32 56Z" fill={on ? a : '#3a332e'} />
       <circle cx="32" cy="32" r="30" fill={`url(#${id}r)`} />
       <circle cx="32" cy="32" r="25" fill={`url(#${id}f)`} />
@@ -42,7 +42,7 @@ export function BadgeArt({ code, on, size = 64 }: { code: string; on: boolean; s
           <motion.rect y="0" width="18" height="64" fill={`url(#${id}s)`} transform="skewX(-20)" initial={{ x: -30 }} animate={{ x: 90 }} transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 3.5, ease: 'easeInOut' }} />
         </g>
       )}
-      {!on && <g transform="translate(43 42)"><circle r="8" fill="#14110f" stroke="#5a524c" /><path d="M-3 0v-2a3 3 0 016 0v2M-4 0h8v5h-8z" fill="none" stroke="#8a7f78" strokeWidth="1.4" /></g>}
+      {!on && <g transform="translate(43 42)"><circle r="8" fill="#0b0b0c" stroke="#5a524c" /><path d="M-3 0v-2a3 3 0 016 0v2M-4 0h8v5h-8z" fill="none" stroke="#8a7f78" strokeWidth="1.4" /></g>}
     </svg>
   );
 }

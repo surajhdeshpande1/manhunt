@@ -39,14 +39,14 @@ function RoomHeader({ s, onLeave, leaveLabel = 'Leave' }: { s: RoomState; onLeav
         style={{ fontSize: 'clamp(38px, 12vw, 52px)', margin: '14px 0 18px', wordBreak: 'break-word' }}>{s.room.name}</motion.h1>
       <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
         {code && !s.room.is_public && (
-          <motion.button whileTap={{ scale: 0.96 }} className="row" style={{ gap: 10, padding: '8px 12px 8px 14px', background: 'var(--police)', color: '#14110f', borderRadius: 8, boxShadow: '0 0 0 2.5px var(--edge), 3px 3px 0 2.5px var(--edge)' }}
+          <motion.button whileTap={{ scale: 0.96 }} className="row" style={{ gap: 10, padding: '8px 12px 8px 14px', background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, boxShadow: '0 0 0 1px var(--line2)' }}
             onClick={async () => { await navigator.clipboard?.writeText(code).catch(() => {}); haptic.tap(); toast('Room ID copied'); }}>
-            <span style={{ fontSize: 11, fontWeight: 850, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Room ID</span>
-            <span className="mono" style={{ fontSize: 21, fontWeight: 850, letterSpacing: '0.08em' }}>{code}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--muted)' }}>Room ID</span>
+            <span className="mono" style={{ fontSize: 21, fontWeight: 800, letterSpacing: '0.1em', color: 'var(--police)' }}>{code}</span>
             <IconCopy s={16} />
           </motion.button>
         )}
-        <motion.button whileTap={{ scale: 0.96 }} className="row" style={{ gap: 8, padding: '0 14px', minHeight: 44, background: 'var(--surface)', borderRadius: 8, fontWeight: 800, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.04em', boxShadow: '0 0 0 2.5px var(--edge), 3px 3px 0 2.5px var(--edge)' }} onClick={share}><IconShare s={16} />Share</motion.button>
+        <motion.button whileTap={{ scale: 0.96 }} className="row" style={{ gap: 8, padding: '0 14px', minHeight: 44, background: 'var(--surface)', borderRadius: 8, fontWeight: 800, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.04em', boxShadow: '0 0 0 1px var(--line2)' }} onClick={share}><IconShare s={16} />Share</motion.button>
         {onLeave && <button className="muted" style={{ marginLeft: 'auto', fontSize: 13 }} onClick={onLeave}>{leaveLabel}</button>}
       </div>
     </header>
@@ -309,7 +309,7 @@ function Roster({ s, refresh, onInvite }: { s: RoomState; refresh: () => void; o
                 <div className="row" style={{ gap: 4 }}>
                   {(['runner', 'hunter'] as const).map((r) => (
                     <button key={r} className={`chip`} onClick={() => call('set_role', { p_user: m.id, p_role: m.role === r ? null : r })}
-                      style={{ minHeight: 34, padding: '0 10px', fontSize: 12, background: m.role === r ? (r === 'runner' ? 'var(--runner)' : 'var(--hunter)') : 'var(--surface2)', color: m.role === r ? (r === 'runner' ? '#170700' : '#000') : 'var(--muted)' }}>
+                      style={{ minHeight: 34, padding: '0 10px', fontSize: 12, background: m.role === r ? (r === 'runner' ? 'var(--runner)' : 'var(--hunter)') : 'var(--surface2)', color: m.role === r ? (r === 'runner' ? '#0b0b0c' : '#000') : 'var(--muted)' }}>
                       {r === 'runner' ? 'Run' : 'Hunt'}
                     </button>
                   ))}

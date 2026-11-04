@@ -14,9 +14,9 @@ export const titleLabel = (code?: string | null) => (code && code !== 'rookie' ?
 
 export type CardStyle = 'ember' | 'police' | 'midnight' | 'gold';
 export const STYLES: Record<CardStyle, { label: string; how: string; bg: string; ring: string; ink: string; accent: string }> = {
-  // flat brutalist ID cards: one solid colour, ink outline, a halftone corner
-  ember: { label: 'Ember', how: 'Default', bg: '#ff6a1a', ring: '#14110f', ink: '#14110f', accent: '#fff2e0' },
-  police: { label: 'Police line', how: 'Default', bg: '#ffd400', ring: '#14110f', ink: '#14110f', accent: '#14110f' },
-  midnight: { label: 'Midnight', how: 'Default', bg: '#1b2a6b', ring: '#fff2e0', ink: '#fff2e0', accent: '#ffd400' },
-  gold: { label: 'Gold', how: 'Win a match', bg: '#f2b33d', ring: '#14110f', ink: '#14110f', accent: '#a61b12' },
+  // calm graphite ID cards; the style shows as one accent colour (band, ring, title)
+  ember: { label: 'Ember', how: 'Default', bg: '#17171a', ring: '#d9541e', ink: '#ede6da', accent: '#d9541e' },
+  police: { label: 'Brass', how: 'Default', bg: '#17171a', ring: '#c9a227', ink: '#ede6da', accent: '#c9a227' },
+  midnight: { label: 'Midnight', how: 'Default', bg: '#12151d', ring: '#8ea0c8', ink: '#ede6da', accent: '#8ea0c8' },
+  gold: { label: 'Gold', how: 'Win a match', bg: '#1a1712', ring: '#d4b062', ink: '#f2ead9', accent: '#d4b062' },
 };

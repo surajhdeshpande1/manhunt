@@ -69,7 +69,7 @@ export function TornEdge({ color, height = 18, seed = 5, flip, style }: { color:
    ===================================================================== */
 export function TapePiece({ text = 'POLICE', rotate = -12, style }: { text?: string; rotate?: number; style?: React.CSSProperties }) {
   return (
-    <span aria-hidden style={{ position: 'absolute', zIndex: 3, padding: '4px 14px', rotate: `${rotate}deg`, background: 'repeating-linear-gradient(-45deg, #ffd400 0 10px, #f2c400 10px 20px)', color: '#000',
+    <span aria-hidden style={{ position: 'absolute', zIndex: 3, padding: '4px 14px', rotate: `${rotate}deg`, background: 'repeating-linear-gradient(-45deg, #c9a227 0 10px, #f2c400 10px 20px)', color: '#000',
       fontSize: 10.5, fontWeight: 850, letterSpacing: '0.12em', border: '2px solid #000', boxShadow: '3px 3px 0 #000', ...style }}>{text}</span>
   );
 }

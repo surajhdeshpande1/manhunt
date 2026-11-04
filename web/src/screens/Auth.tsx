@@ -61,7 +61,7 @@ export function Steps({ n, of = 3 }: { n: number; of?: number }) {
   return (
     <div className="row" style={{ gap: 6 }} aria-label={`Step ${n} of ${of}`}>
       {Array.from({ length: of }, (_, i) => (
-        <span key={i} style={{ position: 'relative', width: 30, height: 10, borderRadius: 2, background: 'var(--surface)', boxShadow: '0 0 0 2px var(--edge)', overflow: 'hidden' }}>
+        <span key={i} style={{ position: 'relative', width: 30, height: 10, borderRadius: 2, background: 'var(--surface)', boxShadow: '0 0 0 1px var(--line2)', overflow: 'hidden' }}>
           {i < n && <motion.span initial={{ scaleX: i === n - 1 ? 0 : 1 }} animate={{ scaleX: 1 }} transition={{ delay: 0.3, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             style={{ position: 'absolute', inset: 0, background: 'var(--grad-flare)', transformOrigin: 'left',  }} />}
         </span>
@@ -336,7 +336,7 @@ export function Permissions() {
           {rows.map((r, i) => (
             <motion.div key={r.t} className="frame soft cut" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 + i * 0.08 }}>
               <div className="inner cut row" style={{ padding: 16, alignItems: 'flex-start', gap: 14 }}>
-                <div style={{ width: 44, height: 44, flex: 'none', borderRadius: 8, display: 'grid', placeItems: 'center', color: '#14110f', background: ['var(--flare)', 'var(--cream)', 'var(--police)'][i], boxShadow: '0 0 0 2.5px var(--edge), 3px 3px 0 2.5px var(--edge)' }}>{r.icon}</div>
+                <div style={{ width: 44, height: 44, flex: 'none', borderRadius: 8, display: 'grid', placeItems: 'center', color: '#0b0b0c', background: ['var(--flare)', 'var(--cream)', 'var(--police)'][i], boxShadow: '0 0 0 1px var(--line2)' }}>{r.icon}</div>
                 <div className="grow">
                   <div className="row between">
                     <div style={{ fontSize: 17, fontWeight: 650 }}>{r.t}</div>

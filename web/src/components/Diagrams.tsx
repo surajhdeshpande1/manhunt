@@ -5,7 +5,7 @@ import { haptic } from '../lib/feel';
 import { Silhouette } from './Scenes';
 
 const ease = [0.22, 1, 0.36, 1] as const;
-const C = { orange: '#ff6a1a', ember: '#e8361f', yellow: '#ffd400', gold: '#f2b33d', copper: '#d9772b', wine: '#4a0f1f', plum: '#2a0a18', cream: '#fff2e0', rust: '#a63a12' };
+const C = { orange: '#d9541e', ember: '#b23a2b', yellow: '#c9a227', gold: '#b8923a', copper: '#b8692f', wine: '#4a0f1f', plum: '#2a0a18', cream: '#ede6da', rust: '#8e3a1c' };
 
 /* =====================================================================
    HOW IT WORKS — four illustrated plates, swipeable

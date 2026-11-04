@@ -9,7 +9,7 @@ import { resolvedDay, useAppearance } from '../lib/theme';
   streaks, the hunters' searchlight is police yellow. No grids, no textures, just light.
 */
 
-export const FLARE = ['#ffd400', '#ffb020', '#ff6a1a', '#e8361f', '#b3170f'];
+export const FLARE = ['#c9a227', '#c98a2e', '#d9541e', '#b23a2b', '#8e2e22'];
 
 /* ---------- Ambient backdrop: drifting pools of light behind every screen ---------- */
 export const Backdrop = memo(function Backdrop() {
@@ -35,7 +35,7 @@ export function TapeBand({ text = 'POLICE LINE · DO NOT CROSS', rotate = -4, st
   const reduce = useReducedMotion();
   const line = Array.from({ length: 10 }, () => text).join('   ·   ');
   return (
-    <div aria-hidden style={{ position: 'absolute', left: '-20%', right: '-20%', rotate: `${rotate}deg`, overflow: 'hidden', background: '#ffd400', color: '#000', padding: '7px 0',
+    <div aria-hidden style={{ position: 'absolute', left: '-20%', right: '-20%', rotate: `${rotate}deg`, overflow: 'hidden', background: '#c9a227', color: '#000', padding: '7px 0',
       fontWeight: 900, fontSize: 12.5, letterSpacing: '0.08em', whiteSpace: 'nowrap', borderTop: '2.5px solid #000', borderBottom: '2.5px solid #000', ...style }}>
       <motion.div animate={reduce ? undefined : { x: ['0%', '-50%'] }} transition={{ duration: 22, repeat: Infinity, ease: 'linear' }}>{line}   ·   {line}</motion.div>
     </div>
@@ -49,7 +49,7 @@ export function Orbit({ size = 40 }: { size?: number }) {
   return (
     <span role="status" aria-label="Loading" style={{ position: 'relative', width: size, height: size, display: 'inline-block' }}>
       {[{ c: 'var(--runner)', d: 0 }, { c: 'var(--hunter)', d: -0.5 }].map((b, i) => (
-        <motion.span key={i} style={{ position: 'absolute', width: s, height: s, background: b.c, boxShadow: '0 0 0 2px var(--edge)', borderRadius: 2 }}
+        <motion.span key={i} style={{ position: 'absolute', width: s, height: s, background: b.c, boxShadow: '0 0 0 1px var(--line2)', borderRadius: 2 }}
           animate={path} transition={{ duration: 1.6, delay: b.d, repeat: Infinity, ease: [0.7, 0, 0.3, 1], times: [0, 0.25, 0.5, 0.75, 1] }} />
       ))}
     </span>
@@ -71,13 +71,13 @@ export function CountUp({ value, decimals = 0, suffix = '' }: { value: number; d
 }
 
 /* ---------- Burst of flat cut-paper chips (catch / success moments) ---------- */
-export function Sparks({ n = 14, color = '#ff6a1a', radius = 120 }: { n?: number; color?: string; radius?: number }) {
+export function Sparks({ n = 14, color = '#d9541e', radius = 120 }: { n?: number; color?: string; radius?: number }) {
   return (
     <span aria-hidden style={{ position: 'absolute', left: '50%', top: '50%', width: 0, height: 0, pointerEvents: 'none' }}>
       {Array.from({ length: n }, (_, i) => {
         const a = (i / n) * Math.PI * 2 + (i % 2) * 0.2, r = radius * (0.7 + ((i * 37) % 10) / 25), sz = 8 + (i % 3) * 4;
         return (
-          <motion.span key={i} style={{ position: 'absolute', width: sz, height: sz, marginLeft: -sz / 2, marginTop: -sz / 2, background: ['#ffd400', color, '#fff2e0'][i % 3], boxShadow: '0 0 0 2px #14110f', borderRadius: i % 4 === 0 ? '50%' : 1 }}
+          <motion.span key={i} style={{ position: 'absolute', width: sz, height: sz, marginLeft: -sz / 2, marginTop: -sz / 2, background: ['#c9a227', color, '#ede6da'][i % 3], boxShadow: '0 0 0 2px #0b0b0c', borderRadius: i % 4 === 0 ? '50%' : 1 }}
             initial={{ x: 0, y: 0, opacity: 1, rotate: 0, scale: 0.4 }} animate={{ x: Math.cos(a) * r, y: Math.sin(a) * r, opacity: [1, 1, 0], rotate: 180 + i * 20, scale: 1 }}
             transition={{ duration: 0.8, ease: [0.2, 0.9, 0.25, 1], delay: 0.02 * (i % 4) }} />
         );

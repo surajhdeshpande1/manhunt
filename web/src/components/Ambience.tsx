@@ -18,12 +18,12 @@ export const RunnerAmbience = memo(function RunnerAmbience({ exposed = false, in
   return (
     <div aria-hidden style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 25, overflow: 'hidden', opacity: intensity }}>
       {/* heartbeat at the edges: lub-dub, faster when you're exposed */}
-      <motion.div style={{ position: 'absolute', inset: 0, boxShadow: `inset 0 0 0 ${exposed ? 8 : 5}px ${exposed ? '#e8361f' : '#ff6a1a'}` }}
+      <motion.div style={{ position: 'absolute', inset: 0, boxShadow: `inset 0 0 0 ${exposed ? 8 : 5}px ${exposed ? '#b23a2b' : '#d9541e'}` }}
         animate={{ opacity: [0.15, 0.95, 0.35, 0.8, 0.15] }} transition={{ duration: beat, times: [0, 0.12, 0.25, 0.37, 1], repeat: Infinity, ease: 'easeOut' }} />
       {/* embers rising from the bottom */}
       {embers.map((e, i) => (
         <motion.span key={i} style={{ position: 'absolute', bottom: -10, left: `${e.x}%`,
-          width: e.s + 4, height: e.s + 4, borderRadius: 1, background: e.hot ? '#ffd400' : '#ff6a1a', boxShadow: '0 0 0 1.5px #14110f' }}
+          width: e.s + 4, height: e.s + 4, borderRadius: 1, background: e.hot ? '#c9a227' : '#d9541e', boxShadow: '0 0 0 1.5px #0b0b0c' }}
           animate={{ y: [0, -(260 + e.d * 260)], x: [0, e.drift], opacity: [0, 1, 0.8, 0], rotate: [0, 180 + e.drift * 3], scale: [1, 1, 0.4] }}
           transition={{ duration: 4 + e.d * 4, delay: e.d * 6, repeat: Infinity, ease: 'easeOut' }} />
       ))}
@@ -33,7 +33,7 @@ export const RunnerAmbience = memo(function RunnerAmbience({ exposed = false, in
         {Array.from({ length: 8 }, (_, i) => (
           <motion.svg key={i} width="10" height="16" viewBox="0 0 10 16" style={{ transform: `translateY(${i % 2 ? -7 : 0}px) rotate(90deg)` }}
             animate={{ opacity: [0, 0.9, 0] }} transition={{ duration: 3, delay: i * 0.25, repeat: Infinity, repeatDelay: 1 }}>
-            <ellipse cx="5" cy="10" rx="4" ry="5.5" fill="#ff6a1a" stroke="#14110f" strokeWidth="1.2" /><ellipse cx="5" cy="2.6" rx="2.6" ry="2.4" fill="#ff6a1a" stroke="#14110f" strokeWidth="1.2" />
+            <ellipse cx="5" cy="10" rx="4" ry="5.5" fill="#d9541e" stroke="#0b0b0c" strokeWidth="1.2" /><ellipse cx="5" cy="2.6" rx="2.6" ry="2.4" fill="#d9541e" stroke="#0b0b0c" strokeWidth="1.2" />
           </motion.svg>
         ))}
       </motion.div>
@@ -47,9 +47,9 @@ export const HunterAmbience = memo(function HunterAmbience({ hunting = true, int
   return (
     <div aria-hidden style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 25, overflow: 'hidden', opacity: intensity }}>
       {/* radar sweep, bottom-left corner */}
-      <div style={{ position: 'absolute', left: -150, bottom: -150, width: 300, height: 300, borderRadius: '50%', boxShadow: 'inset 0 0 0 2.5px rgba(255,212,0,.5)' }}>
-        {[0.33, 0.66].map((k) => <span key={k} style={{ position: 'absolute', inset: `${k * 50}%`, borderRadius: '50%', boxShadow: 'inset 0 0 0 2px rgba(255,212,0,.35)' }} />)}
-        <motion.span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'conic-gradient(from 0deg, rgba(255,212,0,.38) 0deg 40deg, transparent 40deg)' }}
+      <div style={{ position: 'absolute', left: -150, bottom: -150, width: 300, height: 300, borderRadius: '50%', boxShadow: 'inset 0 0 0 2.5px rgba(201,162,39,.5)' }}>
+        {[0.33, 0.66].map((k) => <span key={k} style={{ position: 'absolute', inset: `${k * 50}%`, borderRadius: '50%', boxShadow: 'inset 0 0 0 2px rgba(201,162,39,.35)' }} />)}
+        <motion.span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'conic-gradient(from 0deg, rgba(201,162,39,.38) 0deg 40deg, transparent 40deg)' }}
           animate={{ rotate: 360 }} transition={{ duration: hunting ? 3 : 6, repeat: Infinity, ease: 'linear' }} />
       </div>
       {/* two searchlights panning from the top corners */}
@@ -57,12 +57,12 @@ export const HunterAmbience = memo(function HunterAmbience({ hunting = true, int
         <motion.div key={i} style={{ position: 'absolute', top: -40, left: l.x, width: 0, height: 0, transformOrigin: '0 0' }}
           animate={{ rotate: [l.from, l.to, l.from] }} transition={{ duration: 9, delay: l.d, repeat: Infinity, ease: 'easeInOut' }}>
           <span style={{ position: 'absolute', left: -90, top: 0, width: 180, height: '85vh', clipPath: 'polygon(46% 0, 54% 0, 100% 100%, 0 100%)',
-            background: 'rgba(255,212,0,.16)' }} />
+            background: 'rgba(201,162,39,.16)' }} />
         </motion.div>
       ))}
       {/* police tape along the top edge, gently scrolling */}
       <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 9, overflow: 'hidden', borderBottom: '2px solid #000' }}>
-        <motion.div style={{ width: '200%', height: '100%', background: 'repeating-linear-gradient(-45deg, #ffd400 0 10px, #000 10px 20px)' }}
+        <motion.div style={{ width: '200%', height: '100%', background: 'repeating-linear-gradient(-45deg, #c9a227 0 10px, #000 10px 20px)' }}
           animate={{ x: ['0%', '-50%'] }} transition={{ duration: 18, repeat: Infinity, ease: 'linear' }} />
       </div>
     </div>
@@ -71,7 +71,7 @@ export const HunterAmbience = memo(function HunterAmbience({ hunting = true, int
 
 /* ---------- small HUD glyphs ---------- */
 /** an ECG trace; speeds up when exposed */
-export function Heartbeat({ exposed = false, width = 54, color = '#ff6a1a' }: { exposed?: boolean; width?: number; color?: string }) {
+export function Heartbeat({ exposed = false, width = 54, color = '#d9541e' }: { exposed?: boolean; width?: number; color?: string }) {
   const d = 'M0 12 H14 L18 4 L22 20 L26 8 L29 12 H54';
   return (
     <svg width={width} height="24" viewBox="0 0 54 24" aria-hidden style={{ display: 'block' }}>
@@ -83,7 +83,7 @@ export function Heartbeat({ exposed = false, width = 54, color = '#ff6a1a' }: { 
   );
 }
 /** a tiny rotating radar */
-export function RadarGlyph({ size = 26, color = '#ffd400' }: { size?: number; color?: string }) {
+export function RadarGlyph({ size = 26, color = '#c9a227' }: { size?: number; color?: string }) {
   return (
     <span aria-hidden style={{ position: 'relative', width: size, height: size, display: 'inline-block', borderRadius: '50%', boxShadow: `inset 0 0 0 2px ${color}` }}>
       <span style={{ position: 'absolute', inset: '30%', borderRadius: '50%', boxShadow: `inset 0 0 0 1px ${color}55` }} />
