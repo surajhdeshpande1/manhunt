@@ -7,9 +7,9 @@ import { useSession } from '../lib/session';
 import { useTheme } from '../lib/theme';
 import { haptic } from '../lib/feel';
 import { timeAgo } from '../lib/clock';
-import { LightTrails } from '../components/Art';
+import { ArtPanel, ChaseScene } from '../components/Brut';
+import { resolvedDay, useAppearance } from '../lib/theme';
 import { HowItWorks } from '../components/Diagrams';
-import { NightCampus } from '../components/Scenes';
 import Profile from './Profile';
 
 export default function Home() {
@@ -35,22 +35,21 @@ function TabBar() {
   ];
   return (
     <nav aria-label="Main" style={{ position: 'fixed', left: 0, right: 0, bottom: 'calc(env(safe-area-inset-bottom) + 12px)', zIndex: 100, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
-      <div style={{ pointerEvents: 'auto', display: 'grid', gridTemplateColumns: 'repeat(3, 92px)', padding: 6, borderRadius: 24,
-        background: 'color-mix(in srgb, var(--surface) 82%, transparent)', backdropFilter: 'blur(18px) saturate(1.4)', WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
-        boxShadow: 'inset 0 0 0 1px var(--line2), inset 0 1px 0 var(--hi), 0 20px 40px -16px rgba(0,0,0,.6)' }}>
+      <div style={{ pointerEvents: 'auto', display: 'grid', gridTemplateColumns: 'repeat(3, 96px)', gap: 4, padding: 5, borderRadius: 12,
+        background: 'var(--surface)', boxShadow: '0 0 0 2.5px var(--edge), 5px 5px 0 2.5px var(--edge)' }}>
         {tabs.map((t) => (
           <NavLink key={t.to} to={t.to} end={t.end} onClick={() => haptic.tap()}
             style={({ isActive }) => ({ position: 'relative', height: 54, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
-              color: isActive ? '#fff' : 'var(--muted)', textDecoration: 'none', transition: 'color .35s var(--ease-out)', borderRadius: 18 })}>
+              color: isActive ? '#14110f' : 'var(--muted)', textDecoration: 'none', transition: 'color .25s var(--ease-out)', borderRadius: 8 })}>
             {({ isActive }) => (
               <>
-                {isActive && <motion.span layoutId="tabbar" transition={{ type: 'spring', damping: 24, stiffness: 340 }}
-                  style={{ position: 'absolute', inset: 0, borderRadius: 18, background: 'var(--grad-ember)', boxShadow: 'inset 0 1px 0 rgba(255,230,200,.45), 0 8px 22px -6px rgba(255,90,20,.7)' }} />}
+                {isActive && <motion.span layoutId="tabbar" transition={{ type: 'spring', damping: 30, stiffness: 420 }}
+                  style={{ position: 'absolute', inset: 0, borderRadius: 8, background: 'var(--flare)', boxShadow: '0 0 0 2px #14110f' }} />}
                 <span style={{ position: 'relative' }}>
                   {t.icon}
-                  {t.badge > 0 && <span style={{ position: 'absolute', top: -5, right: -9, minWidth: 17, height: 17, padding: '0 5px', borderRadius: 9, background: 'var(--danger)', color: '#fff', fontSize: 10.5, fontWeight: 750, display: 'grid', placeItems: 'center', boxShadow: '0 0 0 2px var(--surface)' }}>{t.badge}</span>}
+                  {t.badge > 0 && <span style={{ position: 'absolute', top: -5, right: -9, minWidth: 17, height: 17, padding: '0 5px', borderRadius: 4, background: 'var(--danger)', color: '#fff', fontSize: 10.5, fontWeight: 850, display: 'grid', placeItems: 'center', boxShadow: '0 0 0 2px #14110f' }}>{t.badge}</span>}
                 </span>
-                <span style={{ position: 'relative', fontSize: 11.5, fontWeight: 650 }}>{t.label}</span>
+                <span style={{ position: 'relative', fontSize: 11, fontWeight: 850, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t.label}</span>
               </>
             )}
           </NavLink>
@@ -99,8 +98,8 @@ function RoomsTab() {
       <header className="row between" style={{ position: 'relative', zIndex: 2 }}>
         <Logo size={30} />
         <div className="row" style={{ gap: 10 }}>
-          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setHow(true)} aria-label="How TAG works" style={{ width: 40, height: 40, borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'var(--quiet-fill)', boxShadow: 'inset 0 0 0 1px var(--line)', fontWeight: 700, color: 'var(--text)' }}>?</motion.button>
-          <button onClick={() => nav('/home/profile')} aria-label="Your profile" style={{ borderRadius: '50%' }}><Avatar src={profile?.selfie_path} name={profile?.username} size={40} /></button>
+          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setHow(true)} aria-label="How TAG works" style={{ width: 42, height: 42, borderRadius: 8, display: 'grid', placeItems: 'center', background: 'var(--surface)', boxShadow: '0 0 0 2.5px var(--edge), 3px 3px 0 2.5px var(--edge)', fontWeight: 900, fontSize: 18, color: 'var(--text)' }}>?</motion.button>
+          <button onClick={() => nav('/home/profile')} aria-label="Your profile" style={{ borderRadius: 8 }}><Avatar src={profile?.selfie_path} name={profile?.username} size={40} /></button>
         </div>
       </header>
 
@@ -142,7 +141,7 @@ function RoomsTab() {
       )}
 
       <motion.button whileTap={{ scale: 0.98 }} onClick={() => setPrivOpen(true)} className="card row" style={{ textAlign: 'left', padding: 16, gap: 14 }}>
-        <div style={{ width: 48, height: 48, display: 'grid', placeItems: 'center', background: 'var(--grad-police)', color: '#000', borderRadius: 16, boxShadow: '0 10px 24px -10px #ffd400', rotate: '-6deg' }}><IconLock s={21} /></div>
+        <div style={{ width: 48, height: 48, display: 'grid', placeItems: 'center', background: 'var(--police)', color: '#000', borderRadius: 8, boxShadow: '0 0 0 2.5px #14110f', rotate: '-4deg' }}><IconLock s={21} /></div>
         <div className="grow">
           <div style={{ fontSize: 16.5, fontWeight: 650 }}>Join a private room</div>
           <div className="muted" style={{ fontSize: 13.5 }}>Enter the room ID and password from your admin.</div>
@@ -172,37 +171,32 @@ function RoomsTab() {
 
 /* ---------- HERO ---------- */
 function Hero({ room, name, open, onOpen, onHost, onJoin }: { room?: MyRoom; name: string; open: number; onOpen: (id: string) => void; onHost: () => void; onJoin: () => void }) {
-  const ease = [0.22, 1, 0.36, 1] as const;
+  const ease = [0.2, 0.9, 0.25, 1] as const;
   const live = room && room.status !== 'lobby' && room.status !== 'ended';
+  const day = resolvedDay(useAppearance());
   return (
-    <motion.section initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, ease }}
-      className="force-night" style={{ position: 'relative', margin: '0 -8px', borderRadius: 30, overflow: 'hidden', minHeight: 'min(64vh, 520px)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-        background: 'radial-gradient(120% 80% at 80% 0%, #1b2a6b 0%, transparent 55%), radial-gradient(100% 70% at 0% 100%, #5c0d0a, transparent 60%), #070405',
-        boxShadow: '0 30px 70px -30px rgba(232,54,31,.55), inset 0 0 0 1px rgba(255,220,190,.1)' }}>
-      <div aria-hidden style={{ position: 'absolute', inset: 0 }}><LightTrails height="100%" /></div>
-      <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}><NightCampus height={150} seed={room ? room.name.length : 2} night /></div>
-      <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 30%, rgba(0,0,0,.55) 62%, rgba(0,0,0,.9))' }} />
-      <div style={{ position: 'relative', padding: '0 20px 20px' }}>
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, ease }} className="row" style={{ gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: '#ffb27a' }}>{greeting()}, {name}</span>
+    <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease }} className="card" style={{ overflow: 'hidden', padding: 0 }}>
+      <div aria-hidden style={{ height: 'clamp(150px, 26vh, 210px)', borderBottom: '2.5px solid var(--edge)', background: day ? '#ffe3c2' : '#1b1512' }}><ChaseScene height="100%" seed={room ? room.name.length : 2} day={day} /></div>
+      <div style={{ padding: '20px 20px 22px' }}>
+        <div className="row" style={{ gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+          <span className="eyebrow" style={{ color: 'var(--tint-text)' }}>{greeting()}, {name}</span>
           {room && <StatusTag s={room.status} />}
-        </motion.div>
-        <motion.h1 className="display" initial={{ opacity: 0, y: 18, filter: 'blur(10px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ delay: 0.3, duration: 0.8, ease }}
-          style={{ fontSize: 'clamp(44px, 14vw, 72px)', margin: 0, color: '#fff6f0', wordBreak: 'break-word' }}>
-          {room ? room.name : <>Tonight’s hunt<br /><span className="text-flare">starts with you.</span></>}
-        </motion.h1>
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} style={{ margin: '10px 0 16px', color: 'rgba(255,240,230,.72)', fontSize: 14.5, maxWidth: 360 }}>
+        </div>
+        <h1 className="display" style={{ fontSize: 'clamp(40px, 12.5vw, 64px)', margin: 0, wordBreak: 'break-word' }}>
+          {room ? room.name : <>Tonight’s hunt <span className="text-flare">starts with you.</span></>}
+        </h1>
+        <p style={{ margin: '12px 0 20px', color: 'var(--muted)', fontSize: 15.5, maxWidth: 380 }}>
           {room ? `${room.is_admin ? 'You’re the admin' : room.my_status === 'pending' ? 'Waiting for the admin to let you in' : 'You’re in'} · ${room.players} ${room.players === 1 ? 'player' : 'players'}${live ? ' · match in progress' : ''}`
             : open > 0 ? `${open} public ${open === 1 ? 'room is' : 'rooms are'} taking players right now.` : 'Host a room for your friends, or join one with its room ID.'}
-        </motion.p>
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6, ease }} className="row" style={{ gap: 10 }}>
+        </p>
+        <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
           {room ? (
             <Button kind="hot" size="lg" className="grow" onClick={() => onOpen(room.id)}>{live ? 'Back to the match' : 'Open room'}</Button>
           ) : (<>
             <Button kind="hot" size="lg" className="grow" onClick={onHost}>Host a game</Button>
-            <Button kind="ghost" size="lg" className="grow" onClick={onJoin} style={{ color: '#fff6f0', boxShadow: 'inset 0 0 0 1px rgba(255,230,210,.3)' }}>Join with ID</Button>
+            <Button kind="ghost" size="lg" className="grow" onClick={onJoin}>Join with ID</Button>
           </>)}
-        </motion.div>
+        </div>
       </div>
     </motion.section>
   );
@@ -329,9 +323,9 @@ function HostTab() {
   return (
     <div className="screen" style={{ gap: 24 }}>
       <header style={{ position: 'relative', zIndex: 1, paddingTop: 12 }}>
-        <h1 className="display" style={{ fontSize: 52, margin: '18px 0 12px', fontWeight: 850, letterSpacing: '-0.06em', lineHeight: 0.95 }}>Run the<br /><span className="text-flare" style={{ paddingRight: 6 }}>whole game.</span></h1>
+        <h1 className="display" style={{ fontSize: 54, margin: '18px 0 14px' }}>Run the<br /><span className="text-flare" style={{ paddingRight: 6 }}>whole game.</span></h1>
         <p className="muted" style={{ margin: 0, maxWidth: 400 }}>As admin you draw the play area, set the rules and assign roles, then watch the whole map while everyone else plays.</p>
-        <div aria-hidden style={{ margin: '18px -20px 0', borderRadius: 0 }}><NightCampus height={120} seed={21} /></div>
+        <div aria-hidden style={{ marginTop: 20 }}><ArtPanel height={150} seed={21} day={resolvedDay(useAppearance())} /></div>
       </header>
 
       <form className="stack" style={{ gap: 18 }} onSubmit={create}>
@@ -355,7 +349,7 @@ function HostTab() {
             ) : (
               <div className="stack">
                 <p className="muted" style={{ margin: 0 }}>{profile?.application === 'rejected' ? 'Your last application was not approved. You can apply again.' : 'Organisers can host rooms anyone can find. Tell the owner who you are and what you plan to run.'}</p>
-                <textarea className="input" style={{ background: 'var(--surface)', boxShadow: 'inset 0 0 0 1px var(--line2)' }} maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. I run the BEC Creative Spectrum games night, ~40 players weekly." />
+                <textarea className="input" style={{ background: 'var(--surface)', boxShadow: '0 0 0 2.5px var(--line2)', borderRadius: 10 }} maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. I run the BEC Creative Spectrum games night, ~40 players weekly." />
                 <Button kind="ghost" loading={applying} disabled={note.trim().length < 10} onClick={apply}>Apply</Button>
               </div>
             )}

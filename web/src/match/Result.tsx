@@ -5,7 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FieldReport } from '../components/Diagrams';
 import { TapePiece } from '../components/Scenes';
-import { LightTrails } from '../components/Art';
+import { ArtPanel } from '../components/Brut';
+import { resolvedDay, useAppearance } from '../lib/theme';
 import { Avatar, Button, IconShare, Section, Slash, useToast } from '../components/ui';
 import { fmtDist } from '../lib/clock';
 import { useSession } from '../lib/session';
@@ -31,6 +32,7 @@ export function Result({ s }: { s: RoomState }) {
   const { profile, refresh } = useSession();
   const [sharing, setSharing] = useState(false);
   const v = verdict(s);
+  const day = resolvedDay(useAppearance());
   const reason = END_REASON[s.room.end_reason ?? ''] ?? '';
   const players = s.members.filter((m) => m.role);
   const meM = players.find((m) => m.id === profile?.id);
@@ -57,18 +59,12 @@ export function Result({ s }: { s: RoomState }) {
     <Slash>
       {createPortal(s.room.winner === 'runners' ? <RunnerAmbience intensity={0.55} /> : s.room.winner === 'hunters' ? <HunterAmbience hunting={false} intensity={0.5} /> : null, document.body)}
       <div className="screen" style={{ gap: 26 }}>
-        <div style={{ position: 'relative', paddingTop: 28, isolation: 'isolate', overflow: 'visible', contain: 'paint', margin: '0 -20px', padding: '28px 20px 0' }}>
-          {v.win !== false && <div aria-hidden style={{ position: 'absolute', left: -20, right: -20, top: -80, height: 360, zIndex: -1, pointerEvents: 'none', maskImage: 'linear-gradient(#000 50%, transparent)', WebkitMaskImage: 'linear-gradient(#000 50%, transparent)' }}><LightTrails height="100%" /></div>}
-          {[160, 260].map((d, i) => (
-            <motion.span key={d} aria-hidden style={{ position: 'absolute', right: -d / 2.6, top: -d / 3, width: d, height: d, borderRadius: '50%', border: `1.5px solid ${v.win === false ? 'var(--line2)' : 'var(--accent)'}`, opacity: 0.35 - i * 0.12 }}
-              initial={{ scale: 0.3, opacity: 0 }} animate={{ scale: 1, opacity: 0.35 - i * 0.12 }} transition={{ duration: 1.4, delay: 0.1 * i, ease: [0.22, 1, 0.36, 1] }} />
-          ))}
-          <div style={{ position: 'relative' }}>
-            <div className="eyebrow">{s.room.name}, final result</div>
-            <motion.h1 initial={{ opacity: 0, y: 16, filter: 'blur(10px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              style={{ fontSize: 'min(19vw, 92px)', margin: '6px 0 0', fontWeight: 800, letterSpacing: '-0.055em', color: v.win === false ? 'var(--muted)' : v.win ? undefined : 'var(--text)', paddingRight: 8 }} className={`display ${v.win ? 'text-flare' : ''}`}>{v.title}</motion.h1>
-            <div style={{ fontSize: 18, fontWeight: 550, marginTop: 6 }}>{reason}</div>
-          </div>
+        {v.win !== false && <ArtPanel height="clamp(140px, 22vh, 190px)" seed={s.room.name.length} day={day} />}
+        <div>
+          <div className="eyebrow">{s.room.name} · final result</div>
+          <motion.h1 initial={{ opacity: 0, y: 24, scale: 1.08 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+            style={{ fontSize: 'min(19vw, 96px)', margin: '10px 0 0', color: v.win === false ? 'var(--muted)' : v.win ? undefined : 'var(--text)', paddingRight: 8, transformOrigin: 'left' }} className={`display ${v.win ? 'text-flare' : ''}`}>{v.title}</motion.h1>
+          <div style={{ fontSize: 18, fontWeight: 750, marginTop: 10 }}>{reason}</div>
         </div>
         {s.progress && <ProgressBar p={s.progress} big />}
         <div style={{ position: 'relative' }}>
@@ -76,7 +72,7 @@ export function Result({ s }: { s: RoomState }) {
           <FieldReport members={s.members} meId={profile?.id} />
         </div>
         {meM && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'var(--line)', borderRadius: 20, overflow: 'hidden' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'var(--line)', borderRadius: 12, overflow: 'hidden' }}>
             {[['Role', meM.role === 'hunter' ? 'Hunter' : 'Runner'], [meM.role === 'hunter' ? 'Catches' : 'Tasks', meM.role === 'hunter' ? meM.catches : meM.tasks], ['Moved', fmtDist(meM.distance ?? 0)]].map(([k, val]) => (
               <div key={k as string} style={{ background: 'var(--surface)', padding: '14px 12px' }}>
                 <div className="display mono" style={{ fontSize: 26 }}>{val}</div>

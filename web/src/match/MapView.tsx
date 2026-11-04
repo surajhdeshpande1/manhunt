@@ -193,13 +193,13 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
 // marker styles (injected once)
 const css = `
 .tag-marker { display:flex; flex-direction:column; align-items:center; pointer-events:none; transition: transform .25s; }
-.tag-marker .tm-pin { position:relative; width:40px; height:40px; border-radius:50%; background:var(--accent); padding:3px; box-shadow:0 0 0 2px #fff, 0 6px 16px rgba(0,0,0,.45); }
-.tag-marker .tm-pin::after { content:''; position:absolute; inset:-3px; border-radius:50%; border:2px solid currentColor; opacity:0; color:inherit; }
+.tag-marker .tm-pin { position:relative; width:42px; height:42px; border-radius:9px; background:var(--accent); padding:3px; box-shadow:0 0 0 2.5px #14110f, 3px 3px 0 2.5px #14110f; }
+.tag-marker .tm-pin::after { content:''; position:absolute; inset:-3px; border-radius:10px; border:2px solid currentColor; opacity:0; color:inherit; }
 .tag-marker[data-role="runner"] .tm-pin { background:#ff6a1a; color:#ff6a1a; }
 .tag-marker[data-role="hunter"] .tm-pin { background:#ffd400; color:#ffd400; }
-.tag-marker .tm-img { width:100%; height:100%; background:#222 center/cover; border-radius:50%; display:grid; place-items:center; font:700 12px 'Inter Variable', system-ui; color:#fff; }
-.tag-marker .tm-label { margin-top:5px; padding:2px 7px; border-radius:999px; background:rgba(0,0,0,.78); color:#fff; font:600 11px/1.35 'Inter Variable', system-ui; letter-spacing:-.005em; white-space:nowrap; backdrop-filter:blur(6px); }
-.tag-marker .tm-title { margin-top:2px; padding:1px 6px; border-radius:4px; font:800 9px/1.3 'Archivo Variable', system-ui; font-stretch:80%; letter-spacing:.08em; text-transform:uppercase; color:#000; background:#ffd400; }
+.tag-marker .tm-img { width:100%; height:100%; background:#222 center/cover; border-radius:6px; display:grid; place-items:center; font:800 12px 'Inter Variable', system-ui; color:#fff; }
+.tag-marker .tm-label { margin-top:7px; padding:2px 7px; border-radius:4px; background:#14110f; color:#fff2e0; font:800 11px/1.35 'Inter Variable', system-ui; white-space:nowrap; box-shadow:0 0 0 1.5px #fff2e0; }
+.tag-marker .tm-title { margin-top:3px; padding:1px 6px; border-radius:3px; box-shadow:0 0 0 1.5px #14110f; font:800 9px/1.3 'Archivo Variable', system-ui; font-stretch:80%; letter-spacing:.08em; text-transform:uppercase; color:#000; background:#ffd400; }
 .tag-marker[data-role="runner"] .tm-title { background:#ff6a1a; color:#170700; }
 .tag-marker[data-me="1"] .tm-pin::after { animation: tmRing 2s cubic-bezier(.22,1,.36,1) infinite; }
 .tag-marker[data-stale="1"] { opacity:.45; }
@@ -208,8 +208,8 @@ const css = `
 @keyframes tmRing { 0% { transform:scale(1); opacity:.9; } 100% { transform:scale(2.1); opacity:0; } }
 /* role life: runners glow like embers, hunters send sonar pings */
 .tag-marker[data-role="runner"] .tm-pin { animation: tmEmber 1.6s ease-in-out infinite; }
-.tag-marker[data-role="hunter"] .tm-pin::before { content:''; position:absolute; inset:-3px; border-radius:50%; border:1.5px solid #ffd400; animation: tmSonar 2.4s cubic-bezier(.2,.8,.3,1) infinite; }
-@keyframes tmEmber { 0%,100% { box-shadow:0 0 0 2px #fff, 0 0 10px 2px rgba(255,106,26,.55), 0 6px 16px rgba(0,0,0,.45); } 50% { box-shadow:0 0 0 2px #fff, 0 0 22px 7px rgba(232,54,31,.75), 0 6px 16px rgba(0,0,0,.45); } }
+.tag-marker[data-role="hunter"] .tm-pin::before { content:''; position:absolute; inset:-3px; border-radius:10px; border:3px solid #ffd400; animation: tmSonar 2.4s cubic-bezier(.2,.8,.3,1) infinite; }
+@keyframes tmEmber { 0%,100% { transform:translate(0,0); box-shadow:0 0 0 2.5px #14110f, 3px 3px 0 2.5px #14110f; } 50% { transform:translate(-2px,-2px); box-shadow:0 0 0 2.5px #14110f, 5px 5px 0 2.5px #e8361f; } }
 @keyframes tmSonar { 0% { transform:scale(1); opacity:.95; } 100% { transform:scale(2.8); opacity:0; } }
 @media (prefers-reduced-motion: reduce) { .tag-marker .tm-pin, .tag-marker .tm-pin::before, .tag-marker .tm-pin::after { animation:none !important; } }
 `;

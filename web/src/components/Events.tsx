@@ -71,7 +71,7 @@ export const EventLayer = memo(function EventLayer({ event }: { event?: string |
     <div aria-hidden style={wrap}>
       {items.slice(0, 7).map((it, i) => (
         <motion.span key={i} style={{ position: 'absolute', left: `${it.x - 15}%`, top: `${it.y + 10}%`, width: 220 * it.s, height: 220 * it.s, borderRadius: '50%',
-          background: `radial-gradient(circle, ${['#ff4fd8', '#ffd400', '#3ddc97', '#2e6bff'][it.c]}55, transparent 65%)`, filter: 'blur(6px)' }}
+          background: `radial-gradient(circle, ${['#ff4fd8', '#ffd400', '#3ddc97', '#2e6bff'][it.c]}55, transparent 65%)` }}
           animate={{ scale: [0.6, 1.15, 0.6], opacity: [0, 0.8, 0] }} transition={{ duration: 6 + it.d * 5, delay: it.d * 6, repeat: Infinity }} />
       ))}
     </div>

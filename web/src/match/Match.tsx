@@ -159,9 +159,8 @@ function Hud({ s, geo, isAdmin, alive, role, onMenu }: { s: RoomState; geo: Geo;
     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20, padding: 'calc(env(safe-area-inset-top) + 10px) 12px 0', pointerEvents: 'none' }}>
       <motion.div initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', damping: 22, stiffness: 260 }}
         layout onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; haptic.tap(); setOpen((o) => !o); }} role="button" aria-expanded={open} aria-label="Match details"
-        className="force-night" style={{ pointerEvents: 'auto', position: 'relative', overflow: 'hidden', borderRadius: 22, padding: open ? '12px 14px 12px' : '8px 10px 10px 12px', cursor: 'pointer',
-          background: `radial-gradient(90% 140% at 0% 0%, ${status === 'hunt' ? 'rgba(232,54,31,.32)' : status === 'hiding' ? 'rgba(255,176,32,.22)' : 'rgba(255,255,255,.08)'}, transparent 60%), rgba(8,6,5,.78)`,
-          backdropFilter: 'blur(18px) saturate(1.3)', WebkitBackdropFilter: 'blur(18px) saturate(1.3)', boxShadow: 'inset 0 0 0 1px rgba(255,220,190,.12), 0 16px 40px -18px rgba(0,0,0,.8)' }}>
+        className="force-night" style={{ pointerEvents: 'auto', position: 'relative', overflow: 'hidden', borderRadius: 12, padding: open ? '12px 14px 12px' : '8px 10px 10px 12px', cursor: 'pointer',
+          background: '#14110f', boxShadow: `0 0 0 2.5px #fff2e0, 4px 4px 0 2.5px ${status === 'hunt' ? (role === 'hunter' ? '#ffd400' : '#ff6a1a') : status === 'hiding' ? '#ffd400' : '#fff2e0'}`, marginRight: 4 }}>
         <motion.div layout="position" className="row between" style={{ marginBottom: open ? 8 : 6, gap: 8 }}>
           <div className="row" style={{ gap: 8, flex: 'none' }}>
             <span className={`tag ${status === 'hunt' ? 'live' : ''}`}>{status === 'hunt' && <span className="dot pulse" />}{phase.t}</span>
@@ -179,17 +178,17 @@ function Hud({ s, geo, isAdmin, alive, role, onMenu }: { s: RoomState; geo: Geo;
           </div>
         </motion.div>
         {p && !open && (
-          <div style={{ position: 'relative', height: 4, borderRadius: 2, background: 'rgba(255,255,255,.1)' }} aria-label={`${Math.round(p.pct)} percent of tasks done, win at ${p.mark}`}>
-            <motion.div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 2, background: 'linear-gradient(90deg, #e8361f, #ff6a1a, #ffd400)', boxShadow: '0 0 8px rgba(255,106,26,.7)' }} animate={{ width: `${Math.min(100, p.pct)}%` }} />
-            <div style={{ position: 'absolute', left: `${p.mark}%`, top: -3, bottom: -3, width: 2, background: '#ffd400' }} />
+          <div style={{ position: 'relative', height: 8, borderRadius: 1, background: '#2e2723', boxShadow: '0 0 0 1.5px #fff2e0' }} aria-label={`${Math.round(p.pct)} percent of tasks done, win at ${p.mark}`}>
+            <motion.div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#ff6a1a' }} animate={{ width: `${Math.min(100, p.pct)}%` }} transition={{ type: 'spring', damping: 26, stiffness: 140 }} />
+            <div style={{ position: 'absolute', left: `${p.mark}%`, top: -4, bottom: -4, width: 4, marginLeft: -2, background: '#ffd400', boxShadow: '0 0 0 1.5px #14110f' }} />
           </div>
         )}
         <AnimatePresence initial={false}>
         {open && <motion.div key="more" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} style={{ overflow: 'hidden' }}>
         {p && <ProgressBar p={p} />}
         <div className="row" style={{ gap: 14, marginTop: 9, flexWrap: 'wrap', fontSize: 12, fontWeight: 600, color: 'rgba(255,240,230,.75)' }}>
-          <span className="row" style={{ gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--runner)', boxShadow: '0 0 8px var(--runner)' }} />{p?.runners_alive}/{p?.runners} runners</span>
-          <span className="row" style={{ gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--hunter)', boxShadow: '0 0 8px var(--hunter)' }} />{p?.hunters_alive} hunters</span>
+          <span className="row" style={{ gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--runner)',  }} />{p?.runners_alive}/{p?.runners} runners</span>
+          <span className="row" style={{ gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--hunter)',  }} />{p?.hunters_alive} hunters</span>
           {r.zone && <span className="row" style={{ gap: 6 }}><span style={{ width: 9, height: 9, borderRadius: '50%', border: '1.5px solid currentColor' }} />{fmtDist(r.zone.r)}{status === 'hunt' && r.next_shrink_at ? `, shrinks in ${fmtClock(msUntil(r.next_shrink_at))}` : ''}</span>}
         </div>
         </motion.div>}
@@ -207,21 +206,18 @@ function Hud({ s, geo, isAdmin, alive, role, onMenu }: { s: RoomState; geo: Geo;
 }
 
 export function ProgressBar({ p, big }: { p: NonNullable<RoomState['progress']>; big?: boolean }) {
-  const h = big ? 14 : 7;
+  const h = big ? 18 : 12;
   return (
     <div>
-      <div style={{ position: 'relative', height: h, background: 'rgba(255,255,255,.08)', borderRadius: h }}>
-        <div style={{ position: 'absolute', left: `${p.max_pct}%`, right: 0, top: 0, bottom: 0, borderRadius: `0 ${h}px ${h}px 0`, background: 'repeating-linear-gradient(-45deg, transparent 0 4px, rgba(255,69,58,.35) 4px 6px)' }} title="Out of reach" />
-        <motion.div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: h, overflow: 'hidden', background: 'linear-gradient(90deg, #b3170f, #e8361f 35%, #ff6a1a 70%, #ffd400)', backgroundSize: '300% 100%', backgroundPosition: 'right', boxShadow: '0 0 16px rgba(255,106,26,.65)' }}
-          initial={{ width: 0 }} animate={{ width: `${Math.min(100, p.pct)}%` }} transition={{ type: 'spring', damping: 22, stiffness: 120 }}>
-          <motion.span aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, width: '40%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent)' }}
-            animate={{ left: ['-40%', '120%'] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut', repeatDelay: 0.8 }} />
-        </motion.div>
-        <div style={{ position: 'absolute', left: `${p.mark}%`, top: -6, bottom: -6, width: 4, marginLeft: -2, borderRadius: 2, background: '#ffd400', boxShadow: '0 0 12px #ffd400' }} />
+      <div style={{ position: 'relative', height: h, background: 'var(--surface2)', boxShadow: '0 0 0 2.5px var(--edge)', borderRadius: 2 }}>
+        <div style={{ position: 'absolute', left: `${p.max_pct}%`, right: 0, top: 0, bottom: 0, background: 'repeating-linear-gradient(-45deg, transparent 0 5px, var(--danger) 5px 7px)', opacity: 0.6 }} title="Out of reach" />
+        <motion.div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: 'var(--flare)', borderRight: '2.5px solid var(--edge)' }}
+          initial={{ width: 0 }} animate={{ width: `${Math.min(100, p.pct)}%` }} transition={{ type: 'spring', damping: 24, stiffness: 120 }} />
+        <div style={{ position: 'absolute', left: `${p.mark}%`, top: -6, bottom: -6, width: 6, marginLeft: -3, background: 'var(--police)', boxShadow: '0 0 0 2px #14110f' }} />
       </div>
-      <div className="row between" style={{ marginTop: 4 }}>
-        <span className="display mono" style={{ fontSize: big ? 22 : 15 }}>{Math.round(p.pct)}%<span className="muted" style={{ fontSize: big ? 13 : 11, marginLeft: 6 }}>{p.done}/{p.total} tasks</span></span>
-        <span className="display mono" style={{ fontSize: big ? 15 : 12, color: 'var(--mark-text)' }}>Win at {p.mark}%</span>
+      <div className="row between" style={{ marginTop: 10 }}>
+        <span className="mono" style={{ fontSize: big ? 22 : 16, fontWeight: 900 }}>{Math.round(p.pct)}%<span className="muted" style={{ fontSize: big ? 13 : 12, marginLeft: 6, fontWeight: 650 }}>{p.done}/{p.total} tasks</span></span>
+        <span className="mono" style={{ fontSize: big ? 14 : 12, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--mark-text)' }}>Win at {p.mark}%</span>
       </div>
     </div>
   );
@@ -243,13 +239,12 @@ function Sheet({ children, peek }: { children: React.ReactNode; peek: number }) 
   }
   return (
     <motion.div drag="y" dragConstraints={{ top: 0, bottom: snaps[0] }} dragElastic={0.06} onDragEnd={end} animate={ctl} initial={{ y: snaps[0] }}
-      style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: full, zIndex: 30, touchAction: 'none', borderRadius: '28px 28px 0 0',
-        background: 'radial-gradient(120% 40% at 50% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%), color-mix(in srgb, var(--bg2) 94%, transparent)',
-        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: 'inset 0 1px 0 var(--line2), 0 -20px 50px -20px rgba(0,0,0,.6)' }}>
+      style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: full, zIndex: 30, touchAction: 'none', borderRadius: '16px 16px 0 0',
+        background: 'var(--bg2)', borderTop: '3px solid var(--edge)', boxShadow: '0 -4px 0 0 var(--hard-card)' }}>
       <button aria-label="Expand panel" onClick={() => setAt(at === 2 ? 0 : at + 1)} style={{ width: '100%', height: 26, display: 'grid', placeItems: 'center' }}>
-        <span style={{ width: 44, height: 5, borderRadius: 3, background: 'var(--line2)' }} />
+        <span style={{ width: 48, height: 6, borderRadius: 2, background: 'var(--edge)' }} />
       </button>
-      <div style={{ height: full - 26, overflowY: at === 2 ? 'auto' : 'hidden', padding: '0 18px calc(env(safe-area-inset-bottom) + 24px)', touchAction: at === 2 ? 'pan-y' : 'none' }}
+      <div style={{ height: full - 26, overflowY: at === 2 ? 'auto' : 'hidden', padding: '6px 20px calc(env(safe-area-inset-bottom) + 28px)', touchAction: at === 2 ? 'pan-y' : 'none' }}
         onPointerDownCapture={(e) => { if (at === 2) e.stopPropagation(); }}>
         {children}
       </div>
@@ -263,8 +258,8 @@ function RunnerPanel({ s, onQR, refresh }: { s: RoomState; onQR: () => void; ref
     <div className="stack" style={{ gap: 12 }}>
       <TaskDeck s={s} refresh={refresh} />
       <motion.button whileTap={{ scale: 0.97 }} onClick={onQR} className="card row" style={{ textAlign: 'left', padding: '12px 14px', gap: 14 }}>
-        <span style={{ width: 46, height: 46, borderRadius: 14, display: 'grid', placeItems: 'center', background: '#fff', color: '#000', rotate: '-5deg', boxShadow: '0 10px 24px -12px #fff' }}><IconQR s={26} /></span>
-        <div className="grow"><div style={{ fontSize: 16.5, fontWeight: 650 }}>My catch code</div><div className="muted" style={{ fontSize: 12.5 }}>Show it to the hunter who tags you.</div></div>
+        <span style={{ width: 48, height: 48, borderRadius: 8, display: 'grid', placeItems: 'center', background: '#fff2e0', color: '#14110f', rotate: '-4deg', boxShadow: '0 0 0 2.5px #14110f' }}><IconQR s={26} /></span>
+        <div className="grow"><div style={{ fontSize: 17, fontWeight: 850 }}>My catch code</div><div className="muted" style={{ fontSize: 12.5 }}>Show it to the hunter who tags you.</div></div>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: 'var(--faint)' }}><path d="M9 5l7 7-7 7" /></svg>
       </motion.button>
     </div>
@@ -278,12 +273,12 @@ function HunterPanel({ s, onScan, myFix, byId }: { s: RoomState; onScan: () => v
   return (
     <div className="stack" style={{ gap: 12 }}>
       <motion.button whileTap={hunt ? { scale: 0.96 } : undefined} onClick={() => { haptic.tap(); onScan(); }} disabled={!hunt}
-        style={{ position: 'relative', overflow: 'hidden', minHeight: 84, borderRadius: 22, background: hunt ? 'var(--grad-police)' : 'var(--surface2)', color: hunt ? '#000' : 'var(--muted)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, boxShadow: hunt ? '0 18px 40px -16px #ffd400, inset 0 1px 0 rgba(255,255,255,.7)' : 'none' }}>
+        className="btn" style={{ position: 'relative', overflow: 'hidden', minHeight: 88, width: 'calc(100% - 5px)', borderRadius: 10, background: hunt ? 'var(--police)' : 'var(--surface2)', color: hunt ? '#000' : 'var(--muted)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, ['--sh' as any]: '5px' }}>
         {hunt && <span aria-hidden className="tape" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 8, opacity: 0.9 }} />}
-        {hunt && <motion.span aria-hidden style={{ position: 'absolute', inset: 0, borderRadius: 22, border: '2px solid #ffd400' }} animate={{ scale: [1, 1.06], opacity: [0.8, 0] }} transition={{ duration: 1.6, repeat: Infinity }} />}
+        
         <IconScan s={32} />
-        <span className="display" style={{ fontSize: 30, fontWeight: 850, letterSpacing: '-0.04em' }}>{hunt ? 'Scan to tag' : s.room.status === 'paused' ? 'Paused' : 'Hold position'}</span>
+        <span className="display" style={{ fontSize: 32 }}>{hunt ? 'Scan to tag' : s.room.status === 'paused' ? 'Paused' : 'Hold position'}</span>
       </motion.button>
       <div className="muted" style={{ fontSize: 13 }}>
         {!hunt ? 'Runners are hiding. The admin opens the hunt when the timer ends.'

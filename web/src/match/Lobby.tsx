@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { PhaseTimeline } from '../components/Diagrams';
-import { LightTrails } from '../components/Art';
 import { NightCampus } from '../components/Scenes';
 import { Segmented, Avatar, Back, Button, IconCopy, IconMap, IconPhone, IconPlus, IconShare, IconUndo, Modal, Section, Slash, useToast } from '../components/ui';
 import { rpc } from '../lib/supabase';
@@ -27,10 +26,7 @@ function RoomHeader({ s, onLeave, leaveLabel = 'Leave' }: { s: RoomState; onLeav
     try { if (navigator.share) await navigator.share({ title: 'TAG', text }); else { await navigator.clipboard.writeText(text); toast('Copied'); } } catch { /* cancelled */ }
   }
   return (
-    <header style={{ marginBottom: 18, position: 'relative', isolation: 'isolate' }}>
-      <div aria-hidden style={{ position: 'absolute', left: -20, right: -20, top: -90, height: 330, zIndex: -1, pointerEvents: 'none', maskImage: 'linear-gradient(#000 40%, transparent)', WebkitMaskImage: 'linear-gradient(#000 40%, transparent)' }}>
-        <LightTrails height="100%" dim />
-      </div>
+    <header style={{ marginBottom: 22, position: 'relative' }}>
       <div className="row between" style={{ marginLeft: -10 }}>
         <button className="icon-btn" aria-label="Back to rooms" onClick={() => nav('/home')}><Back /></button>
         <div className="row" style={{ gap: 6 }}>
@@ -39,18 +35,18 @@ function RoomHeader({ s, onLeave, leaveLabel = 'Leave' }: { s: RoomState; onLeav
           <span className="tag">{s.room.is_public ? 'Public' : 'Private'}</span>
         </div>
       </div>
-      <motion.h1 className="display" initial={{ opacity: 0, y: 14, filter: 'blur(10px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        style={{ fontSize: 46, margin: '8px 0 12px', wordBreak: 'break-word', fontWeight: 850, letterSpacing: '-0.055em', lineHeight: 0.95 }}>{s.room.name}</motion.h1>
-      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+      <motion.h1 className="display" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        style={{ fontSize: 'clamp(38px, 12vw, 52px)', margin: '14px 0 18px', wordBreak: 'break-word' }}>{s.room.name}</motion.h1>
+      <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
         {code && !s.room.is_public && (
-          <motion.button whileTap={{ scale: 0.96 }} className="row" style={{ gap: 10, padding: '7px 12px 7px 14px', background: 'var(--surface2)', borderRadius: 14 }}
+          <motion.button whileTap={{ scale: 0.96 }} className="row" style={{ gap: 10, padding: '8px 12px 8px 14px', background: 'var(--police)', color: '#14110f', borderRadius: 8, boxShadow: '0 0 0 2.5px var(--edge), 3px 3px 0 2.5px var(--edge)' }}
             onClick={async () => { await navigator.clipboard?.writeText(code).catch(() => {}); haptic.tap(); toast('Room ID copied'); }}>
-            <span className="muted" style={{ fontSize: 12, fontWeight: 550 }}>Room ID</span>
-            <span className="mono" style={{ fontSize: 20, fontWeight: 700, letterSpacing: '0.08em' }}>{code}</span>
-            <span className="muted"><IconCopy s={16} /></span>
+            <span style={{ fontSize: 11, fontWeight: 850, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Room ID</span>
+            <span className="mono" style={{ fontSize: 21, fontWeight: 850, letterSpacing: '0.08em' }}>{code}</span>
+            <IconCopy s={16} />
           </motion.button>
         )}
-        <motion.button whileTap={{ scale: 0.96 }} className="row" style={{ gap: 8, padding: '0 14px', minHeight: 42, background: 'var(--surface2)', borderRadius: 14, fontWeight: 600, fontSize: 14.5 }} onClick={share}><IconShare s={16} />Share</motion.button>
+        <motion.button whileTap={{ scale: 0.96 }} className="row" style={{ gap: 8, padding: '0 14px', minHeight: 44, background: 'var(--surface)', borderRadius: 8, fontWeight: 800, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.04em', boxShadow: '0 0 0 2.5px var(--edge), 3px 3px 0 2.5px var(--edge)' }} onClick={share}><IconShare s={16} />Share</motion.button>
         {onLeave && <button className="muted" style={{ marginLeft: 'auto', fontSize: 13 }} onClick={onLeave}>{leaveLabel}</button>}
       </div>
     </header>
@@ -98,11 +94,10 @@ export function Waiting({ s }: { s: RoomState }) {
         <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: -1 }}><NightCampus height={170} seed={11} /></div>
         <div style={{ position: 'relative', width: 220, height: 220 }}>
           {[0, 1, 2].map((i) => (
-            <motion.div key={i} style={{ position: 'absolute', inset: 0, border: '1px solid var(--accent)', borderRadius: '50%' }}
+            <motion.div key={i} style={{ position: 'absolute', inset: 0, border: '3px solid var(--flare)', borderRadius: 12 }}
               initial={{ scale: 0.2, opacity: 0.9 }} animate={{ scale: 1, opacity: 0 }} transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.8, ease: 'easeOut' }} />
           ))}
-          <motion.div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'conic-gradient(from 0deg, transparent 0deg, var(--accent-glow) 50deg, transparent 60deg)' }}
-            animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: 'linear' }} />
+          
           <div style={{ position: 'absolute', inset: 70, display: 'grid', placeItems: 'center' }}><Avatar src={s.room.admin.selfie} name={s.room.admin.username} size={80} /></div>
         </div>
         <div>
@@ -233,7 +228,7 @@ export function AdminLobby({ s, refresh, themeKey }: { s: RoomState; refresh: ()
     <Slash>
       <div className="screen" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 140px)' }}>
         <RoomHeader s={s} onLeave={close} leaveLabel="Close room" />
-        <div style={{ margin: '4px 0 20px', position: 'sticky', top: 'calc(env(safe-area-inset-top) + 8px)', zIndex: 5, borderRadius: 16, backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+        <div style={{ margin: '4px 0 20px', position: 'sticky', top: 'calc(env(safe-area-inset-top) + 8px)', zIndex: 5, borderRadius: 12 }}>
           <Segmented value={tab} onChange={(v) => setTab(v)}
             options={tabs.map((t) => ({ v: t.k, label: <>{t.t}{t.n > 0 && <span style={{ minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9, background: 'var(--danger)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'grid', placeItems: 'center' }}>{t.n}</span>}</> }))} />
         </div>
@@ -243,7 +238,7 @@ export function AdminLobby({ s, refresh, themeKey }: { s: RoomState; refresh: ()
         {tab === 'chat' && <Chat roomId={s.room.id} channel="lobby" members={[...s.members, { id: profile!.id, username: profile!.username, selfie: profile!.selfie_path } as any]} meId={profile!.id} height="50vh" />}
       </div>
 
-      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 50, background: 'color-mix(in srgb, var(--bg) 92%, transparent)', backdropFilter: 'blur(12px)', borderTop: '1px solid var(--line)', padding: '12px 20px calc(env(safe-area-inset-bottom) + 12px)' }}>
+      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 50, background: 'color-mix(in srgb, var(--bg) 92%, transparent)', borderTop: '1px solid var(--line)', padding: '12px 20px calc(env(safe-area-inset-bottom) + 12px)' }}>
         <div style={{ maxWidth: 560, margin: '0 auto' }}>
           <div className="row scroll-x" style={{ gap: 6, marginBottom: 10 }}>
             {checks.map((c) => (
@@ -481,7 +476,7 @@ function RulesEditor({ s, refresh }: { s: RoomState; refresh: () => void }) {
             const on = (v.event ?? 'none') === k;
             return (
               <motion.button key={k} whileTap={{ scale: 0.95 }} onClick={() => { haptic.tap(); setV((o) => ({ ...o, event: k })); }}
-                style={{ borderRadius: 16, padding: 8, textAlign: 'left', background: 'var(--surface)', boxShadow: on ? '0 0 0 2px var(--accent)' : 'inset 0 0 0 1px var(--line)' }}>
+                style={{ borderRadius: 12, padding: 8, textAlign: 'left', background: 'var(--surface)', boxShadow: on ? '0 0 0 2px var(--accent)' : 'inset 0 0 0 1px var(--line)' }}>
                 <span style={{ display: 'block', height: 44, borderRadius: 10, background: EVENTS[k].swatch, marginBottom: 6 }} />
                 <span style={{ display: 'block', fontWeight: 650, fontSize: 13.5 }}>{EVENTS[k].label}</span>
                 <span className="muted" style={{ display: 'block', fontSize: 11 }}>{EVENTS[k].blurb}</span>

@@ -12,7 +12,7 @@ const C = { orange: '#ff6a1a', ember: '#e8361f', yellow: '#ffd400', gold: '#f2b3
    ===================================================================== */
 function Plate({ children }: { children: ReactNode }) {
   return (
-    <svg viewBox="0 0 320 220" width="100%" style={{ display: 'block', borderRadius: 24, overflow: 'hidden' }} aria-hidden>
+    <svg viewBox="0 0 320 220" width="100%" style={{ display: 'block', borderRadius: 12, overflow: 'hidden' }} aria-hidden>
       <defs>
         <linearGradient id="pl-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.plum} /><stop offset="100%" stopColor="#000" /></linearGradient>
       </defs>
@@ -111,7 +111,7 @@ export function HowItWorks({ onClose }: { onClose: () => void }) {
   const p = PLATES[i];
   return (
     <div className="stack" style={{ gap: 18 }}>
-      <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 24, boxShadow: 'inset 0 0 0 1px var(--line)' }}>
+      <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 12, boxShadow: 'inset 0 0 0 1px var(--line)' }}>
         <AnimatePresence mode="popLayout" initial={false} custom={dir}>
           <motion.div key={i} custom={dir} drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.25} onDragEnd={end}
             initial={{ x: `${dir * 60}%`, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: `${-dir * 60}%`, opacity: 0 }} transition={{ duration: 0.45, ease }}>
@@ -151,7 +151,7 @@ export function PhaseTimeline({ st }: { st: Settings }) {
   const shrinks: number[] = []; for (let t = st.shrink_every; t < st.match_secs; t += st.shrink_every) shrinks.push(t / st.match_secs);
   const m = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${s} s`);
   return (
-    <div className="card" style={{ padding: '18px 16px 16px', borderRadius: 22 }}>
+    <div className="card" style={{ padding: '18px 16px 16px', borderRadius: 12 }}>
       <div className="row between" style={{ marginBottom: 14 }}>
         <div style={{ fontWeight: 650 }}>How this match runs</div>
         <div className="muted mono" style={{ fontSize: 13 }}>{m(total)} total</div>
@@ -224,7 +224,7 @@ export function FieldReport({ members, meId }: { members: Member[]; meId?: strin
   const at = (i: number, n: number, rad: number, off = -Math.PI / 2) => [cx + rad * Math.cos(off + (i / Math.max(1, n)) * Math.PI * 2), cy + rad * Math.sin(off + (i / Math.max(1, n)) * Math.PI * 2)];
   const safe = runners.filter((m) => m.alive).length;
   return (
-    <div className="card" style={{ padding: 16, borderRadius: 24 }}>
+    <div className="card" style={{ padding: 16, borderRadius: 12 }}>
       <div className="row between" style={{ marginBottom: 6 }}>
         <div style={{ fontWeight: 650 }}>Field report</div>
         <div className="muted" style={{ fontSize: 13 }}>{safe} of {runners.length} runners made it</div>

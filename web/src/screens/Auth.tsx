@@ -6,7 +6,8 @@ import { callFunction, cleanError, rpc, supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { useTheme } from '../lib/theme';
 import { haptic } from '../lib/feel';
-import { LightTrails } from '../components/Art';
+import { ArtPanel } from '../components/Brut';
+import { resolvedDay, useAppearance } from '../lib/theme';
 import { HowItWorks } from '../components/Diagrams';
 
 /* ---------- Welcome ---------- */
@@ -15,11 +16,11 @@ function Kinetic() {
   const [i, setI] = useState(0);
   useEffect(() => { const t = setInterval(() => setI((x) => (x + 1) % WORDS.length), 1700); return () => clearInterval(t); }, []);
   return (
-    <span style={{ display: 'block', position: 'relative', height: '0.98em', overflow: 'hidden' }}>
-      <AnimatePresence mode="popLayout" initial={false}>
-        <motion.span key={i} className={i === 2 ? 'text-police' : 'text-flare'} style={{ display: 'block', paddingRight: 8 }}
-          initial={{ y: '100%', rotate: 4, opacity: 0 }} animate={{ y: '0%', rotate: 0, opacity: 1 }} exit={{ y: '-100%', rotate: -3, opacity: 0 }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>{WORDS[i]}</motion.span>
+    <span style={{ display: 'block', position: 'relative', height: '1.02em' }}>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span key={i} className={i === 2 ? 'text-police' : 'text-flare'} style={{ display: 'block', paddingRight: 8, transformOrigin: 'left bottom' }}
+          initial={{ scale: 1.35, rotate: -4, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} exit={{ opacity: 0, y: 8, transition: { duration: 0.12 } }}
+          transition={{ type: 'spring', stiffness: 520, damping: 24 }}>{WORDS[i]}</motion.span>
       </AnimatePresence>
     </span>
   );
@@ -29,34 +30,25 @@ export function Welcome() {
   useTheme('neutral');
   const nav = useNavigate();
   const [how, setHow] = useState(false);
-  const rise = (i: number) => ({ initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.15 + i * 0.09, duration: 0.8, ease: [0.22, 1, 0.36, 1] as const } });
+  const day = resolvedDay(useAppearance());
+  const rise = (i: number) => ({ initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.12 + i * 0.07, duration: 0.5, ease: [0.2, 0.9, 0.25, 1] as const } });
   return (
     <Slash>
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: '62vh', maskImage: 'linear-gradient(#000 55%, transparent)', WebkitMaskImage: 'linear-gradient(#000 55%, transparent)', pointerEvents: 'none' }}>
-        <LightTrails height="100%" />
-      </div>
-      <div className="screen" style={{ gap: 20, minHeight: '100dvh' }}>
+      <div className="screen" style={{ gap: 26, minHeight: '100dvh' }}>
         <motion.div {...rise(0)} className="row between">
           <Logo size={30} />
-          <span className="tag" style={{ background: 'color-mix(in srgb, var(--bg) 55%, transparent)', boxShadow: 'inset 0 0 0 1px var(--line2)', color: 'var(--text)', backdropFilter: 'blur(8px)' }}><span className="dot pulse" style={{ color: 'var(--ok)' }} /> Played outdoors</span>
+          <button onClick={() => setHow(true)} className="tag" style={{ padding: '7px 10px' }}>How it works</button>
         </motion.div>
-        <div style={{ marginTop: 'auto' }}>
-          <motion.div {...rise(1)} style={{ fontSize: 15, fontWeight: 600, color: 'var(--tint-text)', marginBottom: 10 }}>Your campus is the map.</motion.div>
-          <motion.h1 {...rise(2)} className="display" style={{ fontSize: 'clamp(72px, 24vw, 112px)', margin: 0, fontWeight: 850, letterSpacing: '-0.065em', lineHeight: 0.92 }}>
-            <Kinetic />
-          </motion.h1>
-          <motion.p {...rise(3)} style={{ maxWidth: 360, margin: '18px 0 0', fontSize: 16, color: 'var(--muted)', lineHeight: 1.5 }}>
-            A real-world chase on foot. Runners clear tasks before time runs out. Hunters follow them on a live map and scan their code to tag them.
+        <motion.div {...rise(1)}><ArtPanel height="clamp(170px, 30vh, 260px)" day={day} /></motion.div>
+        <div>
+          <motion.div {...rise(2)} className="eyebrow" style={{ color: 'var(--tint-text)', marginBottom: 12 }}>Your campus is the map</motion.div>
+          <motion.h1 {...rise(3)} className="display" style={{ fontSize: 'clamp(64px, 21vw, 100px)', margin: 0 }}><Kinetic /></motion.h1>
+          <motion.p {...rise(4)} style={{ maxWidth: 380, margin: '18px 0 0', fontSize: 16.5, color: 'var(--muted)', lineHeight: 1.55 }}>
+            A real-world chase on foot. Runners clear tasks before time runs out. Hunters track them on a live map and scan their code to tag them.
           </motion.p>
-          <motion.div {...rise(4)} className="row" style={{ gap: 18, marginTop: 18, fontSize: 13.5, fontWeight: 600, flexWrap: 'wrap' }}>
-            <button onClick={() => setHow(true)} className="row" style={{ gap: 8, color: 'var(--cream)', fontWeight: 650, marginRight: 'auto' }}>
-              <span style={{ width: 26, height: 26, borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'var(--quiet-fill)' }}><svg width="10" height="12" viewBox="0 0 10 12"><path d="M0 0 L10 6 L0 12 Z" fill="currentColor" /></svg></span>
-              How it works
-            </button>
-          </motion.div>
         </div>
         <Modal open={how} onClose={() => setHow(false)} title="How TAG works"><HowItWorks onClose={() => setHow(false)} /></Modal>
-        <motion.div {...rise(5)} className="stack" style={{ gap: 10, marginTop: 8 }}>
+        <motion.div {...rise(5)} className="stack" style={{ gap: 14, marginTop: 'auto' }}>
           <Button kind="hot" size="lg" block onClick={() => nav('/signup')}>Create account</Button>
           <Button size="lg" kind="ghost" block onClick={() => nav('/signin')}>I already have an account</Button>
         </motion.div>
@@ -69,9 +61,9 @@ export function Steps({ n, of = 3 }: { n: number; of?: number }) {
   return (
     <div className="row" style={{ gap: 6 }} aria-label={`Step ${n} of ${of}`}>
       {Array.from({ length: of }, (_, i) => (
-        <span key={i} style={{ position: 'relative', width: 30, height: 5, borderRadius: 3, background: 'var(--surface3)', overflow: 'hidden' }}>
+        <span key={i} style={{ position: 'relative', width: 30, height: 10, borderRadius: 2, background: 'var(--surface)', boxShadow: '0 0 0 2px var(--edge)', overflow: 'hidden' }}>
           {i < n && <motion.span initial={{ scaleX: i === n - 1 ? 0 : 1 }} animate={{ scaleX: 1 }} transition={{ delay: 0.3, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            style={{ position: 'absolute', inset: 0, background: 'var(--grad-flare)', transformOrigin: 'left', boxShadow: '0 0 10px rgba(255,106,26,.7)' }} />}
+            style={{ position: 'absolute', inset: 0, background: 'var(--grad-flare)', transformOrigin: 'left',  }} />}
         </span>
       ))}
     </div>
@@ -86,10 +78,10 @@ function Header({ title, step, back = -1 as number | string }: { title: string; 
         <button className="icon-btn" aria-label="Back" onClick={() => (typeof back === 'number' ? nav(back) : nav(back))}><Back /></button>
         {step && <Steps n={step} />}
       </div>
-      <motion.h1 className="display" initial={{ opacity: 0, x: -16, filter: 'blur(8px)' }} animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        style={{ fontSize: 46, margin: '14px 0 0', fontWeight: 820, letterSpacing: '-0.05em' }}>{title}</motion.h1>
+      <motion.h1 className="display" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        style={{ fontSize: 48, margin: '18px 0 0' }}>{title}</motion.h1>
       <motion.span aria-hidden initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.25, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        style={{ display: 'block', width: 56, height: 4, borderRadius: 2, marginTop: 14, background: 'var(--grad-flare)', transformOrigin: 'left', boxShadow: '0 0 14px rgba(255,106,26,.6)' }} />
+        style={{ display: 'block', width: 56, height: 4, borderRadius: 2, marginTop: 14, background: 'var(--grad-flare)', transformOrigin: 'left',  }} />
     </div>
   );
 }
@@ -344,7 +336,7 @@ export function Permissions() {
           {rows.map((r, i) => (
             <motion.div key={r.t} className="frame soft cut" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 + i * 0.08 }}>
               <div className="inner cut row" style={{ padding: 16, alignItems: 'flex-start', gap: 14 }}>
-                <div style={{ width: 44, height: 44, flex: 'none', borderRadius: 14, display: 'grid', placeItems: 'center', color: '#fff', background: ['var(--grad-ember)', 'var(--grad-flare)', 'var(--grad-police)'][i], boxShadow: `0 8px 22px -8px ${['#ff6a1a', '#ffb020', '#ffd400'][i]}` }}>{r.icon}</div>
+                <div style={{ width: 44, height: 44, flex: 'none', borderRadius: 8, display: 'grid', placeItems: 'center', color: '#14110f', background: ['var(--flare)', 'var(--cream)', 'var(--police)'][i], boxShadow: '0 0 0 2.5px var(--edge), 3px 3px 0 2.5px var(--edge)' }}>{r.icon}</div>
                 <div className="grow">
                   <div className="row between">
                     <div style={{ fontSize: 17, fontWeight: 650 }}>{r.t}</div>

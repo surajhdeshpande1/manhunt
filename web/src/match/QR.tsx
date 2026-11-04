@@ -16,24 +16,23 @@ export function RunnerQR({ roomId, token, username, selfie, onClose }: { roomId:
   }, [roomId, token]);
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      style={{ position: 'fixed', inset: 0, zIndex: 600, color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 22,
-        background: 'radial-gradient(120% 70% at 50% 110%, #e8361f, transparent 60%), radial-gradient(90% 60% at 50% -10%, rgba(255,176,32,.45), transparent 60%), #0b0503' }}>
-      <button onClick={onClose} aria-label="Close" style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 12px)', right: 12, width: 48, height: 48, display: 'grid', placeItems: 'center', color: '#fff' }}><X s={28} /></button>
+      style={{ position: 'fixed', inset: 0, zIndex: 600, color: '#14110f', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 22,
+        background: '#ff6a1a' }}>
+      <button onClick={onClose} aria-label="Close" style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 12px)', right: 12, width: 48, height: 48, display: 'grid', placeItems: 'center', color: '#14110f' }}><X s={28} /></button>
       <motion.div className="row" style={{ gap: 12 }} initial={{ y: -14, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}>
         <Avatar src={selfie} name={username} size={52} />
         <div>
-          <div className="display" style={{ fontSize: 32, fontWeight: 850, letterSpacing: '-0.05em' }}>@{username}</div>
-          <div style={{ fontSize: 14, fontWeight: 650, color: '#ffb27a' }}>Runner, catch code</div>
+          <div className="display" style={{ fontSize: 34 }}>@{username}</div>
+          <div style={{ fontSize: 12, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Runner · catch code</div>
         </div>
       </motion.div>
       <motion.div initial={{ scale: 0.85, opacity: 0, rotate: -4 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} transition={{ type: 'spring', damping: 16, stiffness: 200 }}
-        style={{ position: 'relative', padding: 5, borderRadius: 30, overflow: 'hidden', boxShadow: '0 30px 80px -20px rgba(255,90,20,.7)' }}>
-        <motion.span aria-hidden style={{ position: 'absolute', inset: '-45%', background: 'conic-gradient(#ffd400, #ff6a1a, #e8361f, #b3170f, #ffd400)' }} animate={{ rotate: 360 }} transition={{ duration: 5, repeat: Infinity, ease: 'linear' }} />
-        <div style={{ position: 'relative', background: '#fff', borderRadius: 25, padding: 14 }}>
+        style={{ position: 'relative', borderRadius: 12, boxShadow: '0 0 0 4px #14110f, 8px 8px 0 4px #14110f' }}>
+        <div style={{ position: 'relative', background: '#fff', borderRadius: 12, padding: 16 }}>
           {src ? <img src={src} alt="Your catch QR code" style={{ width: 'min(74vw, 340px)', height: 'auto', imageRendering: 'pixelated', display: 'block' }} /> : <span className="spinner" style={{ color: '#000' }} />}
         </div>
       </motion.div>
-      <p style={{ maxWidth: 320, textAlign: 'center', margin: 0, color: 'rgba(255,240,230,.75)' }}>Caught? Hold this up for the hunter to scan. Turn your brightness up.</p>
+      <p style={{ maxWidth: 320, textAlign: 'center', margin: '8px 0 0', fontWeight: 700, color: '#14110f' }}>Caught? Hold this up for the hunter to scan. Turn your brightness up.</p>
     </motion.div>
   );
 }
@@ -75,23 +74,23 @@ export function Scanner({ roomId, getFix, onClose, onCaught }: {
       <video ref={video} playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
       <HunterAmbience hunting={st.k === 'scan'} intensity={0.75} />
       <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
-        <div style={{ width: 'min(72vw, 300px)', aspectRatio: '1', position: 'relative', boxShadow: '0 0 0 100vmax rgba(0,0,0,.6)', borderRadius: 28 }}>
-          {['top:0;left:0;border-width:3px 0 0 3px', 'top:0;right:0;border-width:3px 3px 0 0', 'bottom:0;left:0;border-width:0 0 3px 3px', 'bottom:0;right:0;border-width:0 3px 3px 0'].map((c, i) => (
-            <span key={i} style={{ position: 'absolute', width: 34, height: 34, borderStyle: 'solid', borderColor: '#ffd400', borderRadius: 4, ...Object.fromEntries(c.split(';').map((kv) => kv.split(':')).map(([k, v]) => [k.replace(/-(\w)/g, (_, x) => x.toUpperCase()), v])) }} />
+        <div style={{ width: 'min(72vw, 300px)', aspectRatio: '1', position: 'relative', boxShadow: '0 0 0 100vmax rgba(0,0,0,.6)', borderRadius: 12 }}>
+          {['top:0;left:0;border-width:7px 0 0 7px', 'top:0;right:0;border-width:7px 7px 0 0', 'bottom:0;left:0;border-width:0 0 7px 7px', 'bottom:0;right:0;border-width:0 7px 7px 0'].map((c, i) => (
+            <span key={i} style={{ position: 'absolute', width: 34, height: 34, borderStyle: 'solid', borderColor: '#ffd400', borderRadius: 0, ...Object.fromEntries(c.split(';').map((kv) => kv.split(':')).map(([k, v]) => [k.replace(/-(\w)/g, (_, x) => x.toUpperCase()), v])) }} />
           ))}
-          {st.k === 'scan' && <motion.div style={{ position: 'absolute', left: 8, right: 8, height: 2, background: 'var(--hunter)', boxShadow: '0 0 16px var(--hunter)', borderRadius: 2 }} animate={{ top: ['8%', '92%', '8%'] }} transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }} />}
+          {st.k === 'scan' && <motion.div style={{ position: 'absolute', left: 8, right: 8, background: 'var(--hunter)', height: 4, borderRadius: 0, boxShadow: '0 0 0 1.5px #000' }} animate={{ top: ['8%', '92%', '8%'] }} transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }} />}
         </div>
       </div>
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: 'calc(env(safe-area-inset-top) + 14px) 16px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#eef2fa' }}>
         <div>
-          <div className="display" style={{ fontSize: 26, color: '#fff' }}>Scan to catch</div>
+          <div className="display" style={{ fontSize: 30, color: '#ffd400', textShadow: '3px 3px 0 #000' }}>Scan to catch</div>
           <div style={{ fontSize: 13, opacity: 0.8 }}>Point at the runner's QR. You must be close.</div>
         </div>
         <button onClick={onClose} aria-label="Close scanner" style={{ width: 48, height: 48, display: 'grid', placeItems: 'center', color: '#fff' }}><X s={28} /></button>
       </div>
       <div style={{ position: 'absolute', left: 16, right: 16, bottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}>
-        {camErr && <div className="card card-pad" style={{ background: '#141416', color: '#f5f5f7' }}>{camErr}</div>}
-        {st.k === 'check' && <div className="card card-pad row" style={{ background: '#141416', color: '#f5f5f7', gap: 12 }}><span className="spinner" /> Verifying catch…</div>}
+        {camErr && <div className="card card-pad" style={{ background: '#14110f', color: '#fff2e0', ['--edge' as any]: '#fff2e0' }}>{camErr}</div>}
+        {st.k === 'check' && <div className="card card-pad row" style={{ background: '#14110f', color: '#fff2e0', gap: 12, ['--edge' as any]: '#fff2e0' }}><span className="spinner" /> Verifying catch…</div>}
         {st.k === 'ok' && (
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="card card-pad stack" style={{ background: 'var(--hunter)', color: '#000' }}>
             <div className="display" style={{ fontSize: 34 }}>@{st.name} caught</div>
@@ -100,7 +99,7 @@ export function Scanner({ roomId, getFix, onClose, onCaught }: {
           </motion.div>
         )}
         {st.k === 'err' && (
-          <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="card card-pad stack" style={{ background: '#0d162b', color: '#eef2fa', borderLeft: '3px solid #ff3d3d' }}>
+          <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="card card-pad stack" style={{ background: '#14110f', color: '#fff2e0', ['--hard-card' as any]: '#ff453a', ['--edge' as any]: '#fff2e0' }}>
             <div style={{ fontWeight: 600 }}>{st.msg}</div>
             <div className="row" style={{ gap: 8 }}>
               <Button size="sm" onClick={again}>Scan again</Button>

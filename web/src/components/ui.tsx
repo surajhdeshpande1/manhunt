@@ -59,16 +59,12 @@ export function Avatar({ src, name, size = 40, out, className = '' }: { src?: st
 /* ---------- Logo ----------
    Two players at the moment of contact: the runner (blue) and the hunter (red) touching. */
 export function LogoMark({ size = 28, style }: { size?: number; style?: React.CSSProperties }) {
-  const id = useRef(`lm${Math.random().toString(36).slice(2, 7)}`).current;
+  // two players at the moment of contact: flat cut-paper discs with a hard shadow
   return (
     <svg width={size * 1.7} height={size} viewBox="0 0 34 20" aria-hidden style={{ display: 'block', overflow: 'visible', ...style }}>
-      <defs>
-        <linearGradient id={`${id}r`} x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stopColor="#e8361f" /><stop offset="100%" stopColor="#ff8a2a" /></linearGradient>
-        <linearGradient id={`${id}h`} x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stopColor="#ffb020" /><stop offset="100%" stopColor="#fff07a" /></linearGradient>
-      </defs>
-      <circle cx="10" cy="10" r="8.6" fill={`url(#${id}r)`} />
-      <circle cx="24" cy="10" r="8.6" fill={`url(#${id}h)`} />
-      <circle cx="24" cy="10" r="8.6" fill="none" stroke="#000" strokeWidth="1.6" />
+      <g transform="translate(1.6 1.6)" fill="#14110f"><circle cx="10" cy="10" r="8.6" /><circle cx="24" cy="10" r="8.6" /></g>
+      <circle cx="10" cy="10" r="8.6" fill="#ff6a1a" stroke="#14110f" strokeWidth="1.8" />
+      <circle cx="24" cy="10" r="8.6" fill="#ffd400" stroke="#14110f" strokeWidth="1.8" />
     </svg>
   );
 }
@@ -110,23 +106,21 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 export const useToast = () => useContext(ToastCtx);
 
-/* ---------- Page transition: film cut ----------
-   A dark frame wipes off to the right behind a hot light streak, and the new scene
-   comes up out of a soft blur. ~0.5 s, never blocks input. */
+/* ---------- Page transition: block wipe ----------
+   A flat orange block and an ink block sweep across, the new screen rises 14px into place.
+   Transform-only, ~0.45 s, never blocks input. */
 function FilmCut() {
   const [on, setOn] = useState(true);
-  useEffect(() => { const t = setTimeout(() => setOn(false), 650); return () => clearTimeout(t); }, []);
+  useEffect(() => { const t = setTimeout(() => setOn(false), 560); return () => clearTimeout(t); }, []);
   if (!on || typeof document === 'undefined') return null;
-  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  if (reduce) return null;
-  const ease = [0.7, 0, 0.2, 1] as const;
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return null;
+  const ease = [0.75, 0, 0.2, 1] as const;
   return createPortal(
     <div aria-hidden style={{ position: 'fixed', inset: 0, zIndex: 880, pointerEvents: 'none', overflow: 'hidden' }}>
-      <motion.div style={{ position: 'absolute', inset: 0, background: 'var(--bg)' }}
-        initial={{ clipPath: 'inset(0 0 0 0%)' }} animate={{ clipPath: 'inset(0 0 0 100%)' }} transition={{ duration: 0.5, ease }} />
-      <motion.div style={{ position: 'absolute', top: '-10%', bottom: '-10%', width: 3, rotate: 8, background: 'linear-gradient(180deg, transparent, #ffd400 30%, #ff6a1a 60%, transparent)',
-        boxShadow: '0 0 18px 4px rgba(255,106,26,.7), 0 0 50px 12px rgba(255,176,32,.25)' }}
-        initial={{ left: '-2%' }} animate={{ left: '102%' }} transition={{ duration: 0.5, ease }} />
+      <motion.div style={{ position: 'absolute', inset: 0, background: '#ff6a1a', borderRight: '4px solid #14110f', willChange: 'transform' }}
+        initial={{ x: '0%' }} animate={{ x: '101%' }} transition={{ duration: 0.42, ease, delay: 0.04 }} />
+      <motion.div style={{ position: 'absolute', inset: 0, background: 'var(--bg)', willChange: 'transform' }}
+        initial={{ x: '0%' }} animate={{ x: '101%' }} transition={{ duration: 0.38, ease }} />
     </div>,
     document.body,
   );
@@ -134,10 +128,9 @@ function FilmCut() {
 export function Slash({ children, k, className = '' }: { children: ReactNode; k?: string; className?: string }) {
   return (
     <motion.div key={k} className={className} style={{ minHeight: '100%', position: 'relative' }}
-      initial={{ opacity: 0.4, filter: 'blur(8px)' }}
-      animate={{ opacity: 1, filter: 'blur(0px)' }}
-      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-      onAnimationComplete={(e) => { const el = (e as any)?.target as HTMLElement | undefined; if (el?.style) el.style.filter = 'none'; }}>
+      initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.42, ease: [0.2, 0.9, 0.25, 1], delay: 0.08 }}
+      onAnimationComplete={(e) => { const el = (e as any)?.target as HTMLElement | undefined; if (el?.style) el.style.transform = 'none'; }}>
       <FilmCut />
       {children}
     </motion.div>
@@ -159,13 +152,13 @@ export function Modal({ open, onClose, title, children, full }: { open: boolean;
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
           <motion.div role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}
             style={{ width: '100%', maxWidth: 560, maxHeight: full ? '100%' : '90%', height: full ? '100%' : undefined, overflow: 'auto', background: 'var(--bg2)',
-              borderRadius: full ? 0 : '28px 28px 0 0', boxShadow: 'inset 0 1px 0 var(--line2), 0 -30px 60px -20px rgba(0,0,0,.5)',
-              padding: `10px 20px calc(env(safe-area-inset-bottom) + 20px)` }}
-            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 34, stiffness: 380, mass: 0.9 }}>
-            {!full && <div aria-hidden style={{ width: 40, height: 5, borderRadius: 3, background: 'var(--line2)', margin: '0 auto 12px' }} />}
+              borderRadius: full ? 0 : '16px 16px 0 0', borderTop: full ? 0 : '3px solid var(--edge)', borderLeft: full ? 0 : '3px solid var(--edge)', borderRight: full ? 0 : '3px solid var(--edge)',
+              padding: `12px 22px calc(env(safe-area-inset-bottom) + 24px)` }}
+            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 32, stiffness: 340, mass: 0.85 }}>
+            {!full && <div aria-hidden style={{ width: 44, height: 6, borderRadius: 2, background: 'var(--edge)', margin: '0 auto 16px' }} />}
             {title && (
-              <div className="row between" style={{ marginBottom: 16 }}>
-                <div className="display" style={{ fontSize: 27 }}>{title}</div>
+              <div className="row between" style={{ marginBottom: 20 }}>
+                <div className="display" style={{ fontSize: 30 }}>{title}</div>
                 <button className="icon-btn" aria-label="Close" onClick={onClose}><X /></button>
               </div>
             )}
@@ -210,14 +203,14 @@ let segId = 0;
 export function Segmented<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { v: T; label: ReactNode; disabled?: boolean }[] }) {
   const [id] = useState(() => `seg${segId++}`);
   return (
-    <div role="tablist" style={{ display: 'grid', gridTemplateColumns: `repeat(${options.length}, 1fr)`, padding: 4, borderRadius: 14, background: 'var(--surface)', boxShadow: 'inset 0 0 0 1px var(--line)' }}>
+    <div role="tablist" style={{ display: 'grid', gridTemplateColumns: `repeat(${options.length}, 1fr)`, padding: 4, gap: 4, borderRadius: 10, background: 'var(--surface)', boxShadow: '0 0 0 2.5px var(--edge)' }}>
       {options.map((o) => {
         const on = o.v === value;
         return (
           <button key={o.v} type="button" role="tab" aria-selected={on} disabled={o.disabled} onClick={() => { haptic.tap(); onChange(o.v); }}
-            style={{ position: 'relative', height: 42, minWidth: 0, borderRadius: 11, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 600, fontSize: 'clamp(12.5px, 3.7vw, 14.5px)', padding: '0 4px', whiteSpace: 'nowrap',
-              color: on ? 'var(--accent-ink)' : 'var(--muted)', opacity: o.disabled ? 0.4 : 1, transition: 'color .3s var(--ease-out)' }}>
-            {on && <motion.span layoutId={id} transition={{ type: 'spring', damping: 30, stiffness: 420 }} style={{ position: 'absolute', inset: 0, borderRadius: 11, background: 'var(--accent)' }} />}
+            style={{ position: 'relative', height: 44, minWidth: 0, borderRadius: 7, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.03em', fontSize: 'clamp(11.5px, 3.4vw, 13.5px)', padding: '0 4px', whiteSpace: 'nowrap',
+              color: on ? '#14110f' : 'var(--muted)', opacity: o.disabled ? 0.4 : 1, transition: 'color .3s var(--ease-out)' }}>
+            {on && <motion.span layoutId={id} transition={{ type: 'spring', damping: 32, stiffness: 460 }} style={{ position: 'absolute', inset: 0, borderRadius: 7, background: 'var(--seg, #ff6a1a)', boxShadow: '0 0 0 2px #14110f' }} />}
             <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8 }}>{o.label}</span>
           </button>
         );
@@ -229,7 +222,7 @@ export function Segmented<T extends string>({ value, onChange, options }: { valu
 /* ---------- Small helpers ---------- */
 export function Section({ title, right, children }: { title: string; right?: ReactNode; children: ReactNode }) {
   return (
-    <section className="stack" style={{ gap: 10 }}>
+    <section className="stack" style={{ gap: 14 }}>
       <div className="row between"><div className="eyebrow sec-title">{title}</div>{right}</div>
       {children}
     </section>
@@ -239,8 +232,8 @@ export function Empty({ title, body, children }: { title: string; body?: string;
   return (
     <div className="card center" style={{ padding: 0, position: 'relative', overflow: 'hidden' }}>
       <NightCampus height={110} seed={title.length} />
-      <div style={{ padding: '6px 22px 26px' }}>
-        <div className="display" style={{ fontSize: 21, marginBottom: 6 }}>{title}</div>
+      <div style={{ padding: '14px 22px 28px', borderTop: '2.5px solid var(--edge)' }}>
+        <div className="display" style={{ fontSize: 24, marginBottom: 8 }}>{title}</div>
         {body && <div className="muted" style={{ maxWidth: 320, margin: '0 auto', fontSize: 14.5 }}>{body}</div>}
         {children && <div style={{ marginTop: 16 }}>{children}</div>}
       </div>

@@ -194,7 +194,7 @@ export function ReflexGame({ seed, onWin, onFail }: GameProps) {
       <div onPointerDown={lock} style={{ position: 'relative', width: '100%', height: 84, background: 'var(--surface2)', touchAction: 'manipulation', cursor: 'pointer' }} className="cut">
         <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${(zone.at - zone.w / 2) * 100}%`, width: `${zone.w * 100}%`, background: flash === 'hit' ? 'var(--ok)' : 'var(--accent)', opacity: 0.85, transition: 'left .2s, width .2s' }} />
         {[...Array(21)].map((_, i) => <div key={i} style={{ position: 'absolute', left: `${i * 5}%`, bottom: 0, width: 1, height: i % 5 ? 8 : 16, background: 'var(--line2)' }} />)}
-        <div ref={needle} style={{ position: 'absolute', top: -6, bottom: -6, width: 3, marginLeft: -1.5, background: flash === 'miss' ? 'var(--danger)' : 'var(--text)', boxShadow: '0 0 12px var(--text)' }} />
+        <div ref={needle} style={{ position: 'absolute', top: -6, bottom: -6, width: 3, marginLeft: -1.5, background: flash === 'miss' ? 'var(--danger)' : 'var(--text)',  }} />
       </div>
       <button className="btn btn-primary btn-lg" style={{ width: '100%' }} onPointerDown={(e) => { e.preventDefault(); lock(); }}>Lock</button>
     </div>
