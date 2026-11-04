@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Button, Field, Logo, Slash, useToast, Back, IconTarget, IconMap, IconSOS } from '../components/ui';
+import { Button, Field, Logo, Modal, Slash, useToast, Back, IconTarget, IconMap, IconSOS } from '../components/ui';
 import { callFunction, cleanError, rpc, supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { useTheme } from '../lib/theme';
 import { haptic } from '../lib/feel';
 import { LightTrails } from '../components/Art';
+import { HowItWorks } from '../components/Diagrams';
 
 /* ---------- Welcome ---------- */
 const WORDS = ['Hide.', 'Run.', 'Hunt.', 'Tag.'];
@@ -27,6 +28,7 @@ function Kinetic() {
 export function Welcome() {
   useTheme('neutral');
   const nav = useNavigate();
+  const [how, setHow] = useState(false);
   const rise = (i: number) => ({ initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.15 + i * 0.09, duration: 0.8, ease: [0.22, 1, 0.36, 1] as const } });
   return (
     <Slash>
@@ -46,11 +48,14 @@ export function Welcome() {
           <motion.p {...rise(3)} style={{ maxWidth: 360, margin: '18px 0 0', fontSize: 16, color: 'var(--muted)', lineHeight: 1.5 }}>
             A real-world chase on foot. Runners clear tasks before time runs out. Hunters follow them on a live map and scan their code to tag them.
           </motion.p>
-          <motion.div {...rise(4)} className="row" style={{ gap: 18, marginTop: 18, fontSize: 13.5, fontWeight: 600 }}>
-            <span className="row" style={{ gap: 8 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--grad-ember)', boxShadow: '0 0 12px #ff6a1a' }} />Runners</span>
-            <span className="row" style={{ gap: 8 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--grad-police)', boxShadow: '0 0 12px #ffd400' }} />Hunters</span>
+          <motion.div {...rise(4)} className="row" style={{ gap: 18, marginTop: 18, fontSize: 13.5, fontWeight: 600, flexWrap: 'wrap' }}>
+            <button onClick={() => setHow(true)} className="row" style={{ gap: 8, color: 'var(--cream)', fontWeight: 650, marginRight: 'auto' }}>
+              <span style={{ width: 26, height: 26, borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'rgba(255,242,224,.12)' }}><svg width="10" height="12" viewBox="0 0 10 12"><path d="M0 0 L10 6 L0 12 Z" fill="currentColor" /></svg></span>
+              How it works
+            </button>
           </motion.div>
         </div>
+        <Modal open={how} onClose={() => setHow(false)} title="How TAG works"><HowItWorks onClose={() => setHow(false)} /></Modal>
         <motion.div {...rise(5)} className="stack" style={{ gap: 10, marginTop: 8 }}>
           <Button kind="hot" size="lg" block onClick={() => nav('/signup')}>Create account</Button>
           <Button size="lg" kind="ghost" block onClick={() => nav('/signin')}>I already have an account</Button>

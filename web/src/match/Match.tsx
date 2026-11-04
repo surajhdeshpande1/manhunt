@@ -156,15 +156,15 @@ function Hud({ s, geo, isAdmin, alive, onMenu }: { s: RoomState; geo: Geo; isAdm
         style={{ pointerEvents: 'auto', position: 'relative', overflow: 'hidden', borderRadius: 24, padding: '12px 14px 12px',
           background: `radial-gradient(90% 140% at 0% 0%, ${status === 'hunt' ? 'rgba(232,54,31,.32)' : status === 'hiding' ? 'rgba(255,176,32,.22)' : 'rgba(255,255,255,.08)'}, transparent 60%), rgba(8,6,5,.78)`,
           backdropFilter: 'blur(18px) saturate(1.3)', WebkitBackdropFilter: 'blur(18px) saturate(1.3)', boxShadow: 'inset 0 0 0 1px rgba(255,220,190,.12), 0 16px 40px -18px rgba(0,0,0,.8)' }}>
-        <div className="row between" style={{ marginBottom: 8 }}>
-          <div className="row" style={{ gap: 10, minWidth: 0 }}>
+        <div className="row between" style={{ marginBottom: 8, gap: 8 }}>
+          <div className="row" style={{ gap: 8, flex: 'none' }}>
             <span className={`tag ${status === 'hunt' ? 'live' : ''}`}>{status === 'hunt' && <span className="dot pulse" />}{phase.t}</span>
-            <RollingText text={phase.v} style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.04em' }} />
+            <RollingText text={phase.v} style={{ fontSize: 'clamp(23px, 7.4vw, 30px)', fontWeight: 800, letterSpacing: '-0.04em', flex: 'none' }} />
           </div>
           <div className="row" style={{ gap: 6 }}>
             {status === 'hunt' && (
               <span className="tag" style={rev.active ? { background: 'var(--danger)', color: '#fff' } : undefined}>
-                {rev.active ? <><span className="dot pulse" /> Revealed {fmtClock(revealMs)}</> : <>Reveal {fmtClock(revealMs)}</>}
+                {rev.active ? <><span className="dot pulse" /> <span className="hide-xs">Revealed </span>{fmtClock(revealMs)}</> : <><span className="hide-xs">Reveal </span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="show-xs"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>{fmtClock(revealMs)}</>}
               </span>
             )}
             <button className="icon-btn" style={{ width: 36, height: 36 }} aria-label="Menu" onClick={onMenu}><IconMenu s={20} /></button>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { PhaseTimeline } from '../components/Diagrams';
 import { LightTrails } from '../components/Art';
 import { Segmented, Avatar, Back, Button, IconCopy, IconMap, IconPhone, IconPlus, IconShare, IconUndo, Modal, Section, Slash, useToast } from '../components/ui';
 import { rpc } from '../lib/supabase';
@@ -184,21 +185,7 @@ export function PlayerLobby({ s, themeKey }: { s: RoomState; themeKey: string })
 }
 
 function RulesSummary({ st }: { st: Settings }) {
-  const m = (s: number) => (s % 60 === 0 ? `${s / 60} min` : s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`);
-  const items = [
-    ['Hide', m(st.hide_secs)], ['Match', m(st.match_secs)], ['Tasks', `${st.tasks_per_runner} each`], ['Win mark', `${st.win_pct}%`],
-    ['Reveal', `${m(st.reveal_for)} / ${m(st.reveal_every)}`], ['Zone shrinks', `every ${m(st.shrink_every)}`],
-  ];
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'var(--line)' }} className="cut">
-      {items.map(([k, v]) => (
-        <div key={k} style={{ background: 'var(--surface)', padding: '10px 12px' }}>
-          <div className="eyebrow" style={{ fontSize: 10 }}>{k}</div>
-          <div className="display" style={{ fontSize: 17 }}>{v}</div>
-        </div>
-      ))}
-    </div>
-  );
+  return <PhaseTimeline st={st} />;
 }
 
 /* ---------- ADMIN LOBBY ---------- */
@@ -281,7 +268,7 @@ function Roster({ s, refresh, onInvite }: { s: RoomState; refresh: () => void; o
               <div key={m.id} className="list-row">
                 <Avatar src={m.selfie} name={m.username} size={44} />
                 <div className="grow" style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 600 }}>@{m.username} {m.invite && <span className="tag" style={{ marginLeft: 4 }}>Invited</span>}</div>
+                  <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{m.username} {m.invite && <span className="tag" style={{ marginLeft: 4 }}>Invited</span>}</div>
                   <div className="muted" style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name} · {m.branch} {YEAR[m.year]} · {m.college}</div>
                 </div>
                 <Button size="sm" onClick={() => call('decide_request', { p_user: m.id, p_accept: true })}>Accept</Button>
@@ -458,6 +445,7 @@ function RulesEditor({ s, refresh }: { s: RoomState; refresh: () => void }) {
   }
   return (
     <div className="stack" style={{ gap: 24 }}>
+      <PhaseTimeline st={v} />
       <Section title="Room">
         <div className="input-wrap cut"><input className="input" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} aria-label="Room name" /></div>
         {!s.room.is_public && <div className="input-wrap cut"><input className="input" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="New password (leave blank to keep)" aria-label="New password" /></div>}

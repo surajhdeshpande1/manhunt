@@ -194,7 +194,7 @@ export function Segmented<T extends string>({ value, onChange, options }: { valu
         const on = o.v === value;
         return (
           <button key={o.v} type="button" role="tab" aria-selected={on} disabled={o.disabled} onClick={() => { haptic.tap(); onChange(o.v); }}
-            style={{ position: 'relative', height: 42, borderRadius: 11, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 600, fontSize: 14.5,
+            style={{ position: 'relative', height: 42, minWidth: 0, borderRadius: 11, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 600, fontSize: 'clamp(12.5px, 3.7vw, 14.5px)', padding: '0 4px', whiteSpace: 'nowrap',
               color: on ? 'var(--accent-ink)' : 'var(--muted)', opacity: o.disabled ? 0.4 : 1, transition: 'color .3s var(--ease-out)' }}>
             {on && <motion.span layoutId={id} transition={{ type: 'spring', damping: 30, stiffness: 420 }} style={{ position: 'absolute', inset: 0, borderRadius: 11, background: 'var(--accent)' }} />}
             <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8 }}>{o.label}</span>

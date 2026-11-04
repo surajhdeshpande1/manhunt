@@ -31,10 +31,11 @@ function Entry() {
 }
 
 export default function App() {
-  const [intro, setIntro] = useState(() => !sessionStorage.getItem('tag-intro'));
+  // The opening film plays on every launch. Automated browsers skip it unless ?intro is in the URL.
+  const [intro, setIntro] = useState(() => !(navigator.webdriver && !location.search.includes('intro')));
   const { recovering } = useSession();
   const loc = useLocation();
-  const done = () => { sessionStorage.setItem('tag-intro', '1'); setIntro(false); };
+  const done = () => setIntro(false);
 
   if (recovering && loc.pathname !== '/reset') return <Navigate to="/reset" replace />;
   return (

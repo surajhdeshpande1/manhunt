@@ -7,7 +7,8 @@ import { useSession } from '../lib/session';
 import { useTheme } from '../lib/theme';
 import { haptic } from '../lib/feel';
 import { timeAgo } from '../lib/clock';
-import { LightTrails, CountUp } from '../components/Art';
+import { LightTrails } from '../components/Art';
+import { HowItWorks } from '../components/Diagrams';
 import Profile from './Profile';
 
 export default function Home() {
@@ -74,6 +75,7 @@ function RoomsTab() {
   const [joining, setJoining] = useState<string | null>(null);
   const [privOpen, setPrivOpen] = useState(false);
   const [spin, setSpin] = useState(false);
+  const [how, setHow] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -96,7 +98,10 @@ function RoomsTab() {
       <header style={{ position: 'relative', zIndex: 1 }}>
         <div className="row between">
           <Logo size={30} />
+          <div className="row" style={{ gap: 10 }}>
+          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setHow(true)} aria-label="How TAG works" style={{ width: 40, height: 40, borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'rgba(255,242,224,.08)', boxShadow: 'inset 0 0 0 1px var(--line)', fontWeight: 700, color: 'var(--cream)' }}>?</motion.button>
           <button onClick={() => nav('/home/profile')} aria-label="Your profile" style={{ borderRadius: '50%' }}><Avatar src={profile?.selfie_path} name={profile?.username} size={40} /></button>
+          </div>
         </div>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} style={{ margin: '30px 0 0', fontSize: 15, fontWeight: 600, color: 'var(--runner-tint)' }}>{greeting()}</motion.div>
         <motion.h1 className="display text-flare" initial={{ opacity: 0, y: 14, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ delay: 0.08, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
@@ -177,6 +182,7 @@ function RoomsTab() {
       </Section>
 
       <PrivateJoin open={privOpen} onClose={() => setPrivOpen(false)} />
+      <Modal open={how} onClose={() => setHow(false)} title="How TAG works"><HowItWorks onClose={() => setHow(false)} /></Modal>
     </div>
   );
 }

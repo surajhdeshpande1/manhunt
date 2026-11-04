@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { FieldReport } from '../components/Diagrams';
 import { LightTrails } from '../components/Art';
 import { Avatar, Button, IconShare, Section, Slash, useToast } from '../components/ui';
 import { fmtDist } from '../lib/clock';
@@ -52,7 +53,7 @@ export function Result({ s }: { s: RoomState }) {
   return (
     <Slash>
       <div className="screen" style={{ gap: 26 }}>
-        <div style={{ position: 'relative', paddingTop: 28, isolation: 'isolate' }}>
+        <div style={{ position: 'relative', paddingTop: 28, isolation: 'isolate', overflow: 'visible', contain: 'paint', margin: '0 -20px', padding: '28px 20px 0' }}>
           {v.win !== false && <div aria-hidden style={{ position: 'absolute', left: -20, right: -20, top: -80, height: 360, zIndex: -1, pointerEvents: 'none', maskImage: 'linear-gradient(#000 50%, transparent)', WebkitMaskImage: 'linear-gradient(#000 50%, transparent)' }}><LightTrails height="100%" /></div>}
           {[160, 260].map((d, i) => (
             <motion.span key={d} aria-hidden style={{ position: 'absolute', right: -d / 2.6, top: -d / 3, width: d, height: d, borderRadius: '50%', border: `1.5px solid ${v.win === false ? 'var(--line2)' : 'var(--accent)'}`, opacity: 0.35 - i * 0.12 }}
@@ -66,6 +67,7 @@ export function Result({ s }: { s: RoomState }) {
           </div>
         </div>
         {s.progress && <ProgressBar p={s.progress} big />}
+        <FieldReport members={s.members} meId={profile?.id} />
         {meM && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'var(--line)', borderRadius: 20, overflow: 'hidden' }}>
             {[['Role', meM.role === 'hunter' ? 'Hunter' : 'Runner'], [meM.role === 'hunter' ? 'Catches' : 'Tasks', meM.role === 'hunter' ? meM.catches : meM.tasks], ['Moved', fmtDist(meM.distance ?? 0)]].map(([k, val]) => (

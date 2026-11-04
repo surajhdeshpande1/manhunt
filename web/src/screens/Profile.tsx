@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CountUp, LightTrails } from '../components/Art';
+import { WinDial } from '../components/Diagrams';
 import { Avatar, Button, Empty, Field, Modal, Section, useToast } from '../components/ui';
 import { callFunction, rpc } from '../lib/supabase';
 import { useSession } from '../lib/session';
@@ -56,11 +57,21 @@ export default function Profile() {
         </div>
       </motion.div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-        {stats.map((st, i) => {
+      <div className="card row" style={{ padding: '16px 18px', gap: 18, borderRadius: 24 }}>
+        <WinDial wins={profile.wins} matches={profile.matches} size={120} />
+        <div className="grow">
+          <div className="display" style={{ fontSize: 30, fontWeight: 800 }}><CountUp value={profile.wins} /> <span className="muted" style={{ fontSize: 16, fontWeight: 600 }}>wins</span></div>
+          <div className="muted" style={{ fontSize: 14 }}>from {profile.matches} {profile.matches === 1 ? 'match' : 'matches'}</div>
+          <div style={{ height: 1, background: 'var(--line)', margin: '12px 0' }} />
+          <div style={{ fontSize: 13.5 }}><span style={{ color: 'var(--gold)', fontWeight: 650 }}>{profile.catches}</span> <span className="muted">tags made</span> · <span style={{ color: 'var(--copper)', fontWeight: 650 }}>{profile.times_caught}</span> <span className="muted">times tagged</span></div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+        {stats.filter((x) => ['Tasks', 'Moved'].includes(x.k)).map((st, i) => {
           const num = typeof st.v === 'number' ? st.v : parseFloat(String(st.v));
           const unit = typeof st.v === 'number' ? '' : String(st.v).replace(/[\d.\s]/g, '');
-          const hot = st.k === 'Wins';
+          const hot = false;
           return (
             <motion.div key={st.k} className="card" initial={{ opacity: 0, y: 12, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: 0.15 + i * 0.05, type: 'spring', damping: 20 }}
               style={{ padding: '14px 12px', borderRadius: 18, ...(hot ? { background: 'var(--grad-ember)', boxShadow: '0 14px 30px -14px #ff6a1a' } : {}) }}>

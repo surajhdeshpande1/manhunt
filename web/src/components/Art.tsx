@@ -16,6 +16,7 @@ export const Backdrop = memo(function Backdrop() {
       <span className="orb orb-a" />
       <span className="orb orb-b" />
       <span className="orb orb-c" />
+      <span className="orb orb-d" />
       <span className="backdrop-vignette" />
     </div>
   );
