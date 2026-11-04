@@ -5,6 +5,7 @@ import { haptic } from '../lib/feel';
 import { mulberry32 } from '../lib/rng';
 import { Sparks } from '../components/Art';
 import { LogoMark } from '../components/ui';
+import { Grain, LensFlare, Silhouette } from '../components/Scenes';
 
 /**
  * Opening film, 10 seconds, plays on every launch.
@@ -16,7 +17,7 @@ import { LogoMark } from '../components/ui';
  *  7.6  The wordmark burns in over the skyline.                               "Hide. Run. Don't get caught."
  * 10.0  Hand off to the app.
  *
- * "Skip" appears after 2.5 s. With reduced motion the film is a 1.2 s still.
+ * Plays in full on every launch. With reduced motion the film is a 1.2 s still.
  */
 const W = 400, H = 860, GROUND = 640;
 const RUN = 'M-40 600 C 40 560, 90 610, 150 560 S 230 470, 200 430';
@@ -47,8 +48,10 @@ export default function Landing({ onDone }: { onDone: () => void }) {
   useTheme('neutral');
   const done = useRef(false);
   const [act, setAct] = useState<Act>(0);
-  const [canSkip, setCanSkip] = useState(false);
   const { blocks, stars, lamps } = useSkyline();
+  // the SVG is drawn bottom-aligned with "slice": work out where the street sits on this screen
+  const scale = typeof window !== 'undefined' ? Math.max(window.innerWidth / W, window.innerHeight / H) : 1;
+  const groundPx = (H - GROUND) * scale;
   const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const finish = () => { if (!done.current) { done.current = true; onDone(); } };
 
@@ -59,7 +62,6 @@ export default function Landing({ onDone }: { onDone: () => void }) {
       setTimeout(() => setAct(2), 4600),
       setTimeout(() => { setAct(3); haptic.big(); }, 7200),
       setTimeout(() => setAct(4), 7600),
-      setTimeout(() => setCanSkip(true), 2500),
       setTimeout(finish, 10000),
     ];
     return () => T.forEach(clearTimeout);
@@ -135,6 +137,24 @@ export default function Landing({ onDone }: { onDone: () => void }) {
         ))}
       </svg>
 
+      {/* figures cross the street under the lamps, rim-lit so they read against the dark */}
+      <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: groundPx - 6, height: 110, pointerEvents: 'none', overflow: 'visible' }}>
+        {act >= 1 && act < 3 && (
+          <motion.div style={{ position: 'absolute', bottom: 0, filter: 'drop-shadow(0 0 5px rgba(255,138,61,.95)) drop-shadow(0 0 14px rgba(232,54,31,.6))' }}
+            initial={{ left: '-20%' }} animate={{ left: '108%' }} transition={{ duration: 4.6, ease: 'linear' }}>
+            <Silhouette pose="sprint" color="#120806" size={64} />
+          </motion.div>
+        )}
+        {act === 2 && (
+          <motion.div style={{ position: 'absolute', bottom: 0, filter: 'drop-shadow(0 0 5px rgba(255,212,0,.9))' }}
+            initial={{ left: '-25%' }} animate={{ left: '62%' }} transition={{ duration: 2.6, ease: 'linear' }}>
+            <Silhouette pose="scan" color="#120806" size={66} beam="#ffd400" />
+          </motion.div>
+        )}
+      </div>
+      {act >= 3 && <LensFlare y="50%" color="#ffd9a8" />}
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}><Grain opacity={0.11} /></div>
+
       {/* the scene dims so the title card owns the frame */}
       <motion.div aria-hidden style={{ position: 'absolute', inset: 0, background: 'radial-gradient(80% 60% at 50% 38%, rgba(0,0,0,.35), rgba(0,0,0,.82))', pointerEvents: 'none' }}
         initial={{ opacity: 0 }} animate={{ opacity: act >= 4 ? 1 : 0 }} transition={{ duration: 0.9, ease }} />
@@ -174,8 +194,7 @@ export default function Landing({ onDone }: { onDone: () => void }) {
           <motion.div style={{ height: '100%', background: 'linear-gradient(90deg, #e8361f, #ffb020, #ffd400)', transformOrigin: 'left' }}
             initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: reduce ? 1.2 : 10, ease: 'linear' }} />
         </div>
-        <motion.button onClick={() => { haptic.tap(); finish(); }} initial={{ opacity: 0 }} animate={{ opacity: canSkip ? 1 : 0 }} disabled={!canSkip}
-          style={{ color: '#fff2e0', fontSize: 14, fontWeight: 600, padding: '10px 4px', minWidth: 44 }}>Skip</motion.button>
+
       </div>
     </motion.div>
   );

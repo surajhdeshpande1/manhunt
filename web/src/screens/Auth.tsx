@@ -38,10 +38,10 @@ export function Welcome() {
       <div className="screen" style={{ gap: 20, minHeight: '100dvh' }}>
         <motion.div {...rise(0)} className="row between">
           <Logo size={30} />
-          <span className="tag" style={{ background: 'rgba(0,0,0,.45)', boxShadow: 'inset 0 0 0 1px var(--line2)', color: 'var(--text)', backdropFilter: 'blur(8px)' }}><span className="dot pulse" style={{ color: 'var(--ok)' }} /> Played outdoors</span>
+          <span className="tag" style={{ background: 'color-mix(in srgb, var(--bg) 55%, transparent)', boxShadow: 'inset 0 0 0 1px var(--line2)', color: 'var(--text)', backdropFilter: 'blur(8px)' }}><span className="dot pulse" style={{ color: 'var(--ok)' }} /> Played outdoors</span>
         </motion.div>
         <div style={{ marginTop: 'auto' }}>
-          <motion.div {...rise(1)} style={{ fontSize: 15, fontWeight: 600, color: 'var(--runner-tint)', marginBottom: 10 }}>Your campus is the map.</motion.div>
+          <motion.div {...rise(1)} style={{ fontSize: 15, fontWeight: 600, color: 'var(--tint-text)', marginBottom: 10 }}>Your campus is the map.</motion.div>
           <motion.h1 {...rise(2)} className="display" style={{ fontSize: 'clamp(72px, 24vw, 112px)', margin: 0, fontWeight: 850, letterSpacing: '-0.065em', lineHeight: 0.92 }}>
             <Kinetic />
           </motion.h1>
@@ -50,7 +50,7 @@ export function Welcome() {
           </motion.p>
           <motion.div {...rise(4)} className="row" style={{ gap: 18, marginTop: 18, fontSize: 13.5, fontWeight: 600, flexWrap: 'wrap' }}>
             <button onClick={() => setHow(true)} className="row" style={{ gap: 8, color: 'var(--cream)', fontWeight: 650, marginRight: 'auto' }}>
-              <span style={{ width: 26, height: 26, borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'rgba(255,242,224,.12)' }}><svg width="10" height="12" viewBox="0 0 10 12"><path d="M0 0 L10 6 L0 12 Z" fill="currentColor" /></svg></span>
+              <span style={{ width: 26, height: 26, borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'var(--quiet-fill)' }}><svg width="10" height="12" viewBox="0 0 10 12"><path d="M0 0 L10 6 L0 12 Z" fill="currentColor" /></svg></span>
               How it works
             </button>
           </motion.div>

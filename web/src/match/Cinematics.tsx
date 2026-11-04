@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Avatar, Button } from '../components/ui';
+import { Grain, LensFlare, Silhouette, TornEdge } from '../components/Scenes';
 import { haptic } from '../lib/feel';
 import type { Member, Role } from '../lib/types';
 
@@ -39,13 +40,21 @@ export function RoleReveal({ role, hunters, hideSecs, onDone }: { role: Role; hu
   const ease = [0.22, 1, 0.36, 1] as const;
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.35 } }}
-      style={{ position: 'fixed', inset: 0, zIndex: 700, background: '#000', color: 'var(--text)', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+      style={{ position: 'fixed', inset: 0, zIndex: 700, background: '#000', color: '#fff6f0', overflow: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 6 }}><Grain opacity={0.1} /></div>
+      {stage === 0 && <LensFlare y="62%" color={runner ? '#ffb27a' : '#fff7b0'} delay={0.35} />}
       <motion.div
         initial={{ clipPath: 'circle(0% at 50% 50%)', height: '100%' }}
         animate={stage === 0 ? { clipPath: 'circle(150% at 50% 50%)', height: '100%' } : { clipPath: 'circle(150% at 50% 50%)', height: '44%' }}
         transition={stage === 0 ? { duration: 0.9, ease } : { duration: 0.75, ease }}
-        style={{ background: color, color: runner ? '#170700' : '#000', flex: 'none', borderRadius: stage ? '0 0 32px 32px' : 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-          padding: 'calc(env(safe-area-inset-top) + 24px) 24px 28px', position: 'relative', overflow: 'hidden', transition: 'border-radius .6s var(--ease-out)' }}>
+        style={{ background: color, color: runner ? '#170700' : '#000', flex: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+          backgroundImage: runner ? 'radial-gradient(120% 90% at 100% 0%, #ffb27a, transparent 55%), linear-gradient(160deg, #ff8a3d, #ff6a1a 45%, #e8361f)' : 'radial-gradient(120% 90% at 100% 0%, #fff7b0, transparent 55%), linear-gradient(160deg, #ffe14d, #ffd400 50%, #c9a400)',
+          padding: 'calc(env(safe-area-inset-top) + 24px) 24px 28px', position: 'relative', overflow: 'visible' }}>
+        <motion.div aria-hidden initial={{ x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.7, duration: 0.9, ease }}
+          style={{ position: 'absolute', right: 14, top: runner ? 'calc(env(safe-area-inset-top) + 26px)' : 'calc(env(safe-area-inset-top) + 96px)', opacity: 0.92 }}>
+          <Silhouette pose={runner ? 'sprint' : 'scan'} color={runner ? '#5c0d0a' : '#000'} beam={runner ? undefined : '#fff'} size={stage ? (runner ? 96 : 82) : 150} />
+        </motion.div>
+        <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: -17 }}><TornEdge color={runner ? '#e8361f' : '#c9a400'} seed={runner ? 4 : 9} /></div>
         <motion.div aria-hidden style={{ position: 'absolute', right: -80, top: -80, width: 320, height: 320, borderRadius: '50%', border: '1.5px solid currentColor', opacity: 0.18 }}
           initial={{ scale: 0.3 }} animate={{ scale: 1 }} transition={{ duration: 1.6, ease }} />
         <motion.div aria-hidden style={{ position: 'absolute', right: 0, top: 0, width: 160, height: 160, borderRadius: '50%', border: '1.5px solid currentColor', opacity: 0.22 }}
@@ -144,6 +153,18 @@ export function Tape({ text, rotate = -6, top = '40%', dark, delay = 0 }: { text
   );
 }
 
+/** Police siren wash: blue and yellow light sweeping the screen edges. */
+function Siren() {
+  return (
+    <>
+      <motion.div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(70% 60% at 0% 50%, rgba(46,107,255,.55), transparent 70%)' }}
+        animate={{ opacity: [0, 1, 0, 0, 1, 0] }} transition={{ duration: 1.2, repeat: 2 }} />
+      <motion.div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(70% 60% at 100% 50%, rgba(255,212,0,.5), transparent 70%)' }}
+        animate={{ opacity: [0, 0, 1, 0, 0, 1] }} transition={{ duration: 1.2, repeat: 2 }} />
+    </>
+  );
+}
+
 function useAuto(done: () => void, ms: number) {
   const d = useRef(done); d.current = done;
   useEffect(() => { const t = setTimeout(() => d.current(), ms); return () => clearTimeout(t); }, [ms]);
@@ -160,7 +181,10 @@ function HuntGo({ done }: { done: () => void }) {
   const R = 92, C = 2 * Math.PI * R;
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.4 } }} onClick={done}
-      style={{ position: 'fixed', inset: 0, zIndex: 720, background: 'rgba(0,0,0,.72)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', display: 'grid', placeItems: 'center' }}>
+      style={{ position: 'fixed', inset: 0, zIndex: 720, background: 'rgba(0,0,0,.72)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', display: 'grid', placeItems: 'center', overflow: 'hidden' }}>
+      <Grain opacity={0.08} />
+      {n <= 0 && <Siren />}
+      {n <= 0 && <LensFlare color="#fff7b0" />}
       <div style={{ position: 'relative', width: 220, height: 220, display: 'grid', placeItems: 'center' }}>
         <svg width="220" height="220" viewBox="0 0 220 220" style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }} aria-hidden>
           <circle cx="110" cy="110" r={R} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="3" />
@@ -192,7 +216,10 @@ function Eliminated({ who, by, done }: { who?: Member; by?: Member; done: () => 
   useAuto(done, 2800);
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={done}
-      style={{ position: 'fixed', inset: 0, zIndex: 720, background: 'rgba(0,0,0,.7)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', display: 'grid', placeItems: 'center' }}>
+      style={{ position: 'fixed', inset: 0, zIndex: 720, background: 'rgba(0,0,0,.7)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', display: 'grid', placeItems: 'center', overflow: 'hidden' }}>
+      <Grain opacity={0.1} />
+      <Siren />
+      <LensFlare color="#ffb27a" delay={0.4} />
       <Tape text="CAUGHT" rotate={-8} top="calc(50% - 90px)" />
       <Tape text="CAUGHT" rotate={6} top="calc(50% - 40px)" delay={0.12} />
       <div className="center" style={{ display: 'grid', justifyItems: 'center', position: 'relative' }}>
@@ -252,7 +279,9 @@ function ResultSlam({ title, sub, win, done }: { title: string; sub: string; win
   const tone = win === false ? 'rgba(255,255,255,.18)' : 'var(--accent)';
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={done}
-      style={{ position: 'fixed', inset: 0, zIndex: 730, background: '#000', display: 'grid', placeItems: 'center', overflow: 'hidden' }}>
+      style={{ position: 'fixed', inset: 0, zIndex: 730, background: win === false ? '#000' : 'radial-gradient(90% 60% at 50% 50%, #5c0d0a, #000 70%)', display: 'grid', placeItems: 'center', overflow: 'hidden' }}>
+      <Grain opacity={0.1} />
+      {win !== false && <LensFlare color="#ffb27a" delay={0.15} />}
       {[0, 0.12, 0.24].map((d, i) => (
         <motion.span key={i} aria-hidden style={{ position: 'absolute', width: 180, height: 180, borderRadius: '50%', border: `1.5px solid ${tone}` }}
           initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 2.4 + i * 1.2, opacity: [0, 0.6, 0] }} transition={{ duration: 2.2, delay: d, ease: [0.22, 1, 0.36, 1] }} />

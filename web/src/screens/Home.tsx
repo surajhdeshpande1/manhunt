@@ -9,6 +9,7 @@ import { haptic } from '../lib/feel';
 import { timeAgo } from '../lib/clock';
 import { LightTrails } from '../components/Art';
 import { HowItWorks } from '../components/Diagrams';
+import { NightCampus } from '../components/Scenes';
 import Profile from './Profile';
 
 export default function Home() {
@@ -99,11 +100,11 @@ function RoomsTab() {
         <div className="row between">
           <Logo size={30} />
           <div className="row" style={{ gap: 10 }}>
-          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setHow(true)} aria-label="How TAG works" style={{ width: 40, height: 40, borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'rgba(255,242,224,.08)', boxShadow: 'inset 0 0 0 1px var(--line)', fontWeight: 700, color: 'var(--cream)' }}>?</motion.button>
+          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setHow(true)} aria-label="How TAG works" style={{ width: 40, height: 40, borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'var(--quiet-fill)', boxShadow: 'inset 0 0 0 1px var(--line)', fontWeight: 700, color: 'var(--text)' }}>?</motion.button>
           <button onClick={() => nav('/home/profile')} aria-label="Your profile" style={{ borderRadius: '50%' }}><Avatar src={profile?.selfie_path} name={profile?.username} size={40} /></button>
           </div>
         </div>
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} style={{ margin: '30px 0 0', fontSize: 15, fontWeight: 600, color: 'var(--runner-tint)' }}>{greeting()}</motion.div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} style={{ margin: '30px 0 0', fontSize: 15, fontWeight: 600, color: 'var(--tint-text)' }}>{greeting()}</motion.div>
         <motion.h1 className="display text-flare" initial={{ opacity: 0, y: 14, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ delay: 0.08, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           style={{ fontSize: 52, margin: '2px 0 0', fontWeight: 850, letterSpacing: '-0.06em', width: 'fit-content', paddingRight: 6 }}>{profile?.full_name?.split(' ')[0] || profile?.username}</motion.h1>
         <p className="muted" style={{ margin: '6px 0 0' }}>{(rooms?.filter((r) => r.status === 'lobby').length ?? 0) > 0 ? `${rooms!.filter((r) => r.status === 'lobby').length} public ${rooms!.filter((r) => r.status === 'lobby').length === 1 ? 'room is' : 'rooms are'} taking players.` : 'Join a room with its ID, or host your own.'}</p>
@@ -310,6 +311,7 @@ function HostTab() {
       <header style={{ position: 'relative', zIndex: 1, paddingTop: 12 }}>
         <h1 className="display" style={{ fontSize: 52, margin: '18px 0 12px', fontWeight: 850, letterSpacing: '-0.06em', lineHeight: 0.95 }}>Run the<br /><span className="text-flare" style={{ paddingRight: 6 }}>whole game.</span></h1>
         <p className="muted" style={{ margin: 0, maxWidth: 400 }}>As admin you draw the play area, set the rules and assign roles, then watch the whole map while everyone else plays.</p>
+        <div aria-hidden style={{ margin: '18px -20px 0', borderRadius: 0 }}><NightCampus height={120} seed={21} /></div>
       </header>
 
       <form className="stack" style={{ gap: 18 }} onSubmit={create}>

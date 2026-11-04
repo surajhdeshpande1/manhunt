@@ -2,48 +2,80 @@
 @import 'maplibre-gl/dist/maplibre-gl.css';
 
 /*
-  TAG design language
-  - True black canvas, neutral greys. Nothing decorative behind content.
-  - Colour carries meaning: runners = flare orange / ember red, hunters = police yellow on black, live = green.
-  - Actions: white for everyday, flare orange for the big moments, red for destructive.
-  - One family (Inter, optical sizes): tight display cuts for headlines, tabular figures for clocks.
+  TAG design language — cinematic night chase
+  Dominant: black, flare orange, ember red, police yellow, white.
+  Supporting: warm graphite surfaces, midnight indigo (sky only), siren blue (flashes only),
+  mint / amber / indigo / gold for meaning. Day theme: paper & ink.
 */
 
-/* ---------- THEMES ---------- */
+/* ---------- PALETTE ---------- */
+:root {
+  /* runners — flare ramp */
+  --peach: #ffe3c2; --apricot: #ffb27a; --tangerine: #ff8a3d; --flare: #ff6a1a; --ember: #e8361f; --brick: #a61b12; --oxblood: #5c0d0a;
+  /* hunters — police ramp */
+  --police-1: #fff7b0; --police-2: #ffe14d; --police: #ffd400; --police-4: #c9a400; --siren: #2e6bff;
+  /* warm graphite */
+  --g0: #0d0b0a; --g1: #171412; --g2: #221d1a; --g3: #2e2723;
+  /* midnight indigo — sky, water, info */
+  --indigo-0: #0b1033; --indigo-1: #1b2a6b; --indigo-2: #3d4fd6; --indigo-3: #8c9bff;
+  /* meaning */
+  --mint: #3ddc97; --amber: #ffb020; --gold: #f2b33d;
+  --paper: #fff7ec; --ink: #14110f;
+}
+
+/* ---------- THEMES (night) ---------- */
 :root, [data-theme='neutral'] {
-  --bg: #000000; --bg2: #0a0a0b; --surface: #141416; --surface2: #1f1f22; --surface3: #2b2b2f;
-  --line: rgba(255, 255, 255, 0.08); --line2: rgba(255, 255, 255, 0.15);
-  --hi: rgba(255, 255, 255, 0.05);
-  --text: #f5f5f7; --muted: #8e8e93; --faint: #4c4c52;
-  --accent: #f5f5f7; --accent2: #ffffff; --accent-ink: #000000; --accent-glow: rgba(255, 255, 255, 0.16);
-  --runner: #ff6a1a; --runner-deep: #e8361f; --runner-tint: #ffb27a; --hunter: #ffd400; --hunter-ink: #000000; --hot: #ff6a1a;
-  --danger: #ff453a; --ok: #32d74b; --warn: #ffd60a;
-  --map-bg: #0b0b0c; --map-water: #0d1621; --map-road: #222226; --map-road2: #2f2f34; --map-build: #17171a; --map-park: #0f1a13; --map-label: #7c7c82;
+  --bg: #000000; --bg2: var(--g0); --surface: var(--g1); --surface2: var(--g2); --surface3: var(--g3);
+  --line: rgba(255, 228, 205, 0.08); --line2: rgba(255, 228, 205, 0.15);
+  --hi: rgba(255, 240, 225, 0.05);
+  --text: #fbf6f1; --muted: #9a8f87; --faint: #4f4640;
+  --accent: #fbf6f1; --accent2: #ffffff; --accent-ink: #000000; --accent-glow: rgba(255, 240, 225, 0.16);
+  --danger: #ff453a; --ok: var(--mint); --warn: var(--amber); --info: var(--indigo-3);
+  --map-bg: #0b0b0c; --map-water: #0d1328; --map-road: #24201d; --map-road2: #312b27; --map-build: #171412; --map-park: #10170f; --map-label: #8c8178;
   --scrim: rgba(0, 0, 0, 0.62);
 }
 [data-theme='runner'], [data-theme='runner-ink'] {
-  --bg: #000000; --bg2: #0b0705; --surface: #17110d; --surface2: #221913; --surface3: #2f231b;
+  --bg: #000000; --bg2: #0d0806; --surface: #19110d; --surface2: #241913; --surface3: #31231b;
   --line: rgba(255, 205, 175, 0.09); --line2: rgba(255, 205, 175, 0.17);
   --hi: rgba(255, 255, 255, 0.05);
   --text: #fff6f0; --muted: #a8968c; --faint: #574840;
-  --accent: #ff6a1a; --accent2: #ffb27a; --accent-ink: #170700; --accent-glow: rgba(255, 106, 26, 0.34);
-  --danger: #ff453a; --ok: #32d74b; --warn: #ffd400;
-  --map-bg: #0e0b09; --map-water: #0b1520; --map-road: #2a2019; --map-road2: #3a2c22; --map-build: #19130f; --map-park: #13170f; --map-label: #9a8a80;
+  --accent: var(--flare); --accent2: var(--apricot); --accent-ink: #170700; --accent-glow: rgba(255, 106, 26, 0.34);
+  --danger: #ff453a; --ok: var(--mint); --warn: var(--amber); --info: var(--indigo-3);
+  --map-bg: #0e0b09; --map-water: #0d1328; --map-road: #2a2019; --map-road2: #3a2c22; --map-build: #19130f; --map-park: #13170f; --map-label: #9a8a80;
   --scrim: rgba(10, 4, 0, 0.66);
 }
 [data-theme='hunter'] {
-  --bg: #000000; --bg2: #0a0a06; --surface: #141410; --surface2: #1f1e16; --surface3: #2b291e;
+  --bg: #000000; --bg2: var(--g0); --surface: #16140f; --surface2: #211e16; --surface3: #2d291d;
   --line: rgba(255, 238, 160, 0.09); --line2: rgba(255, 238, 160, 0.17);
   --hi: rgba(255, 255, 255, 0.05);
   --text: #fffbe8; --muted: #a39e86; --faint: #55523f;
-  --accent: #ffd400; --accent2: #ffe766; --accent-ink: #000000; --accent-glow: rgba(255, 212, 0, 0.3);
-  --danger: #ff453a; --ok: #32d74b; --warn: #ffd400;
-  --map-bg: #0c0c0a; --map-water: #0b1218; --map-road: #24231b; --map-road2: #333126; --map-build: #161610; --map-park: #11150e; --map-label: #9c9780;
+  --accent: var(--police); --accent2: var(--police-2); --accent-ink: #000000; --accent-glow: rgba(255, 212, 0, 0.3);
+  --danger: #ff453a; --ok: var(--mint); --warn: var(--amber); --info: var(--indigo-3);
+  --map-bg: #0c0c0a; --map-water: #0d1328; --map-road: #24231b; --map-road2: #333126; --map-build: #161610; --map-park: #11150e; --map-label: #9c9780;
   --scrim: rgba(0, 0, 0, 0.7);
 }
 
+/* ---------- DAY THEME — paper & ink (auto in daylight, or chosen in Profile) ---------- */
+[data-day='1'] {
+  --bg: var(--paper); --bg2: #fbefe0; --surface: #fffdf9; --surface2: #f6e9da; --surface3: #ead9c6;
+  --line: rgba(20, 17, 15, 0.1); --line2: rgba(20, 17, 15, 0.2);
+  --hi: rgba(255, 255, 255, 0.8);
+  --text: var(--ink); --muted: #6f625a; --faint: #b3a497;
+  --scrim: rgba(20, 17, 15, 0.45);
+  --info: var(--indigo-2);
+  color-scheme: light;
+}
+[data-day='1'][data-theme='neutral'], [data-day='1']:not([data-theme]) { --accent: var(--ink); --accent2: #000; --accent-ink: var(--paper); --accent-glow: rgba(20, 17, 15, 0.18); }
+[data-day='1'][data-theme='runner'], [data-day='1'][data-theme='runner-ink'] { --accent: var(--ember); --accent-ink: #fff; --runner-tint: var(--brick); }
+[data-day='1'][data-theme='hunter'] { --accent: var(--police); --accent-ink: #000; --text: var(--ink); --muted: #6f6a52; }
+[data-day='1'] .backdrop { background: var(--paper) !important; }
+[data-day='1'] .backdrop-vignette { display: none; }
+[data-day='1'] { --orb-a: rgba(255, 138, 61, 0.22) !important; --orb-b: rgba(255, 212, 0, 0.16) !important; --orb-c: rgba(61, 79, 214, 0.08) !important; --orb-d: rgba(232, 54, 31, 0.1) !important; }
+[data-day='1'] .text-flare { background: linear-gradient(135deg, var(--ember), var(--flare) 60%, var(--amber)); -webkit-background-clip: text; background-clip: text; }
+[data-day='1'] .card { background: rgba(255, 253, 249, 0.86); box-shadow: inset 0 0 0 1px var(--line), 0 10px 30px -18px rgba(92, 13, 10, 0.25); }
+
 :root {
-  --runner: #ff6a1a; --runner-deep: #e8361f; --runner-tint: #ffb27a; --hunter: #ffd400; --hunter-ink: #000000; --hot: #ff6a1a;
+  --runner: var(--flare); --runner-deep: var(--ember); --runner-tint: var(--apricot); --hunter: var(--police); --hunter-ink: #000000; --hot: var(--flare);
   --font-display: 'Inter Variable', system-ui, -apple-system, sans-serif;
   --font-body: 'Inter Variable', system-ui, -apple-system, sans-serif;
   --r-xl: 28px; --r-lg: 22px; --r: 16px; --r-sm: 12px; --r-xs: 9px;
@@ -220,12 +252,12 @@ textarea.input { height: auto; min-height: 96px; padding: 13px 15px; resize: ver
   --grad-flare: linear-gradient(135deg, #ffd400 0%, #ffb020 22%, #ff6a1a 55%, #e8361f 100%);
   --grad-ember: linear-gradient(135deg, #ff6a1a 0%, #e8361f 60%, #b3170f 100%);
   --grad-police: linear-gradient(135deg, #fff1a0 0%, #ffd400 45%, #ffb020 100%);
-  --orb-a: rgba(255, 106, 26, 0.26); --orb-b: rgba(120, 18, 40, 0.55); --orb-c: rgba(242, 179, 61, 0.12); --orb-d: rgba(166, 58, 18, 0.22);
+  --orb-a: rgba(255, 106, 26, 0.24); --orb-b: rgba(92, 13, 10, 0.6); --orb-c: rgba(27, 42, 107, 0.55); --orb-d: rgba(166, 27, 18, 0.22);
   /* extended warm palette */
   --wine: #4a0f1f; --plum: #2a0a18; --rust: #a63a12; --copper: #d9772b; --gold: #f2b33d; --cream: #fff2e0; --ash: #8e8e93;
 }
-[data-theme='runner'], [data-theme='runner-ink'] { --orb-a: rgba(255, 106, 26, 0.36); --orb-b: rgba(140, 20, 30, 0.55); --orb-c: rgba(255, 176, 32, 0.16); --orb-d: rgba(232, 54, 31, 0.24); }
-[data-theme='hunter'] { --orb-a: rgba(255, 212, 0, 0.22); --orb-b: rgba(90, 60, 10, 0.5); --orb-c: rgba(255, 242, 224, 0.07); --orb-d: rgba(242, 179, 61, 0.14); }
+[data-theme='runner'], [data-theme='runner-ink'] { --orb-a: rgba(255, 106, 26, 0.36); --orb-b: rgba(140, 20, 30, 0.55); --orb-c: rgba(27, 42, 107, 0.45); --orb-d: rgba(232, 54, 31, 0.24); }
+[data-theme='hunter'] { --orb-a: rgba(255, 212, 0, 0.2); --orb-b: rgba(46, 107, 255, 0.16); --orb-c: rgba(27, 42, 107, 0.5); --orb-d: rgba(201, 164, 0, 0.14); }
 
 
 .backdrop { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #000; }
@@ -276,3 +308,15 @@ textarea.input { height: auto; min-height: 96px; padding: 13px 15px; resize: ver
 
 .toast::before { background: var(--grad-flare); }
 @media (prefers-reduced-motion: reduce) { .backdrop .orb, .btn-hot::after, .glow-edge::before { animation: none !important; } }
+
+/* film grain jitter (cinematic moments only) */
+.grain { animation: grain 0.9s steps(6) infinite; }
+@keyframes grain { 0% { transform: translate(0, 0); } 20% { transform: translate(-3%, 2%); } 40% { transform: translate(2%, -3%); } 60% { transform: translate(-2%, -1%); } 80% { transform: translate(3%, 3%); } 100% { transform: translate(0, 0); } }
+@media (prefers-reduced-motion: reduce) { .grain { animation: none; } }
+
+/* surfaces that stay dark in every appearance (player card, match HUD) */
+.force-night { --surface: #19110d; --surface2: #241913; --surface3: #31231b; --text: #fbf6f1; --muted: #a8968c; --faint: #574840; --line: rgba(255, 228, 205, 0.1); --line2: rgba(255, 228, 205, 0.18); color: var(--text); }
+/* readable tints of the brand colours on paper */
+:root { --tint-text: var(--apricot); --mark-text: var(--police); --quiet-fill: rgba(255, 242, 224, 0.08); }
+[data-day='1'] { --tint-text: var(--brick); --mark-text: #8a6a00; --quiet-fill: rgba(20, 17, 15, 0.06); --cream: var(--ink); }
+[data-day='1'] .force-night { --cream: #fff2e0; }

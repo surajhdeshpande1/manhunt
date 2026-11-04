@@ -2,6 +2,7 @@ import { useId, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
 import type { Member, Settings } from '../lib/types';
 import { haptic } from '../lib/feel';
+import { Silhouette } from './Scenes';
 
 const ease = [0.22, 1, 0.36, 1] as const;
 const C = { orange: '#ff6a1a', ember: '#e8361f', yellow: '#ffd400', gold: '#f2b33d', copper: '#d9772b', wine: '#4a0f1f', plum: '#2a0a18', cream: '#fff2e0', rust: '#a63a12' };
@@ -35,6 +36,7 @@ const PLATES: { title: string; body: string; art: ReactNode }[] = [
         <motion.circle cx="160" cy="60" r="34" fill="none" stroke={C.gold} strokeWidth="3" strokeLinecap="round" strokeDasharray="214" style={{ rotate: -90, transformOrigin: '160px 60px' }}
           initial={{ strokeDashoffset: 214 }} animate={{ strokeDashoffset: 60 }} transition={{ duration: 2.4, ease }} />
         <text x="160" y="66" textAnchor="middle" fill={C.cream} style={{ font: '700 17px Inter Variable, system-ui' }}>7:00</text>
+        <motion.g initial={{ opacity: 0, x: 250 }} animate={{ opacity: 1, x: 232 }} transition={{ delay: 1, duration: 0.8 }}><g transform="translate(0 112)"><Silhouette pose="crouch" color={C.orange} size={78} /></g></motion.g>
         {[[64, 170], [214, 150], [128, 190]].map(([x, y], i) => (
           <g key={i}>
             <motion.circle r="12" fill={C.orange} opacity={0.25} initial={{ cx: 160, cy: 120 }} animate={{ cx: x, cy: y }} transition={{ delay: 0.3 + i * 0.25, duration: 1.4, ease }} />
@@ -57,8 +59,8 @@ const PLATES: { title: string; body: string; art: ReactNode }[] = [
             <circle r="14" fill={C.orange} opacity=".3" /><circle r="5" fill={C.orange} />
           </motion.g>
         ))}
-        <motion.g animate={{ x: [230, 180, 230], y: [70, 110, 70] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}>
-          <circle r="22" fill={C.yellow} opacity=".14" /><circle r="6" fill={C.yellow} />
+        <motion.g animate={{ x: [200, 170, 200] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}>
+          <g transform="translate(0 112)"><Silhouette pose="scan" color={C.yellow} beam={C.yellow} size={92} /></g>
         </motion.g>
       </Plate>
     ),
@@ -89,8 +91,8 @@ const PLATES: { title: string; body: string; art: ReactNode }[] = [
         {[0, 0.5, 1].map((d) => (
           <motion.circle key={d} cx="160" cy="110" fill="none" stroke={C.yellow} strokeWidth="1.5" initial={{ r: 20, opacity: 0.8 }} animate={{ r: 110, opacity: 0 }} transition={{ duration: 2, delay: d, repeat: Infinity }} />
         ))}
-        <circle cx="148" cy="110" r="22" fill={C.orange} />
-        <circle cx="174" cy="110" r="22" fill={C.yellow} stroke="#000" strokeWidth="3" />
+        <g transform="translate(70 104)"><Silhouette pose="sprint" color={C.orange} size={96} /></g>
+        <g transform="translate(150 98)"><Silhouette pose="scan" color={C.yellow} beam={C.cream} size={104} /></g>
         <g transform="translate(222 52)">
           <rect width="56" height="56" rx="10" fill={C.cream} />
           {[[8, 8], [34, 8], [8, 34]].map(([x, y], i) => <g key={i}><rect x={x} y={y} width="14" height="14" fill="#000" /><rect x={x + 4} y={y + 4} width="6" height="6" fill={C.cream} /></g>)}
@@ -127,7 +129,7 @@ export function HowItWorks({ onClose }: { onClose: () => void }) {
         <div className="row" style={{ gap: 6 }}>
           {PLATES.map((_, n) => (
             <button key={n} aria-label={`Step ${n + 1}`} onClick={() => go(n)} style={{ padding: 6, margin: -6 }}>
-              <motion.span animate={{ width: n === i ? 24 : 7, background: n === i ? C.orange : 'rgba(255,242,224,.25)' }} style={{ display: 'block', height: 7, borderRadius: 4 }} />
+              <motion.span animate={{ width: n === i ? 24 : 7, background: n === i ? C.orange : 'var(--line2)' }} style={{ display: 'block', height: 7, borderRadius: 4 }} />
             </button>
           ))}
         </div>
@@ -162,7 +164,7 @@ export function PhaseTimeline({ st }: { st: Settings }) {
           <motion.rect key={`r${i}`} x={hideW + r * huntW - 0.25} y="3" width="0.5" height="5" fill={C.yellow} initial={{ opacity: 0 }} animate={{ opacity: 0.9 }} transition={{ delay: 1 + i * 0.03 }} />
         ))}
         {shrinks.slice(0, 30).map((r, i) => (
-          <motion.circle key={`s${i}`} cx={hideW + r * huntW} cy="21.5" r="1.1" fill="none" stroke={C.cream} strokeWidth="0.35" vectorEffect="non-scaling-stroke" initial={{ opacity: 0 }} animate={{ opacity: 0.7 }} transition={{ delay: 1.2 + i * 0.04 }} />
+          <motion.circle key={`s${i}`} cx={hideW + r * huntW} cy="21.5" r="1.1" fill="none" stroke="var(--text)" strokeWidth="0.35" vectorEffect="non-scaling-stroke" initial={{ opacity: 0 }} animate={{ opacity: 0.7 }} transition={{ delay: 1.2 + i * 0.04 }} />
         ))}
       </svg>
       <div className="row" style={{ justifyContent: 'space-between', fontSize: 12.5, marginTop: 4 }}>
@@ -171,11 +173,11 @@ export function PhaseTimeline({ st }: { st: Settings }) {
       </div>
       <div className="row" style={{ gap: 16, marginTop: 12, fontSize: 12.5, color: 'var(--muted)', flexWrap: 'wrap' }}>
         <span className="row" style={{ gap: 6 }}><span style={{ width: 2, height: 10, background: C.yellow, borderRadius: 1 }} />Reveal every {m(st.reveal_every)}</span>
-        <span className="row" style={{ gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', border: `1.3px solid ${C.cream}` }} />Zone shrinks every {m(st.shrink_every)}</span>
+        <span className="row" style={{ gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', border: '1.3px solid var(--text)' }} />Zone shrinks every {m(st.shrink_every)}</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 14 }}>
         {[['Tasks', `${st.tasks_per_runner} each`], ['Win mark', `${st.win_pct}%`], ['Catch range', `${st.catch_radius_m} m`]].map(([k, v]) => (
-          <div key={k} style={{ background: 'rgba(255,242,224,.04)', borderRadius: 14, padding: '10px 10px' }}>
+          <div key={k} style={{ background: 'var(--quiet-fill)', borderRadius: 14, padding: '10px 10px' }}>
             <div style={{ fontWeight: 700, fontSize: 16 }}>{v}</div>
             <div className="muted" style={{ fontSize: 11.5 }}>{k}</div>
           </div>
@@ -197,7 +199,7 @@ export function WinDial({ wins, matches, size = 132 }: { wins: number; matches: 
       <svg viewBox="0 0 120 120" width={size} height={size} aria-label={`Win rate ${Math.round(pct * 100)} percent`}>
         <defs><linearGradient id={`${id}g`} x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stopColor={C.ember} /><stop offset="60%" stopColor={C.orange} /><stop offset="100%" stopColor={C.yellow} /></linearGradient></defs>
         <g transform="rotate(135 60 60)">
-          <circle cx="60" cy="60" r={R} fill="none" stroke="rgba(255,242,224,.09)" strokeWidth="9" strokeLinecap="round" strokeDasharray={`${L} 999`} />
+          <circle cx="60" cy="60" r={R} fill="none" stroke="var(--line2)" strokeWidth="9" strokeLinecap="round" strokeDasharray={`${L} 999`} />
           <motion.circle cx="60" cy="60" r={R} fill="none" stroke={`url(#${id}g)`} strokeWidth="9" strokeLinecap="round" strokeDasharray={`${L} 999`}
             initial={{ strokeDashoffset: L }} animate={{ strokeDashoffset: L * (1 - pct) }} transition={{ duration: 1.4, ease, delay: 0.2 }} />
         </g>
@@ -231,7 +233,7 @@ export function FieldReport({ members, meId }: { members: Member[]; meId?: strin
         <defs>
           <radialGradient id="fr-core"><stop offset="0%" stopColor={C.yellow} stopOpacity=".22" /><stop offset="100%" stopColor={C.yellow} stopOpacity="0" /></radialGradient>
         </defs>
-        <motion.circle cx={cx} cy={cy} r={R} fill="none" stroke="rgba(255,242,224,.12)" strokeDasharray="2 5" initial={{ rotate: 0 }} animate={{ rotate: 360 }} transition={{ duration: 90, repeat: Infinity, ease: 'linear' }} style={{ transformOrigin: `${cx}px ${cy}px` }} />
+        <motion.circle cx={cx} cy={cy} r={R} fill="none" stroke="var(--line2)" strokeDasharray="2 5" initial={{ rotate: 0 }} animate={{ rotate: 360 }} transition={{ duration: 90, repeat: Infinity, ease: 'linear' }} style={{ transformOrigin: `${cx}px ${cy}px` }} />
         <circle cx={cx} cy={cy} r={r + 26} fill="url(#fr-core)" />
         {runners.map((m, i) => {
           const [x, y] = at(i, runners.length, R);
@@ -240,7 +242,7 @@ export function FieldReport({ members, meId }: { members: Member[]; meId?: strin
               {!m.alive && <motion.line x1={cx} y1={cy} x2={x} y2={y} stroke={C.ember} strokeOpacity=".35" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ delay: 0.6 + i * 0.08, duration: 0.6 }} />}
               <motion.g initial={{ scale: 0, x, y }} animate={{ scale: 1, x, y }} transition={{ delay: 0.2 + i * 0.06, type: 'spring', damping: 14 }}>
                 {m.alive ? (<><circle r="15" fill={C.orange} opacity=".22" /><circle r="8" fill={C.orange} /></>) : (<><circle r="8" fill="none" stroke={C.ember} strokeWidth="1.8" /><path d="M-4 -4 L4 4 M4 -4 L-4 4" stroke={C.ember} strokeWidth="1.8" strokeLinecap="round" /></>)}
-                {m.id === meId && <circle r="13" fill="none" stroke={C.cream} strokeWidth="1.5" />}
+                {m.id === meId && <circle r="13" fill="none" stroke="var(--text)" strokeWidth="1.5" />}
               </motion.g>
             </g>
           );
@@ -250,7 +252,7 @@ export function FieldReport({ members, meId }: { members: Member[]; meId?: strin
           return (
             <motion.g key={m.id} initial={{ scale: 0, x, y }} animate={{ scale: 1, x, y }} transition={{ delay: 0.1 + i * 0.06, type: 'spring', damping: 12 }}>
               <circle r="9" fill={C.yellow} />
-              {m.id === meId && <circle r="14" fill="none" stroke={C.cream} strokeWidth="1.5" />}
+              {m.id === meId && <circle r="14" fill="none" stroke="var(--text)" strokeWidth="1.5" />}
             </motion.g>
           );
         })}

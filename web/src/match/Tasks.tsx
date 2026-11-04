@@ -68,7 +68,7 @@ export function TaskDeck({ s, refresh }: { s: RoomState; refresh: () => void }) 
       {createPortal(<AnimatePresence>
         {task && (
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }}
-            style={{ position: 'fixed', inset: 0, zIndex: 650, background: 'radial-gradient(130% 55% at 50% 0%, color-mix(in srgb, var(--accent) 26%, #000), #000 70%)', overflowY: 'auto' }} className="grid-bg">
+            style={{ position: 'fixed', inset: 0, zIndex: 650, background: 'radial-gradient(130% 55% at 50% 0%, color-mix(in srgb, var(--accent) 26%, var(--bg)), var(--bg) 70%)', overflowY: 'auto' }} className="grid-bg">
             <div className="screen" style={{ gap: 18 }}>
               <div className="row between">
                 <div>

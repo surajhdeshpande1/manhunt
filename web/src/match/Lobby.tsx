@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { PhaseTimeline } from '../components/Diagrams';
 import { LightTrails } from '../components/Art';
+import { NightCampus } from '../components/Scenes';
 import { Segmented, Avatar, Back, Button, IconCopy, IconMap, IconPhone, IconPlus, IconShare, IconUndo, Modal, Section, Slash, useToast } from '../components/ui';
 import { rpc } from '../lib/supabase';
 import { useSession } from '../lib/session';
@@ -90,7 +91,8 @@ export function Waiting({ s }: { s: RoomState }) {
   async function cancel() { try { await rpc('leave_room', { p_room: s.room.id }); nav('/home'); } catch (e: any) { toast(e.message, true); } }
   return (
     <Slash>
-      <div className="screen" style={{ justifyContent: 'center', alignItems: 'center', textAlign: 'center', gap: 22 }}>
+      <div className="screen" style={{ justifyContent: 'center', alignItems: 'center', textAlign: 'center', gap: 22, minHeight: '100dvh', paddingBottom: 190, isolation: 'isolate' }}>
+        <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: -1 }}><NightCampus height={170} seed={11} /></div>
         <div style={{ position: 'relative', width: 220, height: 220 }}>
           {[0, 1, 2].map((i) => (
             <motion.div key={i} style={{ position: 'absolute', inset: 0, border: '1px solid var(--accent)', borderRadius: '50%' }}
@@ -120,7 +122,8 @@ export function NotIn({ s }: { s: RoomState }) {
     : st === 'left' ? 'You left this room.' : s.room.status === 'lobby' ? 'You are not in this room yet.' : 'This match is already underway.';
   const canJoin = s.room.status === 'lobby' && st !== 'removed' && (s.room.is_public || st === 'left' || st === 'rejected');
   return (
-    <div className="screen" style={{ justifyContent: 'center', textAlign: 'center', gap: 16 }}>
+    <div className="screen" style={{ justifyContent: 'center', textAlign: 'center', gap: 16, minHeight: '100dvh', paddingBottom: 190, isolation: 'isolate' }}>
+      <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: -1 }}><NightCampus height={170} seed={14} /></div>
       <h1 className="display" style={{ fontSize: 40, margin: 0 }}>{s.room.name}</h1>
       <p className="muted">{msg}</p>
       {canJoin && s.room.is_public && <Button onClick={async () => { try { await rpc('request_join', { p_room: s.room.id }); } catch (e: any) { toast(e.message, true); } }}>Request to join</Button>}

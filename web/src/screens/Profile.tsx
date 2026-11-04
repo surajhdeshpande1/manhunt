@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CountUp, LightTrails } from '../components/Art';
 import { WinDial } from '../components/Diagrams';
-import { Avatar, Button, Empty, Field, Modal, Section, useToast } from '../components/ui';
+import { Avatar, Button, Empty, Field, Modal, Section, Segmented, useToast } from '../components/ui';
+import { setAppearance, useAppearance, isDaytime, type Appearance } from '../lib/theme';
 import { callFunction, rpc } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { fmtDist } from '../lib/clock';
@@ -34,7 +35,7 @@ export default function Profile() {
   return (
     <div className="screen" style={{ gap: 28 }}>
       {/* player card */}
-      <motion.div className="card glow-edge" initial={{ opacity: 0, y: 20, rotateX: 12 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+      <motion.div className="card glow-edge force-night" initial={{ opacity: 0, y: 20, rotateX: 12 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         style={{ position: 'relative', overflow: 'hidden', borderRadius: 28, padding: '22px 20px 20px', marginTop: 8, transformPerspective: 900,
           background: 'radial-gradient(130% 90% at 100% 0%, rgba(255,106,26,.38), transparent 55%), radial-gradient(90% 70% at 0% 100%, rgba(232,54,31,.3), transparent 60%), #0b0705' }}>
         <div style={{ position: 'absolute', inset: 0, opacity: 0.6, pointerEvents: 'none' }}><LightTrails height="100%" dim /></div>
@@ -103,6 +104,10 @@ export default function Profile() {
       <Friends />
       <Leaderboard />
       {profile.is_owner && <OwnerPanel />}
+
+      <Section title="Appearance">
+        <AppearancePicker />
+      </Section>
 
       <Section title="Account">
         <div className="card" style={{ padding: '4px 16px' }}>
@@ -309,5 +314,19 @@ function OwnerPanel() {
         </div>
       </div>
     </Section>
+  );
+}
+
+function AppearancePicker() {
+  const a = useAppearance();
+  return (
+    <div className="stack" style={{ gap: 8 }}>
+      <Segmented<Appearance> value={a} onChange={setAppearance}
+        options={[{ v: 'auto', label: 'Auto' }, { v: 'night', label: 'Night' }, { v: 'day', label: 'Day' }]} />
+      <div className="muted" style={{ fontSize: 13 }}>
+        {a === 'auto' ? `Follows the sun: paper-and-ink in daylight, cinematic night after dark. It’s ${isDaytime() ? 'day' : 'night'} mode right now.`
+          : a === 'day' ? 'High-contrast paper and ink. Easiest to read in bright sun.' : 'The cinematic night look, all the time.'}
+      </div>
+    </div>
   );
 }

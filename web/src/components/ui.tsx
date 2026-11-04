@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { selfieUrl } from '../lib/supabase';
 import { haptic } from '../lib/feel';
+import { NightCampus } from './Scenes';
 
 /* ---------- Button ---------- */
 type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -216,15 +217,13 @@ export function Section({ title, right, children }: { title: string; right?: Rea
 }
 export function Empty({ title, body, children }: { title: string; body?: string; children?: ReactNode }) {
   return (
-    <div className="card center" style={{ padding: '30px 22px', position: 'relative', overflow: 'hidden', background: 'var(--bg2)' }}>
-      <svg aria-hidden width="46" height="46" viewBox="0 0 46 46" style={{ margin: '0 auto 12px', display: 'block', color: 'var(--faint)' }}>
-        <circle cx="23" cy="23" r="21" fill="none" stroke="currentColor" strokeDasharray="2 5" />
-        <circle cx="23" cy="23" r="12" fill="none" stroke="currentColor" opacity=".6" />
-        <circle cx="23" cy="23" r="3" fill="var(--accent)" />
-      </svg>
-      <div className="display" style={{ fontSize: 21, marginBottom: 6 }}>{title}</div>
-      {body && <div className="muted" style={{ maxWidth: 320, margin: '0 auto', fontSize: 14.5 }}>{body}</div>}
-      {children && <div style={{ marginTop: 16 }}>{children}</div>}
+    <div className="card center" style={{ padding: 0, position: 'relative', overflow: 'hidden' }}>
+      <NightCampus height={110} seed={title.length} />
+      <div style={{ padding: '6px 22px 26px' }}>
+        <div className="display" style={{ fontSize: 21, marginBottom: 6 }}>{title}</div>
+        {body && <div className="muted" style={{ maxWidth: 320, margin: '0 auto', fontSize: 14.5 }}>{body}</div>}
+        {children && <div style={{ marginTop: 16 }}>{children}</div>}
+      </div>
     </div>
   );
 }

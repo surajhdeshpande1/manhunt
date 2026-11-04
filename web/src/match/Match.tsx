@@ -153,7 +153,7 @@ function Hud({ s, geo, isAdmin, alive, onMenu }: { s: RoomState; geo: Geo; isAdm
   return (
     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20, padding: 'calc(env(safe-area-inset-top) + 10px) 12px 0', pointerEvents: 'none' }}>
       <motion.div initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', damping: 22, stiffness: 260 }}
-        style={{ pointerEvents: 'auto', position: 'relative', overflow: 'hidden', borderRadius: 24, padding: '12px 14px 12px',
+        className="force-night" style={{ pointerEvents: 'auto', position: 'relative', overflow: 'hidden', borderRadius: 24, padding: '12px 14px 12px',
           background: `radial-gradient(90% 140% at 0% 0%, ${status === 'hunt' ? 'rgba(232,54,31,.32)' : status === 'hiding' ? 'rgba(255,176,32,.22)' : 'rgba(255,255,255,.08)'}, transparent 60%), rgba(8,6,5,.78)`,
           backdropFilter: 'blur(18px) saturate(1.3)', WebkitBackdropFilter: 'blur(18px) saturate(1.3)', boxShadow: 'inset 0 0 0 1px rgba(255,220,190,.12), 0 16px 40px -18px rgba(0,0,0,.8)' }}>
         <div className="row between" style={{ marginBottom: 8, gap: 8 }}>
@@ -203,7 +203,7 @@ export function ProgressBar({ p, big }: { p: NonNullable<RoomState['progress']>;
       </div>
       <div className="row between" style={{ marginTop: 4 }}>
         <span className="display mono" style={{ fontSize: big ? 22 : 15 }}>{Math.round(p.pct)}%<span className="muted" style={{ fontSize: big ? 13 : 11, marginLeft: 6 }}>{p.done}/{p.total} tasks</span></span>
-        <span className="display mono" style={{ fontSize: big ? 15 : 12, color: '#ffd400' }}>Win at {p.mark}%</span>
+        <span className="display mono" style={{ fontSize: big ? 15 : 12, color: 'var(--mark-text)' }}>Win at {p.mark}%</span>
       </div>
     </div>
   );

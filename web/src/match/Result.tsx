@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FieldReport } from '../components/Diagrams';
+import { TapePiece } from '../components/Scenes';
 import { LightTrails } from '../components/Art';
 import { Avatar, Button, IconShare, Section, Slash, useToast } from '../components/ui';
 import { fmtDist } from '../lib/clock';
@@ -67,7 +68,10 @@ export function Result({ s }: { s: RoomState }) {
           </div>
         </div>
         {s.progress && <ProgressBar p={s.progress} big />}
-        <FieldReport members={s.members} meId={profile?.id} />
+        <div style={{ position: 'relative' }}>
+          <TapePiece text="CASE FILE" rotate={-8} style={{ top: -10, left: -6 }} />
+          <FieldReport members={s.members} meId={profile?.id} />
+        </div>
         {meM && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'var(--line)', borderRadius: 20, overflow: 'hidden' }}>
             {[['Role', meM.role === 'hunter' ? 'Hunter' : 'Runner'], [meM.role === 'hunter' ? 'Catches' : 'Tasks', meM.role === 'hunter' ? meM.catches : meM.tasks], ['Moved', fmtDist(meM.distance ?? 0)]].map(([k, val]) => (
