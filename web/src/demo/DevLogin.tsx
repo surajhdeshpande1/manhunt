@@ -1,21 +1,23 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Button, Field, Modal, useToast } from '../components/ui';
 import { realRpc } from '../lib/supabase';
 import { haptic } from '../lib/feel';
 import { devToken, enterDemo, forgetDev } from './mode';
 
-/** Small "Developer" entry on the first screen. NAME + PASSWORD are checked by the server. */
-export function DevLoginButton() {
+/**
+ * Hidden developer entry: nothing is shown on screen. Tap the TAG logo 5 times quickly
+ * (within about 2 seconds) and the developer login opens.
+ */
+export function useDevGate() {
   const [open, setOpen] = useState(false);
-  return (
-    <>
-      <button onClick={() => setOpen(true)} className="mono" aria-label="Developer login"
-        style={{ alignSelf: 'center', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--faint)', padding: '10px 14px' }}>
-        {'</>'} Developer
-      </button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Developer login"><DevLogin onClose={() => setOpen(false)} /></Modal>
-    </>
-  );
+  const taps = useRef<number[]>([]);
+  const tap = () => {
+    const t = Date.now();
+    taps.current = [...taps.current.filter((x) => t - x < 2000), t];
+    if (taps.current.length >= 5) { taps.current = []; haptic.ok(); setOpen(true); }
+  };
+  const modal = <Modal open={open} onClose={() => setOpen(false)} title="Developer login"><DevLogin onClose={() => setOpen(false)} /></Modal>;
+  return { tap, modal };
 }
 
 function DevLogin({ onClose }: { onClose: () => void }) {

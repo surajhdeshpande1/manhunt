@@ -9,7 +9,7 @@ import { haptic } from '../lib/feel';
 import { ArtPanel } from '../components/Brut';
 import { resolvedDay, useAppearance } from '../lib/theme';
 import { HowItWorks } from '../components/Diagrams';
-import { DevLoginButton } from '../demo/DevLogin';
+import { useDevGate } from '../demo/DevLogin';
 import { DEMO } from '../demo/mode';
 
 /* ---------- Welcome ---------- */
@@ -33,12 +33,13 @@ export function Welcome() {
   const nav = useNavigate();
   const [how, setHow] = useState(false);
   const day = resolvedDay(useAppearance());
+  const dev = useDevGate();
   const rise = (i: number) => ({ initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.12 + i * 0.07, duration: 0.5, ease: [0.2, 0.9, 0.25, 1] as const } });
   return (
     <Slash>
       <div className="screen" style={{ gap: 26, minHeight: '100dvh' }}>
         <motion.div {...rise(0)} className="row between">
-          <Logo size={30} />
+          <span onClick={dev.tap} style={{ WebkitTapHighlightColor: 'transparent', userSelect: 'none' }}><Logo size={30} /></span>
           <button onClick={() => setHow(true)} className="tag" style={{ padding: '7px 10px' }}>How it works</button>
         </motion.div>
         <motion.div {...rise(1)}><ArtPanel height="clamp(170px, 30vh, 260px)" day={day} /></motion.div>
@@ -49,11 +50,11 @@ export function Welcome() {
             A real-world chase on foot. Runners clear tasks before time runs out. Hunters track them on a live map and scan their code to tag them.
           </motion.p>
         </div>
+        {dev.modal}
         <Modal open={how} onClose={() => setHow(false)} title="How TAG works"><HowItWorks onClose={() => setHow(false)} /></Modal>
         <motion.div {...rise(5)} className="stack" style={{ gap: 14, marginTop: 'auto' }}>
           <Button kind="hot" size="lg" block onClick={() => nav('/signup')}>Create account</Button>
           <Button size="lg" kind="ghost" block onClick={() => nav('/signin')}>I already have an account</Button>
-          <DevLoginButton />
         </motion.div>
       </div>
     </Slash>
