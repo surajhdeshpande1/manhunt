@@ -564,3 +564,14 @@ body { font-size: 16px; }
 .film-frozen .cc *, .film-frozen .cc, .film-frozen .scrollL { animation-play-state: paused !important; }
 .scrollL { animation: scrollL 1.2s linear infinite; }
 @keyframes scrollL { to { transform: translateX(-160px); } }
+/* top-down characters (opening film "Surrounded") */
+.td .armL, .td .armR, .td .ftL, .td .ftR { transition: transform .2s; }
+.td.run .armL { animation: tdSwing 0.26s ease-in-out infinite alternate; }
+.td.run .armR { animation: tdSwing 0.26s ease-in-out infinite alternate-reverse; }
+.td.run .ftL { animation: tdSwing 0.26s ease-in-out infinite alternate-reverse; }
+.td.run .ftR { animation: tdSwing 0.26s ease-in-out infinite alternate; }
+.td.walk .armL, .td.walk .ftR { animation: tdSwing 0.5s ease-in-out infinite alternate; }
+.td.walk .armR, .td.walk .ftL { animation: tdSwing 0.5s ease-in-out infinite alternate-reverse; }
+@keyframes tdSwing { from { transform: translateY(-7px); } to { transform: translateY(7px); } }
+.td.dizzy { animation: tdDizzy 0.5s linear infinite; }
+@keyframes tdDizzy { 0% { transform: rotate(-14deg); } 50% { transform: rotate(14deg); } 100% { transform: rotate(-14deg); } }

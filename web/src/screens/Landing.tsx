@@ -1,211 +1,142 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTheme } from '../lib/theme';
 import { haptic } from '../lib/feel';
-import { scoreCaught, tryAutoplay, whenUnlocked } from '../lib/sound';
-import { mulberry32 } from '../lib/rng';
-import { Burst } from '../components/Brut';
+import { scoreSurround, tryAutoplay, whenUnlocked } from '../lib/sound';
 
 /**
- * Opening film — "Caught in the act", 10 seconds, every launch.
+ * Opening film — "Surrounded", 10 seconds, every launch. Overhead, spacious, then all adrenaline.
  *
- *  0.0  Night. A campus wall. The runner rattles a spray can and paints the TAG mark: ember disc, brass disc, drips.
- *  2.1  Steps back, admires it.
- *  2.6  CLICK. A torch beam floods the wall; the runner's shadow is huge on the bricks.
- *  2.7  A sniffer dog skids in and barks. The runner turns. The hunter steps in, whistle in his mouth.
- *  3.3  The can drops. WHISTLE. The runner bolts — side-scrolling chase across campus.
- *  4.4  Runner vaults a bench · the dog leaps it · the hunter scrambles over it.
- *  5.5  Runner slides under a barrier · the hunter's cap gets knocked off by it (BONK).
- *  6.5  Puddle splash. The runner glances back. The hunter closes in.
- *  7.55 The lunge… 7.7 the grab. FREEZE FRAME. "TAG!"
- *  8.4  Colour wipes; the spray-painted mark returns as the logo. “Hide. Run. Don’t get caught.”
+ *  0.0  Darkness. An ember pulse with a heartbeat — it is the runner's hood, seen from above.
+ *  1.0  The camera rises: a lone runner in a vast, empty plaza inside the glowing play zone.
+ *  1.35 Four torches click on at the edges, one by one.
+ *  2.2  The hunters walk in from four sides, beams sweeping. The runner turns, looking for a way out. Heartbeat quickens.
+ *  4.4  Every beam locks on. One breath of silence.
+ *  4.6  BREAK. The runner bursts through the gap; two hunters lunge and crash into each other. Drums drop.
+ *  5.0  Sprint across the plaza, an ember light trail behind, the camera tracking; all four hunters regroup and give chase.
+ *  7.65 Cornered against the edge of the zone. The beams converge — a brass flash —
+ *  8.3  the TAG mark. “Hide. Run. Don’t get caught.”
  * 10.0  Into the app.
  */
 const T = 10;
-const W = 400, H = 860, G = 640;
 const INK = '#0b0b0c', BONE = '#ede6da', EMBER = '#d9541e', BRASS = '#c9a227', OXIDE = '#b23a2b';
-const G1 = '#17171a', G2 = '#1f1f23', G3 = '#2a2a2f', G4 = '#34343b', G5 = '#3e3e46';
+const G1 = '#17171a', G2 = '#1f1f23', G5 = '#3e3e46';
 const tr = (times: number[], ease: any = 'easeInOut') => ({ duration: T, times: times.map((t) => t / T), ease });
-const MARKS = [0.6, 1.4, 2.1, 2.6, 2.7, 2.95, 3.3, 3.35, 4.4, 4.75, 4.85, 4.9, 5.0, 5.25, 5.5, 5.95, 6.1, 6.4, 6.5, 6.9, 7.55, 7.7, 8.4];
-const SPEED = 337; // world px per second during the chase (3.4 → 7.7)
-const WORLD_END = -SPEED * 4.3;
+const MARKS = [1.0, 1.35, 1.55, 1.75, 1.95, 2.2, 4.4, 4.6, 4.95, 5.0, 5.6, 7.65, 8.0, 8.3];
 
-type Pose = 'stand' | 'spray' | 'run' | 'tuck' | 'slide' | 'reach' | 'sniff';
+type K = { t: number[]; x: number[]; y: number[]; a: number[]; at?: number[] };
+// N, E, S, W
+const HUNTERS: (K & { beam: number; dizzy?: boolean })[] = [
+  { beam: 1.35, t: [0, 1.0, 2.2, 4.4, 4.6, 5.6, 6.4, 7.0, 7.65, 10], x: [0, 0, 0, 0, 0, 120, 130, 60, -70, -70], y: [-330, -330, -330, -125, -125, -150, -240, -250, -300, -300],
+    at: [0, 2.2, 2.8, 3.4, 4.0, 4.4, 4.6, 5.3, 6.0, 6.8, 7.65, 10], a: [180, 180, 160, 200, 170, 180, 140, 100, 20, -90, -105, -105] },
+  { beam: 1.55, dizzy: true, t: [0, 2.2, 4.4, 4.6, 4.95, 5.6, 6.6, 7.65, 10], x: [175, 175, 112, 112, 72, 72, 150, -110, -110], y: [0, 0, 0, 0, 58, 58, -60, -275, -275],
+    at: [0, 2.2, 2.9, 3.6, 4.4, 4.6, 4.95, 5.6, 6.1, 7.0, 7.65, 10], a: [-90, -90, -110, -70, -90, -130, -130, -40, -10, -60, -70, -70] },
+  { beam: 1.75, dizzy: true, t: [0, 2.2, 4.4, 4.6, 4.95, 5.6, 6.8, 7.65, 10], x: [0, 0, 0, 0, 58, 58, 60, -175, -175], y: [330, 330, 125, 125, 72, 72, -80, -270, -270],
+    at: [0, 2.2, 3.0, 3.7, 4.4, 4.6, 4.95, 5.6, 6.2, 7.2, 7.65, 10], a: [0, 0, 20, -20, 0, 40, 40, 80, 0, -30, 20, 20] },
+  { beam: 1.95, t: [0, 2.2, 4.4, 4.6, 5.8, 7.0, 7.65, 10], x: [-175, -175, -112, -112, -180, -230, -230, -230], y: [0, 0, 0, 0, -120, -240, -310, -310],
+    at: [0, 2.2, 2.7, 3.3, 3.9, 4.4, 4.6, 5.8, 7.0, 7.65, 10], a: [90, 90, 110, 70, 100, 90, 70, 20, 10, 60, 60] },
+];
 
-/* ---------------- characters (feet at 0,0, facing right) ---------------- */
-function Limb({ cls, len1, len2, w, fill, end }: { cls: [string, string]; len1: number; len2: number; w: number; fill: string; end: React.ReactNode }) {
+/* ---- smooth motion: Catmull-Rom through timed waypoints, sampled 25×/s, heading from velocity ---- */
+const DT = 0.04;
+type Track = { t: number[]; x: number[]; y: number[]; a: number[] };
+function track(pts: [number, number, number][], end = T): Track {
+  const at = (time: number) => {
+    if (time <= pts[0][0]) return [pts[0][1], pts[0][2]];
+    if (time >= pts[pts.length - 1][0]) return [pts[pts.length - 1][1], pts[pts.length - 1][2]];
+    let i = 0; while (pts[i + 1][0] < time) i++;
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const u = (time - p1[0]) / (p2[0] - p1[0]), u2 = u * u, u3 = u2 * u;
+    const cr = (a: number, b: number, c: number, d: number) => 0.5 * (2 * b + (-a + c) * u + (2 * a - 5 * b + 4 * c - d) * u2 + (-a + 3 * b - 3 * c + d) * u3);
+    return [cr(p0[1], p1[1], p2[1], p3[1]), cr(p0[2], p1[2], p2[2], p3[2])];
+  };
+  const out: Track = { t: [], x: [], y: [], a: [] }; let last = 0;
+  for (let s = 0; s <= end + 1e-6; s += DT) {
+    const [x, y] = at(s), [x2, y2] = at(s + 0.06);
+    let a = Math.hypot(x2 - x, y2 - y) > 0.8 ? (Math.atan2(x2 - x, -(y2 - y)) * 180) / Math.PI : last;
+    while (a - last > 180) a -= 360; while (a - last < -180) a += 360;
+    last = a; out.t.push(s / T); out.x.push(x); out.y.push(y); out.a.push(a);
+  }
+  return out;
+}
+const lin = (tr2: Track) => ({ duration: T, times: tr2.t, ease: 'linear' as const });
+// runner: still until 4.6, then the break and the sprint
+const RT = track([[0, 0, 0], [4.6, 0, 0], [4.8, 40, 40], [5.05, 110, 120], [5.35, 200, 150], [5.75, 270, 50], [6.2, 250, -110], [6.6, 180, -215], [7.0, 40, -300], [7.35, -80, -345], [7.65, -150, -365], [10, -150, -365]]);
+// the runner's head-turns while surrounded override the heading before 4.6
+const RLOOK = { t: [0, 2.2, 2.5, 2.9, 3.4, 3.9, 4.4, 4.6], a: [0, 0, -50, 40, -20, 120, 135, 135] };
+const runnerAngle = RT.a.map((a, i) => {
+  const s = RT.t[i] * T;
+  if (s <= 4.6) { let k = 0; while (k < RLOOK.t.length - 1 && RLOOK.t[k + 1] <= s) k++; const k2 = Math.min(k + 1, RLOOK.t.length - 1); const u = RLOOK.t[k2] === RLOOK.t[k] ? 0 : (s - RLOOK.t[k]) / (RLOOK.t[k2] - RLOOK.t[k]); const e = u * u * (3 - 2 * u); return RLOOK.a[k] + (RLOOK.a[k2] - RLOOK.a[k]) * e; }
+  if (s >= 7.65) { const u = Math.min(1, (s - 7.65) / 0.25); return a + (-175 - a) * u * u * (3 - 2 * u); }
+  return a;
+});
+// camera follows a lagged runner and zooms on its own schedule
+const CAMS = { t: [0, 1.0, 2.1, 4.4, 4.6, 5.0, 5.8, 6.6, 7.3, 7.65, 8.05, 10], s: [3.4, 3.4, 1.0, 1.32, 1.32, 1.4, 1.3, 1.24, 1.3, 1.55, 2.3, 2.3] };
+const camScale = (s: number) => { let k = 0; while (k < CAMS.t.length - 2 && CAMS.t[k + 1] <= s) k++; const u = Math.min(1, Math.max(0, (s - CAMS.t[k]) / (CAMS.t[k + 1] - CAMS.t[k]))); const e = u * u * (3 - 2 * u); return CAMS.s[k] + (CAMS.s[k + 1] - CAMS.s[k]) * e; };
+const CAMT = (() => {
+  const s: number[] = [], x: number[] = [], y: number[] = [];
+  RT.t.forEach((tt, i) => {
+    const sec = tt * T; let n = 0, px = 0, py = 0;
+    for (let j = i; j >= 0 && (i - j) * DT <= 0.35; j--) { px += RT.x[j]; py += RT.y[j]; n++; }
+    const sc = camScale(sec); s.push(sc); x.push(-sc * (px / n)); y.push(-sc * (py / n));
+  });
+  return { s, x, y };
+})();
+// trail = the runner's own path from 4.6 on, revealed exactly as it moves
+const TI0 = RT.t.findIndex((v) => v * T >= 4.6), TI1 = RT.t.findIndex((v) => v * T >= 7.65);
+const TRAILPTS = RT.x.slice(TI0, TI1 + 1).map((x, i) => [x, RT.y[TI0 + i]]);
+const TRAIL = 'M' + TRAILPTS.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L');
+const TRAILLEN = (() => { const c = [0]; for (let i = 1; i < TRAILPTS.length; i++) c.push(c[i - 1] + Math.hypot(TRAILPTS[i][0] - TRAILPTS[i - 1][0], TRAILPTS[i][1] - TRAILPTS[i - 1][1])); return c.map((v) => v / c[c.length - 1]); })();
+
+const interp = (ts: number[], vs: number[], s: number) => { let k = 0; while (k < ts.length - 2 && ts[k + 1] <= s) k++; const u = Math.min(1, Math.max(0, (s - ts[k]) / (ts[k + 1] - ts[k]))); const e = u * u * (3 - 2 * u); return vs[k] + (vs[k + 1] - vs[k]) * e; };
+const HT = HUNTERS.map((h) => {
+  const tk = track(h.t.map((tt, i) => [tt, h.x[i], h.y[i]] as [number, number, number]));
+  const a = tk.a.map((va, i) => {
+    const s = tk.t[i] * T;
+    if (s < 4.6) return interp(h.at!, h.a, s);
+    if (s >= 7.65) { const fa = (Math.atan2(-150 - tk.x[i], -(-365 - tk.y[i])) * 180) / Math.PI; let d = fa - va; while (d > 180) d -= 360; while (d < -180) d += 360; return va + d * Math.min(1, (s - 7.65) / 0.2); }
+    return va;
+  });
+  // keep the rotation continuous where the look phase hands over to the run heading
+  for (let i = 1; i < a.length; i++) { while (a[i] - a[i - 1] > 180) a[i] -= 360; while (a[i] - a[i - 1] < -180) a[i] += 360; }
+  return { ...tk, a };
+});
+
+/* ---------------- top-down characters, facing up, centred on (0,0) ---------------- */
+const Pivot = () => <circle r="340" fill="none" stroke="none" />; // keeps the group's box centred so rotation pivots on the figure
+function RunnerTD({ mode }: { mode: 'stand' | 'run' }) {
   return (
-    <g className={`j ${cls[0]}`}>
-      <rect x={-w / 2} y={-3} width={w} height={len1 + 3} rx={w / 2} fill={fill} stroke={INK} strokeWidth="2.5" />
-      <g transform={`translate(0 ${len1 - 2})`}>
-        <g className={`j ${cls[1]}`}>
-          <rect x={-(w - 1) / 2} y={-3} width={w - 1} height={len2 + 3} rx={(w - 1) / 2} fill={fill} stroke={INK} strokeWidth="2.5" />
-          <g transform={`translate(0 ${len2})`}>{end}</g>
-        </g>
-      </g>
+    <g className={`td ${mode}`}>
+      <g className="ftL"><ellipse cx="-6" cy="0" rx="4.2" ry="7" fill={OXIDE} stroke={INK} strokeWidth="2" /></g>
+      <g className="ftR"><ellipse cx="6" cy="0" rx="4.2" ry="7" fill={OXIDE} stroke={INK} strokeWidth="2" /></g>
+      <g className="armL"><ellipse cx="-17" cy="0" rx="5" ry="8.5" fill={EMBER} stroke={INK} strokeWidth="2" /><circle cx="-17" cy="-8" r="3.6" fill={BONE} stroke={INK} strokeWidth="1.5" /></g>
+      <g className="armR"><ellipse cx="17" cy="0" rx="5" ry="8.5" fill={EMBER} stroke={INK} strokeWidth="2" /><circle cx="17" cy="-8" r="3.6" fill={BONE} stroke={INK} strokeWidth="1.5" /></g>
+      <ellipse cx="0" cy="0" rx="15.5" ry="10.5" fill={EMBER} stroke={INK} strokeWidth="2.5" />
+      <circle cx="0" cy="1" r="10.5" fill="#c24a19" stroke={INK} strokeWidth="2.2" />
+      <ellipse cx="0" cy="-6" rx="5.5" ry="3.4" fill={INK} />
     </g>
   );
 }
-
-function Runner({ pose, look = 'fwd', shadow }: { pose: Pose; look?: 'fwd' | 'back' | 'wide'; shadow?: boolean }) {
-  const f = (c: string) => (shadow ? INK : c);
-  const run = pose === 'run' || pose === 'tuck';
-  const legs = (k: 'A' | 'B', fill: string) => (
-    <g transform="translate(0 -54)">
-      <g transform={pose === 'tuck' ? `rotate(${k === 'A' ? -70 : -20})` : pose === 'slide' ? `rotate(${k === 'A' ? -78 : -96})` : pose === 'stand' || pose === 'spray' ? `rotate(${k === 'A' ? -6 : 8})` : undefined}>
-        <Limb cls={[`leg${k}`, `shin${k}`]} len1={27} len2={25} w={13} fill={f(fill)}
-          end={<><ellipse cx="5" cy="1" rx="10" ry="5.5" fill={f(OXIDE)} stroke={INK} strokeWidth="2.5" /><path d="M-4 4 H14" stroke={f(BONE)} strokeWidth="1.6" /></>} />
-      </g>
-    </g>
-  );
-  const arm = (k: 'A' | 'B') => (
-    <g transform="translate(2 -95)">
-      <g transform={pose === 'tuck' ? `rotate(${k === 'A' ? -150 : -110})` : pose === 'slide' ? 'rotate(-160)' : pose === 'stand' ? `rotate(${k === 'A' ? 18 : -14})` : pose === 'spray' && k === 'B' ? 'rotate(20)' : undefined}>
-        {pose === 'spray' && k === 'A' ? (
-          <g>
-            <animateTransform attributeName="transform" type="rotate" values="-112;-138;-122;-112" dur="0.42s" repeatCount="indefinite" />
-            <Limb cls={['x', 'x']} len1={22} len2={20} w={11} fill={f(EMBER)} end={<>
-              <rect x="-5" y="0" width="10" height="16" rx="2" fill={f(BONE)} stroke={INK} strokeWidth="2" />
-              <rect x="-3" y="14" width="6" height="4" fill={f(EMBER)} stroke={INK} strokeWidth="1.5" />
-            </>} />
-          </g>
-        ) : (
-          <Limb cls={[`arm${k}`, 'x']} len1={22} len2={20} w={11} fill={f(EMBER)} end={<circle cx="0" cy="2" r="5.5" fill={f(BONE)} stroke={INK} strokeWidth="2.2" />} />
-        )}
-      </g>
-    </g>
-  );
-  const eyesX = look === 'back' ? 1 : 11;
+function HunterTD({ mode, beam }: { mode: 'stand' | 'walk' | 'run' | 'dizzy'; beam: boolean }) {
   return (
-    <g className={`cc ${run ? 'run' : ''}`} transform={pose === 'slide' ? 'rotate(-58) translate(0 8)' : undefined}>
-      {arm('B')}
-      {legs('B', '#1f1f23')}
-      <g className="body">
-        <path d="M-15 -52 Q-19 -80 -11 -100 Q2 -106 12 -101 Q20 -80 15 -52 Z" fill={f(EMBER)} stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
-        <path d="M-9 -66 H9" stroke={INK} strokeWidth="2" opacity=".6" />
-        <circle cx="3" cy="-114" r="17.5" fill={f(EMBER)} stroke={INK} strokeWidth="2.5" />
-        <ellipse cx={look === 'back' ? -5 : 11} cy="-112" rx="9.5" ry="11.5" fill={INK} />
-        {!shadow && <>
-          <ellipse cx={eyesX - 3} cy="-113" rx={look === 'wide' ? 3 : 2.2} ry={look === 'wide' ? 4.2 : 3.2} fill={BONE} />
-          <ellipse cx={eyesX + 4} cy="-113" rx={look === 'wide' ? 3 : 2.2} ry={look === 'wide' ? 4.2 : 3.2} fill={BONE} />
-          <path d="M9 -97 L7 -88 M14 -98 L14 -90" stroke={BONE} strokeWidth="1.6" strokeLinecap="round" />
-        </>}
-      </g>
-      {legs('A', '#26262b')}
-      {arm('A')}
-    </g>
-  );
-}
-
-function Hunter({ pose, capOff, whistle }: { pose: Pose; capOff?: boolean; whistle?: boolean }) {
-  const run = pose === 'run' || pose === 'tuck' || pose === 'reach';
-  return (
-    <g className={`cc ${run ? 'run' : ''}`} transform="scale(1.12)">
-      <g transform="translate(2 -98)"><g transform={pose === 'reach' ? 'rotate(-100)' : pose === 'tuck' ? 'rotate(-140)' : pose === 'stand' ? 'rotate(-75)' : undefined}>
-        {pose === 'stand' || pose === 'reach'
-          ? <Limb cls={['x', 'x']} len1={23} len2={21} w={12} fill={G5} end={<><circle cx="0" cy="2" r="5.5" fill={BONE} stroke={INK} strokeWidth="2.2" />{pose === 'stand' && <rect x="-4" y="2" width="8" height="18" rx="2" fill={BRASS} stroke={INK} strokeWidth="2" />}</>} />
-          : <Limb cls={['armB', 'x']} len1={23} len2={21} w={12} fill={G5} end={<circle cx="0" cy="2" r="5.5" fill={BONE} stroke={INK} strokeWidth="2.2" />} />}
-      </g></g>
-      <g transform="translate(-1 -55)"><g transform={pose === 'tuck' ? 'rotate(-30)' : pose === 'stand' ? 'rotate(8)' : undefined}>
-        <Limb cls={['legB', 'shinB']} len1={28} len2={26} w={14} fill={G2} end={<ellipse cx="5" cy="1" rx="11" ry="5.5" fill={INK} stroke={INK} strokeWidth="2" />} />
-      </g></g>
-      <g className="body">
-        <path d="M-17 -54 Q-22 -84 -13 -104 Q2 -110 14 -104 Q24 -84 17 -54 Z" fill={G5} stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
-        <path d="M0 -104 V-56" stroke={BRASS} strokeWidth="2.2" />
-        <rect x="-15" y="-60" width="32" height="6" fill={INK} />
-        <rect x="6" y="-92" width="8" height="9" rx="1.5" fill={BRASS} stroke={INK} strokeWidth="1.5" />
-        <circle cx="4" cy="-118" r="16" fill={BONE} stroke={INK} strokeWidth="2.5" />
-        <path d="M7 -121 h6 M15 -121 h4" stroke={INK} strokeWidth="2.6" strokeLinecap="round" />
-        <path d="M6 -109 Q12 -113 19 -109 Q12 -106 6 -109 Z" fill={INK} />
-        {whistle && <><rect x="17" y="-111" width="9" height="5" rx="2" fill={BRASS} stroke={INK} strokeWidth="1.4" /><path d="M26 -110 l4 -2" stroke={INK} strokeWidth="1.5" /></>}
-        {capOff ? <path d="M-6 -133 q4 -6 8 0 q4 -6 8 0" stroke={INK} strokeWidth="2.4" fill="none" strokeLinecap="round" /> : <Cap />}
-      </g>
-      <g transform="translate(1 -55)"><g transform={pose === 'tuck' ? 'rotate(-75)' : pose === 'stand' ? 'rotate(-6)' : undefined}>
-        <Limb cls={['legA', 'shinA']} len1={28} len2={26} w={14} fill="#26262b" end={<ellipse cx="5" cy="1" rx="11" ry="5.5" fill={INK} stroke={INK} strokeWidth="2" />} />
-      </g></g>
-      <g transform="translate(2 -98)"><g transform={pose === 'reach' ? 'rotate(-95)' : pose === 'tuck' ? 'rotate(-120)' : pose === 'stand' ? 'rotate(14)' : undefined}>
-        <Limb cls={[pose === 'run' ? 'armA' : 'x', 'x']} len1={23} len2={21} w={12} fill={G5} end={<circle cx="0" cy="2" r={pose === 'reach' ? 7 : 5.5} fill={BONE} stroke={INK} strokeWidth="2.2" />} />
-      </g></g>
-    </g>
-  );
-}
-function Cap() {
-  return <g><path d="M-12 -126 Q4 -144 20 -126 Z" fill={BRASS} stroke={INK} strokeWidth="2.4" strokeLinejoin="round" /><rect x="-12" y="-128" width="38" height="5" rx="2.5" fill={INK} /><circle cx="4" cy="-133" r="3" fill={BONE} stroke={INK} strokeWidth="1.2" /></g>;
-}
-
-function Dog({ pose }: { pose: Pose }) {
-  const run = pose === 'run' || pose === 'tuck';
-  const leg = (x: number, cls: string, back?: boolean) => (
-    <g transform={`translate(${x} -15)`}><g transform={pose === 'tuck' ? `rotate(${back ? 50 : -50})` : undefined}>
-      <g className={`j ${cls}`}><rect x="-3.2" y="-2" width="6.4" height="16" rx="3.2" fill={BONE} stroke={INK} strokeWidth="2.2" /></g>
-    </g></g>
-  );
-  return (
-    <g className={`cc fast ${run ? 'run' : ''} wag`}>
-      {leg(-13, 'legB', true)}{leg(11, 'legA')}
-      <g className="body">
-        <g transform="translate(-20 -26)"><g className="j tail"><path d="M0 0 Q-10 -8 -8 -20" stroke={INK} strokeWidth="7" strokeLinecap="round" fill="none" /><path d="M0 0 Q-10 -8 -8 -20" stroke={BONE} strokeWidth="3.5" strokeLinecap="round" fill="none" /></g></g>
-        <ellipse cx="0" cy="-23" rx="23" ry="11.5" fill={BONE} stroke={INK} strokeWidth="2.5" />
-        <ellipse cx="-6" cy="-27" rx="9" ry="6" fill={OXIDE} opacity=".85" />
-        <g transform={pose === 'sniff' ? 'translate(0 8) rotate(14 20 -30)' : undefined}>
-          <circle cx="22" cy="-33" r="11" fill={BONE} stroke={INK} strokeWidth="2.5" />
-          <ellipse cx="32" cy="-29" rx="8" ry="5.5" fill={BONE} stroke={INK} strokeWidth="2.2" />
-          <circle cx="39" cy="-30" r="2.8" fill={INK} />
-          <circle cx="24" cy="-36" r="2.2" fill={INK} />
-          <path d="M15 -42 Q9 -36 12 -24 Q18 -30 19 -40 Z" fill={INK} />
-          <rect x="11" y="-26" width="14" height="4" rx="2" fill={BRASS} stroke={INK} strokeWidth="1.3" />
-        </g>
-      </g>
-      {leg(-8, 'legA', true)}{leg(16, 'legB')}
-    </g>
-  );
-}
-
-/* ---------------- spray-painted TAG mark (wall art + final logo) ---------------- */
-function SprayMark({ p0, p1, d0, d1, delay = 0, scale = 1 }: { p0: number; p1: number; d0: number; d1: number; delay?: number; scale?: number }) {
-  // p0/p1: when each disc gets sprayed; d0/d1: when its drips run. All in absolute film seconds (delay offsets them).
-  const speck = useMemo(() => { const r = mulberry32(5); return Array.from({ length: 26 }, () => ({ a: r() * Math.PI * 2, d: 25 + r() * 12, s: 0.8 + r() * 1.6, k: r() > 0.5 ? 1 : 0 })); }, []);
-  const disc = (cx: number, color: string, at: number, drip: number, k: number) => (
     <g>
-      <motion.circle cx={cx} cy="0" r="23" fill={color} stroke={INK} strokeWidth="2.5" initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: [0, 0, 0.35, 0.7, 1.05, 1], opacity: [0, 0, 1, 1, 1, 1] }} transition={{ ...tr([0, at, at + 0.08, at + 0.25, at + 0.45, at + 0.55].map((x) => x + delay)), ...{ ease: 'easeOut' } }} style={{ originX: `${cx}px`, originY: '0px' }} />
-      {speck.filter((s) => s.k === k).map((s, i) => (
-        <motion.circle key={i} cx={cx + Math.cos(s.a) * s.d} cy={Math.sin(s.a) * s.d} r={s.s} fill={color} initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 0, 1] }} transition={tr([0, at + 0.1 + i * 0.02, at + 0.12 + i * 0.02].map((x) => x + delay), 'linear')} />
-      ))}
-      {[-9, 4, 13].map((dx, i) => (
-        <motion.rect key={dx} x={cx + dx - 2.5} y={14} width="5" rx="2.5" fill={color} initial={{ height: 0 }}
-          animate={{ height: [0, 0, 14 + i * 7 + (k ? 4 : 0)] }} transition={tr([0, drip + i * 0.08, drip + 0.4 + i * 0.12].map((x) => x + delay), 'easeOut')} />
-      ))}
+      {beam && <g>
+        <polygon points="13,-36 -82,-330 108,-330" fill={BRASS} opacity=".12" />
+        <polyline points="-82,-330 13,-36 108,-330" fill="none" stroke={BRASS} strokeWidth="1.6" opacity=".55" strokeLinejoin="round" />
+      </g>}
+      <g className={`td ${mode === 'dizzy' ? 'dizzy' : mode}`}>
+        <g className="ftL"><ellipse cx="-7" cy="0" rx="4.6" ry="7.5" fill={INK} stroke={INK} strokeWidth="2" /></g>
+        <g className="ftR"><ellipse cx="7" cy="0" rx="4.6" ry="7.5" fill={INK} stroke={INK} strokeWidth="2" /></g>
+        <g className="armL"><ellipse cx="-19" cy="0" rx="5.5" ry="9" fill={G5} stroke={INK} strokeWidth="2" /></g>
+        <rect x="9" y="-24" width="9" height="24" rx="4.5" fill={G5} stroke={INK} strokeWidth="2" />
+        <rect x="9.5" y="-36" width="7" height="12" rx="1.5" fill={BRASS} stroke={INK} strokeWidth="1.8" />
+        <ellipse cx="0" cy="0" rx="17.5" ry="11" fill={G5} stroke={INK} strokeWidth="2.5" />
+        <circle cx="0" cy="1" r="11" fill={BRASS} stroke={INK} strokeWidth="2.2" />
+        <rect x="-8.5" y="-15" width="17" height="6" rx="3" fill={INK} />
+        <circle cx="0" cy="2" r="2.6" fill={BONE} />
+      </g>
     </g>
   );
-  return <g transform={`scale(${scale})`}>{disc(-24, EMBER, p0, d0, 0)}{disc(23, BRASS, p1, d1, 1)}</g>;
-}
-
-/* ---------------- scenery ---------------- */
-function Bricks() {
-  const rows = [];
-  for (let y = 372; y < G; y += 18) for (let x = -60 + ((y / 18) % 2) * 22; x < 560; x += 44) rows.push(<rect key={`${x}-${y}`} x={x} y={y} width="42" height="16" rx="1.5" fill={G3} stroke={G2} strokeWidth="2" />);
-  return <g>{rows}</g>;
-}
-function Lamp({ x }: { x: number }) {
-  return <g><rect x={x - 2.5} y={G - 150} width="5" height="150" fill={INK} /><path d={`M${x} ${G - 150} h18 v6 h-18z`} fill={INK} /><circle cx={x + 18} cy={G - 140} r="7" fill={BRASS} stroke={INK} strokeWidth="2" /><ellipse cx={x + 18} cy={G + 4} rx="46" ry="8" fill={BRASS} opacity=".1" /></g>;
-}
-function Bench({ x }: { x: number }) {
-  return <g><rect x={x - 34} y={G - 34} width="68" height="9" rx="2" fill={G5} stroke={INK} strokeWidth="2.5" /><rect x={x - 34} y={G - 52} width="68" height="8" rx="2" fill={G5} stroke={INK} strokeWidth="2.5" />
-    <rect x={x - 28} y={G - 26} width="6" height="26" fill={INK} /><rect x={x + 22} y={G - 26} width="6" height="26" fill={INK} /><rect x={x - 30} y={G - 46} width="5" height="14" fill={INK} /><rect x={x + 25} y={G - 46} width="5" height="14" fill={INK} /></g>;
-}
-function Barrier({ x }: { x: number }) {
-  const segs = Array.from({ length: 6 }, (_, i) => <rect key={i} x={x - 100 + i * 20} y={G - 76} width="20" height="10" fill={i % 2 ? BONE : EMBER} />);
-  return <g><rect x={x + 18} y={G - 92} width="12" height="92" fill={G4} stroke={INK} strokeWidth="2.5" /><g>{segs}</g><rect x={x - 100} y={G - 76} width="120" height="10" fill="none" stroke={INK} strokeWidth="2.5" /><circle cx={x + 24} cy={G - 71} r="6" fill={BRASS} stroke={INK} strokeWidth="2" /></g>;
-}
-function Puddle({ x }: { x: number }) {
-  return <g><ellipse cx={x} cy={G + 10} rx="46" ry="7" fill="#1d2228" stroke={INK} strokeWidth="2" /><path d={`M${x - 24} ${G + 9} h16 M${x + 6} ${G + 11} h10`} stroke={BONE} strokeWidth="1.6" opacity=".5" /></g>;
-}
-function Skyline() {
-  const r = mulberry32(3); const out = []; let x = -40;
-  while (x < 1100) { const w = 50 + r() * 70, h = 120 + r() * 170; out.push(<g key={x}><rect x={x} y={G - h} width={w} height={h} fill={G1} stroke={INK} strokeWidth="2" />{Array.from({ length: Math.floor(h / 34) }, (_, i) => r() > 0.55 && <rect key={i} x={x + 12} y={G - h + 16 + i * 30} width="9" height="11" fill={r() > 0.5 ? BRASS : G3} opacity=".85" />)}</g>); x += w + 10 + r() * 30; }
-  return <g>{out}</g>;
 }
 
 /* ---------------- the film ---------------- */
@@ -219,171 +150,101 @@ export default function Landing({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     const t0 = performance.now();
     const el = () => (performance.now() - t0) / 1000;
-    tryAutoplay().then((ok) => { if (done.current) return; if (ok) scoreCaught(el()); else whenUnlocked(() => { const s = el(); if (s < 9.4 && !done.current) scoreCaught(s); }); });
+    tryAutoplay().then((ok) => { if (done.current) return; if (ok) scoreSurround(el()); else whenUnlocked(() => { const s = el(); if (s < 9.4 && !done.current) scoreSurround(s); }); });
     if (reduce) { setNow(9); const t = setTimeout(finish, 1200); return () => clearTimeout(t); }
     const ts = MARKS.map((m) => setTimeout(() => setNow(m), m * 1000));
-    ts.push(setTimeout(() => haptic.tap(), 2600), setTimeout(() => haptic.big(), 7700), setTimeout(finish, T * 1000));
+    ts.push(setTimeout(() => haptic.tap(), 4600), setTimeout(() => haptic.tap(), 4980), setTimeout(() => haptic.big(), 8050), setTimeout(finish, T * 1000));
     return () => ts.forEach(clearTimeout);
   }, []);
 
-  const frozen = now >= 7.7;
-  const chase = now >= 3.35;
-  // runner
-  const rPose: Pose = now < 0.6 ? 'stand' : now < 2.1 ? 'spray' : now < 3.35 ? 'stand' : now >= 4.4 && now < 4.85 ? 'tuck' : now >= 5.5 && now < 5.95 ? 'slide' : 'run';
-  const rFace = now >= 2.95 && now < 3.35 ? -1 : 1;
-  const rLook = frozen ? 'wide' : now >= 6.4 && now < 6.9 ? 'back' : now >= 2.6 && now < 2.95 ? 'wide' : 'fwd';
-  // dog + hunter
-  const dPose: Pose = now < 2.95 ? 'sniff' : now >= 4.75 && now < 5.0 ? 'tuck' : chase ? 'run' : 'stand';
-  const hPose: Pose = now < 3.35 ? 'stand' : now >= 7.55 ? 'reach' : now >= 4.9 && now < 5.25 ? 'tuck' : 'run';
-  const capOff = now >= 6.1;
-
-  const rX = { t: [0, 3.35, 3.75, 7.7], v: [205, 205, 232, 232] };
-  const rY = { t: [0, 4.4, 4.62, 4.85, 5.5, 5.95, 10], v: [G, G, G - 84, G, G + 2, G, G] };
-  const dX = { t: [0, 2.7, 2.95, 3.35, 4.0, 6.8, 7.7], v: [-80, -80, 70, 70, 120, 152, 192] };
-  const dY = { t: [0, 4.75, 4.88, 5.0, 6.62, 6.72, 6.82, 10], v: [G, G, G - 52, G, G, G - 26, G, G] };
-  const hX = { t: [0, 2.95, 3.3, 3.35, 4.0, 6.1, 6.25, 7.0, 7.55, 7.7], v: [-120, -120, 22, 22, 70, 92, 84, 112, 160, 178] };
-  const hY = { t: [0, 4.9, 5.07, 5.25, 6.1, 6.16, 6.3, 10], v: [G, G, G - 66, G, G, G + 6, G, G] };
+  const runnerMode = now >= 4.6 && now < 7.65 ? 'run' : 'stand';
+  const huntMode = (h: (typeof HUNTERS)[number]) => (h.dizzy && now >= 4.95 && now < 5.6 ? 'dizzy' : now >= 4.6 && now < 7.65 ? 'run' : now >= 2.2 && now < 4.4 ? 'walk' : 'stand');
+  const showLogo = reduce || now >= 8.3;
 
   return (
-    <motion.div className={frozen ? 'film-frozen' : ''} style={{ position: 'fixed', inset: 0, background: '#111113', zIndex: 900, overflow: 'hidden' }}
+    <motion.div style={{ position: 'fixed', inset: 0, background: INK, zIndex: 900, overflow: 'hidden' }}
       exit={{ opacity: 0, transition: { duration: 0.45, ease: [0.7, 0, 0.2, 1] } }}>
       {!reduce && (
-        <motion.svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid slice" width="100%" height="100%" style={{ position: 'absolute', inset: 0 }} aria-hidden
-          animate={{ scale: [1.75, 1.75, 1.22, 1.22, 1.45, 1.45, 1.9, 1.9], x: [-70, -70, 56, 56, 64, 64, -10, -10], y: [-170, -170, -100, -100, -150, -150, -230, -230] }}
-          transition={{ scale: tr([0, 2.6, 2.95, 3.35, 3.8, 7.7, 7.85, 10], [0.6, 0, 0.3, 1] as any), x: tr([0, 2.6, 2.95, 3.35, 3.8, 7.7, 7.85, 10], [0.6, 0, 0.3, 1] as any), y: tr([0, 2.6, 2.95, 3.35, 3.8, 7.7, 7.85, 10], [0.6, 0, 0.3, 1] as any) }}>
-          {/* sky + moon */}
-          <rect x="-200" y="-200" width={W + 400} height={H + 400} fill="#111113" />
-          <circle cx="332" cy="150" r="26" fill={BONE} stroke={INK} strokeWidth="2.5" /><circle cx="344" cy="142" r="22" fill="#111113" />
-          {[[50, 120], [140, 210], [230, 90], [290, 250], [80, 300]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="1.8" fill={BONE} opacity=".7" />)}
+        <svg viewBox="-200 -430 400 860" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" style={{ position: 'absolute', inset: 0 }} aria-hidden>
+          <motion.g initial={{ scale: CAMT.s[0], x: 0, y: 0 }} animate={{ scale: CAMT.s, x: CAMT.x, y: CAMT.y }} transition={{ scale: lin(RT), x: lin(RT), y: lin(RT) }}>
+            <rect x="-3000" y="-3000" width="6000" height="6000" fill="none" />
 
-          {/* far campus (slow parallax) */}
-          <motion.g initial={{ x: 0 }} animate={{ x: [0, 0, WORLD_END * 0.35, WORLD_END * 0.35] }} transition={{ x: tr([0, 3.4, 7.7, 10], 'linear') }}>
-            <g transform="translate(0 -40)"><Skyline /></g>
-          </motion.g>
+            {/* the plaza: calm concentric paving, four lamp pools, the play zone */}
+            <circle r="560" fill={G1} />
+            {[110, 220, 330].map((r) => <circle key={r} r={r} fill="none" stroke={G2} strokeWidth="2" />)}
+            {[0, 45, 90, 135].map((a) => <line key={a} x1={Math.cos((a * Math.PI) / 180) * -330} y1={Math.sin((a * Math.PI) / 180) * -330} x2={Math.cos((a * Math.PI) / 180) * 330} y2={Math.sin((a * Math.PI) / 180) * 330} stroke={G2} strokeWidth="1.5" />)}
+            {[[-250, -250], [250, -250], [250, 250], [-250, 250]].map(([x, y], i) => <g key={i}><circle cx={x} cy={y} r="70" fill={BONE} opacity=".035" /><circle cx={x} cy={y} r="6" fill={BRASS} stroke={INK} strokeWidth="2" /></g>)}
+            <circle r="960" fill="none" stroke={INK} strokeWidth="1120" opacity=".6" />
+            <motion.circle fill="none" stroke={EMBER} strokeWidth="4" initial={{ r: 440, opacity: 0 }} animate={{ r: [440, 440, 405, 400], opacity: [0, 0, 0.85, 0.85] }}
+              transition={{ r: tr([0, 1.0, 2.2, 10]), opacity: tr([0, 1.0, 1.6, 10]) }} />
+            {Array.from({ length: 36 }, (_, i) => { const a = (i / 36) * Math.PI * 2; return <line key={i} x1={Math.cos(a) * 410} y1={Math.sin(a) * 410} x2={Math.cos(a) * 422} y2={Math.sin(a) * 422} stroke={EMBER} strokeWidth="2" opacity=".5" />; })}
 
-          {/* the world (scrolls during the chase) */}
-          <motion.g initial={{ x: 0 }} animate={{ x: [0, 0, WORLD_END, WORLD_END] }} transition={{ x: tr([0, 3.4, 7.7, 10], [0.35, 0, 0.75, 1] as any) }}>
-            {/* the wall */}
-            <rect x="-60" y="360" width="620" height={G - 360} fill={G3} stroke={INK} strokeWidth="3" />
-            <Bricks />
-            <rect x="-60" y="352" width="620" height="12" fill={G4} stroke={INK} strokeWidth="2.5" />
-            <g transform="translate(282 488)"><SprayMark p0={0.72} p1={1.5} d0={1.3} d1={2.05} /></g>
-            {/* torch spotlight on the wall + the runner's giant shadow */}
-            <motion.g initial={{ opacity: 0 }} animate={{ opacity: [0, 0, 1, 1, 0] }} transition={{ opacity: tr([0, 2.58, 2.62, 3.4, 3.6], 'linear') }}>
-              <ellipse cx="250" cy="500" rx="130" ry="120" fill={BRASS} opacity=".22" />
-              <g transform="translate(300 600) scale(1.75)" opacity=".42"><g transform={`scale(${rFace} 1)`}><Runner pose={now < 2.6 ? 'stand' : rPose} shadow /></g></g>
-              <polygon points={`-40,585 120,410 380,600`} fill={BRASS} opacity=".08" />
+            {/* the ember light trail */}
+            <motion.path d={TRAIL} fill="none" stroke={EMBER} strokeWidth="5" strokeLinecap="round" initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: [0, ...TRAILLEN, 1], opacity: [0, 0, 0.9, 0.9, 0.3] }}
+              transition={{ pathLength: { duration: T, times: [0, ...RT.t.slice(TI0, TI1 + 1), 1], ease: 'linear' }, opacity: tr([0, 4.59, 4.62, 8.0, 8.3], 'linear') }} />
+
+            {/* heartbeat pulses around the runner while it is still */}
+            {[0.15, 1.05, 2.2, 2.85, 3.4, 3.85, 4.15, 4.35].map((s, i) => (
+              <motion.circle key={i} cx="0" cy="0" fill="none" stroke={EMBER} strokeWidth={i < 2 ? 2 : 2.5} initial={{ r: 12, opacity: 0 }}
+                animate={{ r: [12, 12, i < 2 ? 34 : 60], opacity: [0, 0.9, 0] }} transition={{ r: tr([0, s, s + 0.7], 'easeOut'), opacity: tr([0, s, s + 0.7]) }} />
+            ))}
+
+            {/* hunters */}
+            {HUNTERS.map((h, i) => (
+              <motion.g key={i} initial={{ x: HT[i].x[0], y: HT[i].y[0] }} animate={{ x: HT[i].x, y: HT[i].y }} transition={{ x: lin(HT[i]), y: lin(HT[i]) }}>
+                <motion.g initial={{ rotate: HT[i].a[0] }} animate={{ rotate: HT[i].a }} transition={{ rotate: lin(HT[i]) }}>
+                  <Pivot />
+                  <HunterTD mode={huntMode(h) as any} beam={now >= h.beam} />
+                </motion.g>
+              </motion.g>
+            ))}
+
+            {/* the crash: dizzy stars over the two hunters who collided */}
+            {now >= 4.95 && now < 5.6 && (
+              <motion.g initial={{ rotate: 0, scale: 0.4 }} animate={{ rotate: 360, scale: 1 }} transition={{ duration: 0.65, ease: 'linear' }} style={{ x: 65, y: 65 }}>
+                <Pivot />
+                {[0, 120, 240].map((a) => <path key={a} transform={`rotate(${a}) translate(0 -26)`} d="M0 -6 L1.8 -1.8 L6 0 L1.8 1.8 L0 6 L-1.8 1.8 L-6 0 L-1.8 -1.8 Z" fill={BONE} stroke={INK} strokeWidth="1.2" />)}
+              </motion.g>
+            )}
+
+            {/* runner */}
+            <motion.g initial={{ x: 0, y: 0 }} animate={{ x: RT.x, y: RT.y }} transition={{ x: lin(RT), y: lin(RT) }}>
+              <motion.g initial={{ rotate: 0 }} animate={{ rotate: runnerAngle }} transition={{ rotate: lin(RT) }}>
+                <Pivot />
+                <RunnerTD mode={runnerMode as any} />
+              </motion.g>
             </motion.g>
-            <Lamp x={30} />
-            <Lamp x={560} />
-            <Bench x={634} />
-            <Lamp x={830} />
-            <Barrier x={1005} />
-            <Puddle x={1275} />
-            <Lamp x={1180} />
-            {/* the cap knocked off at the barrier stays behind */}
-            {capOff && (
-              <motion.g initial={{ x: 0, y: 0, rotate: 0 }} animate={{ x: [0, 40, 60], y: [0, -70, 74], rotate: [0, -200, -340] }} transition={{ duration: 0.75, ease: 'easeOut' }}>
-                <g transform={`translate(${1005 - 100 + 20} ${G - 4}) scale(1.12)`}><Cap /></g>
-              </motion.g>
-            )}
-            {/* the dropped can */}
-            {now >= 3.3 && (
-              <motion.g initial={{ y: 0, rotate: 0 }} animate={{ y: [0, 94, 82, 94], rotate: [0, 90, 120, 180] }} transition={{ duration: 0.4, times: [0, 0.6, 0.8, 1] }}>
-                <g transform="translate(244 540)"><rect x="-5" y="0" width="10" height="16" rx="2" fill={BONE} stroke={INK} strokeWidth="2" /></g>
-              </motion.g>
-            )}
+
+            {/* beams converge: the brass flash from the runner */}
+            <motion.circle cx="-150" cy="-365" fill={BRASS} initial={{ r: 0, opacity: 0 }} animate={{ r: [0, 0, 18, 700], opacity: [0, 0, 1, 1] }}
+              transition={{ r: tr([0, 7.75, 8.0, 8.35], [0.7, 0, 0.9, 0.4] as any), opacity: tr([0, 7.75, 7.8, 10], 'linear') }} />
           </motion.g>
-
-          {/* ground */}
-          <rect x="-200" y={G} width={W + 400} height={H} fill={G1} />
-          <rect x="-200" y={G} width={W + 400} height="5" fill={G4} />
-          <motion.g initial={{ x: 0 }} animate={{ x: [0, 0, WORLD_END, WORLD_END] }} transition={{ x: tr([0, 3.4, 7.7, 10], [0.35, 0, 0.75, 1] as any) }}>
-            {Array.from({ length: 24 }, (_, i) => <rect key={i} x={-40 + i * 80} y={G + 60} width="40" height="5" fill={G3} />)}
-          </motion.g>
-
-          {/* spray mist from the can */}
-          {rPose === 'spray' && (
-            <g>{Array.from({ length: 7 }, (_, i) => (
-              <motion.circle key={i} r="2.4" fill={now < 1.4 ? EMBER : BRASS} initial={{ cx: 240, cy: 524, opacity: 0.9 }}
-                animate={{ cx: [240, 258 + i * 4], cy: [524, 492 - (i % 3) * 8], opacity: [0.9, 0] }} transition={{ duration: 0.32, repeat: Infinity, delay: i * 0.045, ease: 'easeOut' }} />
-            ))}</g>
-          )}
-
-          {/* dog */}
-          <motion.g initial={{ x: dX.v[0], y: G }} animate={{ x: dX.v, y: dY.v }} transition={{ x: tr(dX.t), y: { ...tr(dY.t), ease: 'easeOut' } }}>
-            <Dog pose={dPose} />
-            {now >= 2.75 && now < 3.35 && (
-              <motion.g initial={{ scale: 0, y: 0 }} animate={{ scale: [0, 1.25, 1], y: [0, -8, -6] }} transition={{ duration: 0.25 }}>
-                <path d="M30 -78 h26 a6 6 0 0 1 6 6 v18 a6 6 0 0 1 -6 6 h-8 l-6 8 l-2 -8 h-10 a6 6 0 0 1 -6 -6 v-18 a6 6 0 0 1 6 -6z" fill={BONE} stroke={INK} strokeWidth="2.5" />
-                <rect x="41" y="-72" width="5" height="12" rx="2" fill={OXIDE} /><circle cx="43.5" cy="-55" r="2.8" fill={OXIDE} />
-              </motion.g>
-            )}
-          </motion.g>
-
-          {/* hunter (torch beam while standing) */}
-          <motion.g initial={{ x: hX.v[0], y: G }} animate={{ x: hX.v, y: hY.v }} transition={{ x: tr(hX.t), y: { ...tr(hY.t), ease: 'easeOut' } }}>
-            {now >= 2.95 && now < 3.35 && <polygon points="28,-104 250,-210 250,-30" fill={BRASS} opacity=".16" />}
-            <Hunter pose={hPose} capOff={capOff} whistle={now >= 3.3 && now < 4.2} />
-            {now >= 5.25 && now < 5.5 && <text x="-6" y="-170" fontFamily="Archivo Variable, system-ui" fontWeight="900" fontSize="20" fill={BONE}>!!</text>}
-          </motion.g>
-
-          {/* runner */}
-          <motion.g initial={{ x: rX.v[0], y: G }} animate={{ x: rX.v, y: rY.v }} transition={{ x: tr(rX.t), y: { ...tr(rY.t), ease: 'easeOut' } }}>
-            <g transform={`scale(${rFace} 1)`}><Runner pose={rPose} look={rLook as any} /></g>
-          </motion.g>
-
-          {/* splash at the puddle */}
-          {now >= 6.5 && (
-            <g>{[-1, -0.5, 0, 0.5, 1].map((k, i) => (
-              <motion.circle key={i} r={3 + (i % 2)} fill="#55606c" stroke={INK} strokeWidth="1.5" initial={{ cx: 232, cy: G + 4, opacity: 1 }}
-                animate={{ cx: 232 + k * 34 - 12, cy: [G + 4, G - 30 - (2 - Math.abs(k)) * 14, G + 6], opacity: [1, 1, 0] }} transition={{ duration: 0.5, ease: 'easeOut' }} />
-            ))}</g>
-          )}
-
-          {/* speed lines during the chase */}
-          {chase && !frozen && (
-            <g>{[0, 1, 2, 3].map((i) => (
-              <motion.rect key={i} y={G - 110 + i * 26} height="3" width="60" fill={BONE} opacity=".3" initial={{ x: 420 }} animate={{ x: -80 }} transition={{ duration: 0.45, repeat: Infinity, delay: i * 0.11, ease: 'linear' }} />
-            ))}</g>
-          )}
-
-          {/* FREEZE FRAME */}
-          {frozen && <>
-            <motion.rect x="-200" y="-200" width={W + 400} height={H + 400} fill={BONE} initial={{ opacity: 0.9 }} animate={{ opacity: 0 }} transition={{ duration: 0.18 }} />
-            <rect x="-200" y="-200" width={W + 400} height={H + 400} fill="url(#ht)" opacity=".18" />
-            <defs><pattern id="ht" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="1.6" fill={BRASS} /></pattern></defs>
-          </>}
-        </motion.svg>
+        </svg>
       )}
 
-      {/* freeze-frame burst and frame */}
-      {frozen && !reduce && now < 8.4 && <>
-        <div style={{ position: 'absolute', inset: 10, boxShadow: `0 0 0 3px ${BONE}`, borderRadius: 4, pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', left: '50%', top: '26%', transform: 'translate(-50%, -50%)' }}><Burst size={230} text="TAG!" fill={BRASS} ink={INK} /></div>
-      </>}
-
-      {/* wipes into the logo */}
-      {[EMBER, INK].map((c, i) => (
-        <motion.div key={c} style={{ position: 'absolute', inset: 0, background: c, zIndex: 2 + i }} initial={{ x: '-101%' }}
-          animate={reduce || now >= 8.4 ? { x: '0%' } : {}} transition={{ duration: reduce ? 0 : 0.38, delay: reduce ? 0 : i * 0.08, ease: [0.75, 0, 0.2, 1] }} />
-      ))}
-      {(reduce || now >= 8.4) && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 5, display: 'grid', placeItems: 'center', paddingBottom: '8vh', pointerEvents: 'none' }}>
+      {/* the mark */}
+      <motion.div style={{ position: 'absolute', inset: 0, background: INK }} initial={{ clipPath: 'circle(0% at 50% 45%)' }}
+        animate={showLogo ? { clipPath: 'circle(80% at 50% 45%)' } : {}} transition={{ duration: reduce ? 0 : 0.55, ease: [0.7, 0, 0.2, 1] }} />
+      {showLogo && (
+        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', paddingBottom: '8vh', pointerEvents: 'none' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <svg viewBox="-80 -50 160 110" width="200" height="138" style={{ overflow: 'visible' }} aria-hidden>
-              <SprayMark p0={reduce ? 0 : 0.2} p1={reduce ? 0 : 0.34} d0={reduce ? 0 : 0.5} d1={reduce ? 0 : 0.6} scale={1.35} />
-            </svg>
-            <motion.div className="logo-word" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: reduce ? 0.1 : 0.5, type: 'spring', stiffness: 380, damping: 26 }}
-              style={{ marginTop: 6, fontSize: 'clamp(84px, 27vw, 120px)', fontWeight: 900, color: BONE, lineHeight: 0.85, paddingRight: 8 }}>tag</motion.div>
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: reduce ? 0.2 : 0.8, duration: 0.5, ease: [0.2, 0.9, 0.25, 1] }}
+            <div style={{ display: 'flex' }}>
+              {[EMBER, BRASS].map((c, i) => (
+                <motion.span key={c} style={{ width: 64, height: 64, borderRadius: '50%', background: c, marginLeft: i ? -4 : 0, boxShadow: `0 0 0 3px ${INK}` }}
+                  initial={{ scale: 0, x: i ? -40 : 40 }} animate={{ scale: [0, 1.2, 0.94, 1], x: 0 }} transition={{ delay: reduce ? 0 : 0.18 + i * 0.07, duration: 0.6, ease: [0.3, 1.3, 0.6, 1] }} />
+              ))}
+            </div>
+            <motion.div className="logo-word" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: reduce ? 0.1 : 0.45, type: 'spring', stiffness: 380, damping: 26 }}
+              style={{ marginTop: 24, fontSize: 'clamp(84px, 27vw, 120px)', fontWeight: 900, color: BONE, lineHeight: 0.85, paddingRight: 8 }}>tag</motion.div>
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: reduce ? 0.2 : 0.75, duration: 0.5, ease: [0.2, 0.9, 0.25, 1] }}
               style={{ marginTop: 22, fontSize: 13, fontWeight: 750, letterSpacing: '0.18em', textTransform: 'uppercase', color: BRASS }}>Hide. Run. Don’t get caught.</motion.div>
           </div>
         </div>
       )}
 
       {/* film progress */}
-      <div style={{ position: 'absolute', left: 28, right: 28, bottom: 'calc(env(safe-area-inset-bottom) + 24px)', height: 3, borderRadius: 2, background: 'rgba(237,230,218,.12)', overflow: 'hidden', zIndex: 6 }}>
+      <div style={{ position: 'absolute', left: 28, right: 28, bottom: 'calc(env(safe-area-inset-bottom) + 24px)', height: 3, borderRadius: 2, background: 'rgba(237,230,218,.12)', overflow: 'hidden' }}>
         <motion.div style={{ height: '100%', background: EMBER, transformOrigin: 'left' }} initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: reduce ? 1.2 : T, ease: 'linear' }} />
       </div>
     </motion.div>

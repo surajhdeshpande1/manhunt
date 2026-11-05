@@ -259,13 +259,71 @@ export function scoreCaught(from = 0) {
   [N.A4, N.D5, N.F5].forEach((f, i) => v(8.7 + i * 0.1, 1.1, 0.06, (c2, out, t) => { osc(c2, 'triangle', f, t, 1.1, out); }, 0.6));
 }
 
+/* ---------- score for "Surrounded" ---------- */
+export function scoreSurround(from = 0) {
+  const c = ensure(); if (!c || !master || !soundOn()) return;
+  bus();
+  const t0 = c.currentTime + 0.03 - from;
+  const at = (s: number) => s - from;
+  const v = (s: number, dur: number, gain: number, build: (c2: AudioContext, out: GainNode, t: number) => void, wetSend = 0.25) => voice(t0, build, { at: at(s), dur, gain }, wetSend);
+  const nz = (s: number, d: number, g: number, type: BiquadFilterType, f0: number, f1?: number, q = 1, ws = 0.2) => v(s, d, g, (c2, out, t) => { const n = noiseSrc(c2, d); const b = c2.createBiquadFilter(); b.type = type; b.Q.value = q; b.frequency.setValueAtTime(f0, t); if (f1) b.frequency.exponentialRampToValueAtTime(f1, t + d); n.connect(b); b.connect(out); n.start(t); }, ws);
+  const heart = (s: number, g = 0.5) => [0, 0.14].forEach((d, i) => v(s + d, 0.24, g * (i ? 0.7 : 1), (c2, out, t) => { osc(c2, 'sine', 60, t, 0.24, out, 36); }, 0.05));
+  const kick = (s: number, g = 0.65) => v(s, 0.3, g, (c2, out, t) => { osc(c2, 'sine', 150, t, 0.3, out, 40); }, 0.02);
+  const snare = (s: number, g = 0.24) => { nz(s, 0.18, g, 'highpass', 1600, undefined, 0.7, 0.35); v(s, 0.1, g * 0.5, (c2, out, t) => { osc(c2, 'triangle', 240, t, 0.1, out, 170); }, 0.2); };
+  const hat = (s: number, g = 0.045) => nz(s, 0.03, g, 'highpass', 8500, undefined, 0.7, 0.05);
+  const reese = (s: number, f: number, d: number, g = 0.12) => v(s, d, g, (c2, out, t) => { const fl = lp(c2, 500, out, 3); fl.frequency.setValueAtTime(380, t); fl.frequency.linearRampToValueAtTime(900, t + d * 0.5); fl.frequency.linearRampToValueAtTime(420, t + d); const a = osc(c2, 'sawtooth', f, t, d, fl); const b = osc(c2, 'sawtooth', f, t, d, fl); a.detune.value = -14; b.detune.value = 14; osc(c2, 'sine', f, t, d, out); }, 0.05);
+  const click = (s: number) => { v(s, 0.05, 0.16, (c2, out, t) => { osc(c2, 'square', 2200, t, 0.03, out); }, 0.4); v(s + 0.01, 0.6, 0.06, (c2, out, t) => { osc(c2, 'sine', 110, t, 0.6, out, 90); }, 0.4); };
+  const stab = (s: number, fs: number[], d = 0.25, g = 0.05) => fs.forEach((f) => v(s, d, g, (c2, out, t) => { const fl = lp(c2, 2600, out, 2); osc(c2, 'sawtooth', f, t, d, fl); osc(c2, 'sawtooth', f * 1.006, t, d, fl); }, 0.35));
+
+  /* 0–2.2 · one heartbeat in the dark, the plaza opens */
+  heart(0.15, 0.55); heart(1.05, 0.55);
+  v(0.9, 3.6, 0.04, (c2, out, t) => { const fl = lp(c2, 700, out); osc(c2, 'sawtooth', N.D2, t, 3.6, fl); osc(c2, 'sawtooth', N.D2 * 1.5, t, 3.6, fl); }, 0.6);
+  /* 1.4–2.2 · four torches click on */
+  [1.35, 1.55, 1.75, 1.95].forEach(click);
+  /* 2.2–4.4 · the squeeze: heartbeat accelerates, tremolo strings rise, ticking clock */
+  [2.2, 2.85, 3.4, 3.85, 4.15, 4.35].forEach((s, i) => heart(s, 0.45 + i * 0.05));
+  for (let s = 2.2; s < 4.4; s += 0.25) nz(s, 0.03, 0.05, 'bandpass', 3200, undefined, 8, 0.1);
+  v(2.2, 2.25, 0.05, (c2, out, t) => { const fl = lp(c2, 1800, out, 1); const o = osc(c2, 'sawtooth', N.A3, t, 2.25, fl, N.D4); const tr2 = c2.createOscillator(); tr2.frequency.value = 14; const tg = c2.createGain(); tg.gain.value = 0.5; tr2.connect(tg); tg.connect(out.gain); tr2.start(t); tr2.stop(t + 2.25); o.detune.value = 0; }, 0.5);
+  nz(3.3, 1.15, 0.06, 'bandpass', 500, 6000, 1, 0.4);
+  /* 4.4–4.6 · silence, one breath */
+  nz(4.42, 0.16, 0.05, 'bandpass', 900, 1400, 1, 0.3);
+  /* 4.6 · BREAK OUT — impact, then 172 bpm drum & bass */
+  kick(4.6, 0.8); v(4.6, 1.1, 0.4, (c2, out, t) => { osc(c2, 'sine', 55, t, 1.1, out, 30); }, 0.2);
+  nz(4.6, 0.6, 0.18, 'bandpass', 3000, 400, 0.8, 0.4);
+  stab(4.6, [N.D3, N.A3, N.D4, N.F4], 0.35, 0.06);
+  const e = 60 / 172 / 2; // eighth
+  for (let i = 0; i < 26; i++) {
+    const s = 4.75 + i * e; if (s > 7.55) break;
+    const bar = i % 8;
+    if (bar === 0 || bar === 5) kick(s, 0.6);
+    if (bar === 2 || bar === 6) snare(s, 0.22);
+    hat(s); hat(s + e / 2, 0.025);
+    if (bar === 0) reese(s, i % 16 === 0 ? N.D2 : N.F2, e * 4, 0.12);
+    if (bar === 4) reese(s, i % 16 === 4 ? N.C3 / 2 : N.A2 / 2 * 2, e * 4, 0.11);
+  }
+  nz(4.62, 0.35, 0.16, 'bandpass', 500, 4000, 1, 0.2); // the dash whoosh
+  v(5.0, 0.35, 0.22, (c2, out, t) => { osc(c2, 'square', 480, t, 0.04, lp(c2, 3000, out)); osc(c2, 'sine', 760, t, 0.32, out, 220); }, 0.3); // BONK
+  [5.08, 5.2, 5.32].forEach((s, i) => v(s, 0.2, 0.06, (c2, out, t) => { osc(c2, 'sine', 2100 + i * 300, t, 0.18, out); }, 0.6)); // dizzy stars
+  stab(5.9, [N.D4, N.F4, N.A4], 0.18, 0.045); stab(6.6, [N.E4, N.A4, N.C5], 0.18, 0.045);
+  nz(6.2, 0.4, 0.1, 'bandpass', 700, 3500, 1.2, 0.2); // swerve
+  /* 7.5–8.05 · cornered: everything rises into the beams meeting */
+  nz(7.45, 0.6, 0.12, 'highpass', 1500, 9000, 0.7, 0.4);
+  v(7.45, 0.6, 0.06, (c2, out, t) => { const o = osc(c2, 'sawtooth', N.D3, t, 0.6, lp(c2, 2500, out), N.D4 * 2); o.detune.value = 0; }, 0.4);
+  heart(7.55, 0.6); heart(7.8, 0.65);
+  /* 8.05 · the flash and the mark */
+  kick(8.05, 0.85); v(8.05, 1.6, 0.5, (c2, out, t) => { osc(c2, 'sine', 62, t, 1.6, out, 30); }, 0.2);
+  nz(8.05, 1.4, 0.07, 'highpass', 7000, undefined, 0.7, 0.7);
+  stab(8.1, [N.D3, N.A3, N.D4, N.E4, N.A4], 1.6, 0.04);
+  [N.A4, N.D5, N.A5].forEach((f, i) => v(8.3 + i * 0.12, 1.3, 0.06, (c2, out, t) => { osc(c2, 'sine', f, t, 1.3, out); }, 0.7));
+}
+
 /** Render the opening score to a WAV (used only to make preview videos: open the app with ?scorewav). */
-export async function renderScoreWav(which: 'line' | 'pins' | 'caught' = 'caught'): Promise<string> {
+export async function renderScoreWav(which: 'line' | 'pins' | 'caught' | 'surround' = 'surround'): Promise<string> {
   const save = { ctx, master, wet };
   const oc = new OfflineAudioContext(2, 44100 * 11, 44100);
   ctx = oc as unknown as AudioContext; master = oc.createGain(); master.gain.value = 0.8;
   const comp = oc.createDynamicsCompressor(); master.connect(comp); comp.connect(oc.destination); wet = null;
-  (which === 'pins' ? score : which === 'line' ? scoreLine : scoreCaught)(-0.03);
+  (which === 'pins' ? score : which === 'line' ? scoreLine : which === 'caught' ? scoreCaught : scoreSurround)(-0.03);
   const buf = await oc.startRendering();
   ctx = save.ctx; master = save.master; wet = save.wet;
   const n = buf.length, out = new DataView(new ArrayBuffer(44 + n * 4));
