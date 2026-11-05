@@ -259,62 +259,77 @@ export function scoreCaught(from = 0) {
   [N.A4, N.D5, N.F5].forEach((f, i) => v(8.7 + i * 0.1, 1.1, 0.06, (c2, out, t) => { osc(c2, 'triangle', f, t, 1.1, out); }, 0.6));
 }
 
-/* ---------- score for "Surrounded" ---------- */
+/* ---------- score for "Surrounded" — cinematic trailer ---------- */
 export function scoreSurround(from = 0) {
   const c = ensure(); if (!c || !master || !soundOn()) return;
   bus();
   const t0 = c.currentTime + 0.03 - from;
   const at = (s: number) => s - from;
-  const v = (s: number, dur: number, gain: number, build: (c2: AudioContext, out: GainNode, t: number) => void, wetSend = 0.25) => voice(t0, build, { at: at(s), dur, gain }, wetSend);
-  const nz = (s: number, d: number, g: number, type: BiquadFilterType, f0: number, f1?: number, q = 1, ws = 0.2) => v(s, d, g, (c2, out, t) => { const n = noiseSrc(c2, d); const b = c2.createBiquadFilter(); b.type = type; b.Q.value = q; b.frequency.setValueAtTime(f0, t); if (f1) b.frequency.exponentialRampToValueAtTime(f1, t + d); n.connect(b); b.connect(out); n.start(t); }, ws);
-  const heart = (s: number, g = 0.5) => [0, 0.14].forEach((d, i) => v(s + d, 0.24, g * (i ? 0.7 : 1), (c2, out, t) => { osc(c2, 'sine', 60, t, 0.24, out, 36); }, 0.05));
-  const kick = (s: number, g = 0.65) => v(s, 0.3, g, (c2, out, t) => { osc(c2, 'sine', 150, t, 0.3, out, 40); }, 0.02);
-  const snare = (s: number, g = 0.24) => { nz(s, 0.18, g, 'highpass', 1600, undefined, 0.7, 0.35); v(s, 0.1, g * 0.5, (c2, out, t) => { osc(c2, 'triangle', 240, t, 0.1, out, 170); }, 0.2); };
-  const hat = (s: number, g = 0.045) => nz(s, 0.03, g, 'highpass', 8500, undefined, 0.7, 0.05);
-  const reese = (s: number, f: number, d: number, g = 0.12) => v(s, d, g, (c2, out, t) => { const fl = lp(c2, 500, out, 3); fl.frequency.setValueAtTime(380, t); fl.frequency.linearRampToValueAtTime(900, t + d * 0.5); fl.frequency.linearRampToValueAtTime(420, t + d); const a = osc(c2, 'sawtooth', f, t, d, fl); const b = osc(c2, 'sawtooth', f, t, d, fl); a.detune.value = -14; b.detune.value = 14; osc(c2, 'sine', f, t, d, out); }, 0.05);
-  const click = (s: number) => { v(s, 0.05, 0.16, (c2, out, t) => { osc(c2, 'square', 2200, t, 0.03, out); }, 0.4); v(s + 0.01, 0.6, 0.06, (c2, out, t) => { osc(c2, 'sine', 110, t, 0.6, out, 90); }, 0.4); };
-  const stab = (s: number, fs: number[], d = 0.25, g = 0.05) => fs.forEach((f) => v(s, d, g, (c2, out, t) => { const fl = lp(c2, 2600, out, 2); osc(c2, 'sawtooth', f, t, d, fl); osc(c2, 'sawtooth', f * 1.006, t, d, fl); }, 0.35));
+  const v = (s: number, dur: number, gain: number, build: (c2: AudioContext, out: GainNode, t: number) => void, wetSend = 0.3) => voice(t0, build, { at: at(s), dur, gain }, wetSend);
+  const nz = (s: number, d: number, g: number, type: BiquadFilterType, f0: number, f1?: number, q = 1, ws = 0.3) => v(s, d, g, (c2, out, t) => { const n = noiseSrc(c2, d); const b = c2.createBiquadFilter(); b.type = type; b.Q.value = q; b.frequency.setValueAtTime(f0, t); if (f1) b.frequency.exponentialRampToValueAtTime(f1, t + d); n.connect(b); b.connect(out); n.start(t); }, ws);
+  const D1 = 36.71;
+  // a sustained, swelling section: detuned saws through an opening low-pass (strings / brass)
+  const section = (s: number, d: number, fs: number[], g: number, f0: number, f1: number, attack = 0.4, ws = 0.45) => fs.forEach((f) => v(s, d, g, (c2, out, t) => {
+    const fl = c2.createBiquadFilter(); fl.type = 'lowpass'; fl.Q.value = 1.2; fl.frequency.setValueAtTime(f0, t); fl.frequency.exponentialRampToValueAtTime(f1, t + Math.min(d, attack + 0.4)); fl.connect(out);
+    [-9, 0, 9].forEach((det) => { const o = osc(c2, 'sawtooth', f, t, d, fl); o.detune.value = det; });
+    out.gain.cancelScheduledValues(t); out.gain.setValueAtTime(0.0001, t); out.gain.exponentialRampToValueAtTime(g, t + attack); out.gain.setValueAtTime(g, t + d * 0.7); out.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  }, ws));
+  // BRAAM: a massive low brass blast with a sub drop and an impact
+  const braam = (s: number, d: number, g: number, fs = [D1, N.D2, N.A2, N.D3, N.F3]) => {
+    fs.forEach((f, i) => v(s, d, g * (i < 2 ? 1 : 0.7), (c2, out, t) => {
+      const fl = c2.createBiquadFilter(); fl.type = 'lowpass'; fl.Q.value = 3; fl.frequency.setValueAtTime(180, t); fl.frequency.exponentialRampToValueAtTime(1600, t + 0.18); fl.frequency.exponentialRampToValueAtTime(380, t + d); fl.connect(out);
+      [-12, 0, 12].forEach((det) => { const o = osc(c2, 'sawtooth', f, t, d, fl); o.detune.value = det; });
+    }, 0.5));
+    v(s, d + 0.4, 0.75, (c2, out, t) => { osc(c2, 'sine', 58, t, d + 0.4, out, 28); }, 0.1);
+    nz(s, 0.5, 0.25, 'lowpass', 1800, 120, 0.7, 0.4);
+  };
+  // taiko: deep drum hit (body + skin)
+  const taiko = (s: number, g = 0.55, f = 82) => { v(s, 0.55, g, (c2, out, t) => { osc(c2, 'sine', f, t, 0.55, out, f * 0.55); }, 0.35); nz(s, 0.09, g * 0.35, 'lowpass', 900, 300, 0.8, 0.35); };
+  const tick = (s: number, g = 0.07, f = 2900) => v(s, 0.04, g, (c2, out, t) => { osc(c2, 'square', f, t, 0.025, lp(c2, 6000, out)); }, 0.2);
+  // staccato string ostinato note
+  const stac = (s: number, f: number, g = 0.07, d = 0.12) => v(s, d, g, (c2, out, t) => { const fl = lp(c2, 2200, out, 1.5); [-7, 7].forEach((det) => { const o = osc(c2, 'sawtooth', f, t, d, fl); o.detune.value = det; }); }, 0.35);
 
-  /* 0–2.2 · one heartbeat in the dark, the plaza opens */
-  heart(0.15, 0.55); heart(1.05, 0.55);
-  v(0.9, 3.6, 0.04, (c2, out, t) => { const fl = lp(c2, 700, out); osc(c2, 'sawtooth', N.D2, t, 3.6, fl); osc(c2, 'sawtooth', N.D2 * 1.5, t, 3.6, fl); }, 0.6);
-  /* 1.4–2.2 · four torches click on */
-  [1.35, 1.55, 1.75, 1.95].forEach(click);
-  /* 2.2–4.4 · the squeeze: heartbeat accelerates, tremolo strings rise, ticking clock */
-  [2.2, 2.85, 3.4, 3.85, 4.15, 4.35].forEach((s, i) => heart(s, 0.45 + i * 0.05));
-  for (let s = 2.2; s < 4.4; s += 0.25) nz(s, 0.03, 0.05, 'bandpass', 3200, undefined, 8, 0.1);
-  v(2.2, 2.25, 0.05, (c2, out, t) => { const fl = lp(c2, 1800, out, 1); const o = osc(c2, 'sawtooth', N.A3, t, 2.25, fl, N.D4); const tr2 = c2.createOscillator(); tr2.frequency.value = 14; const tg = c2.createGain(); tg.gain.value = 0.5; tr2.connect(tg); tg.connect(out.gain); tr2.start(t); tr2.stop(t + 2.25); o.detune.value = 0; }, 0.5);
-  nz(3.3, 1.15, 0.06, 'bandpass', 500, 6000, 1, 0.4);
-  /* 4.4–4.6 · silence, one breath */
-  nz(4.42, 0.16, 0.05, 'bandpass', 900, 1400, 1, 0.3);
-  /* 4.6 · BREAK OUT — impact, then 172 bpm drum & bass */
-  kick(4.6, 0.8); v(4.6, 1.1, 0.4, (c2, out, t) => { osc(c2, 'sine', 55, t, 1.1, out, 30); }, 0.2);
-  nz(4.6, 0.6, 0.18, 'bandpass', 3000, 400, 0.8, 0.4);
-  stab(4.6, [N.D3, N.A3, N.D4, N.F4], 0.35, 0.06);
-  const e = 60 / 172 / 2; // eighth
-  for (let i = 0; i < 26; i++) {
-    const s = 4.75 + i * e; if (s > 7.55) break;
-    const bar = i % 8;
-    if (bar === 0 || bar === 5) kick(s, 0.6);
-    if (bar === 2 || bar === 6) snare(s, 0.22);
-    hat(s); hat(s + e / 2, 0.025);
-    if (bar === 0) reese(s, i % 16 === 0 ? N.D2 : N.F2, e * 4, 0.12);
-    if (bar === 4) reese(s, i % 16 === 4 ? N.C3 / 2 : N.A2 / 2 * 2, e * 4, 0.11);
-  }
-  nz(4.62, 0.35, 0.16, 'bandpass', 500, 4000, 1, 0.2); // the dash whoosh
+  /* 0–2.2 · darkness: two heartbeats, a low cello drone swelling, the clock starts */
+  [0.15, 1.05].forEach((s) => [0, 0.14].forEach((d, i) => v(s + d, 0.25, i ? 0.4 : 0.55, (c2, out, t) => { osc(c2, 'sine', 58, t, 0.25, out, 34); }, 0.1)));
+  section(0.2, 4.5, [N.D2, N.A2], 0.05, 220, 900, 1.6);
+  for (let s = 0.6; s < 2.2; s += 0.5) tick(s, 0.05, 2600);
+  /* torches: sharp click + a low brass sting each */
+  [1.35, 1.55, 1.75, 1.95].forEach((s, i) => { v(s, 0.05, 0.15, (c2, out, t) => { osc(c2, 'square', 2200, t, 0.03, out); }, 0.4); section(s, 0.7, [[N.D2, N.F2, N.A2, N.D3][i]], 0.06, 300, 1200, 0.03, 0.5); });
+  /* 2.2–4.4 · the squeeze: ticking accelerates, string ostinato climbs, a riser */
+  let s = 2.2, gap = 0.5; while (s < 4.38) { tick(s, 0.06, 3000); s += gap; gap = Math.max(0.12, gap * 0.86); }
+  const ost = [N.D3, N.D3, N.F3, N.D3, N.E3, N.D3, N.F3, N.A3];
+  for (let i = 0; i < 18; i++) { const st = 2.2 + i * 0.12; if (st > 4.35) break; stac(st, ost[i % 8] * (i >= 8 ? 2 : 1), 0.035 + i * 0.003); }
+  section(2.2, 2.25, [N.D3, N.A3], 0.045, 400, 3000, 1.8);
+  nz(2.6, 1.8, 0.07, 'bandpass', 300, 6000, 0.8, 0.5);
+  [2.2, 3.0, 3.6, 4.0].forEach((st, i) => taiko(st, 0.3 + i * 0.07, 70));
+  /* 4.4 · silence; one reversed inhale into the hit */
+  v(4.38, 0.22, 0.18, (c2, out, t) => { const n = noiseSrc(c2, 0.22); const b = c2.createBiquadFilter(); b.type = 'highpass'; b.frequency.value = 2500; n.connect(b); b.connect(out); n.start(t); out.gain.cancelScheduledValues(t); out.gain.setValueAtTime(0.0001, t); out.gain.exponentialRampToValueAtTime(0.18, t + 0.21); out.gain.exponentialRampToValueAtTime(0.0001, t + 0.22); }, 0.6);
+  /* 4.6 · BREAKOUT: the BRAAM */
+  braam(4.6, 1.3, 0.1);
+  nz(4.62, 0.35, 0.14, 'bandpass', 500, 4000, 1, 0.3); // dash whoosh
+  /* 4.8–7.55 · the chase: taiko pattern, fast string ostinato, brass stabs */
+  const beat = 0.375; // 160 bpm
+  const pat = [1, 0, 0.6, 1, 0, 0.6, 1, 0.8];
+  for (let i = 0; i < 15; i++) { const st = 4.85 + i * beat * 0.5; if (st > 7.5) break; const p2 = pat[i % 8]; if (p2) taiko(st, 0.32 * p2 + 0.18, p2 === 1 ? 78 : 110); }
+  const run = [N.D3, N.F3, N.A3, N.D4, N.A3, N.F3, N.E3, N.F3];
+  for (let i = 0; i < 44; i++) { const st = 4.8 + i * 0.0625; if (st > 7.5) break; stac(st, run[i % 8] * (i >= 24 ? 2 : 1), 0.045, 0.07); }
+  [[5.55, [N.D3, N.F3, N.A3]], [6.3, [N.C3, N.E3, N.A3]], [6.9, [N.Bb2 * 2, N.D3 * 2, N.F3]]].forEach(([st, fs]) => section(st as number, 0.5, fs as number[], 0.06, 600, 2600, 0.02, 0.4));
+  braam(6.6, 0.7, 0.06, [N.D2, N.A2, N.D3]);
+  /* SFX that ride on top */
   v(5.0, 0.35, 0.22, (c2, out, t) => { osc(c2, 'square', 480, t, 0.04, lp(c2, 3000, out)); osc(c2, 'sine', 760, t, 0.32, out, 220); }, 0.3); // BONK
-  [5.08, 5.2, 5.32].forEach((s, i) => v(s, 0.2, 0.06, (c2, out, t) => { osc(c2, 'sine', 2100 + i * 300, t, 0.18, out); }, 0.6)); // dizzy stars
-  stab(5.9, [N.D4, N.F4, N.A4], 0.18, 0.045); stab(6.6, [N.E4, N.A4, N.C5], 0.18, 0.045);
+  [5.08, 5.2, 5.32].forEach((st, i) => v(st, 0.2, 0.06, (c2, out, t) => { osc(c2, 'sine', 2100 + i * 300, t, 0.18, out); }, 0.6)); // dizzy stars
   nz(6.2, 0.4, 0.1, 'bandpass', 700, 3500, 1.2, 0.2); // swerve
-  /* 7.5–8.05 · cornered: everything rises into the beams meeting */
-  nz(7.45, 0.6, 0.12, 'highpass', 1500, 9000, 0.7, 0.4);
-  v(7.45, 0.6, 0.06, (c2, out, t) => { const o = osc(c2, 'sawtooth', N.D3, t, 0.6, lp(c2, 2500, out), N.D4 * 2); o.detune.value = 0; }, 0.4);
-  heart(7.55, 0.6); heart(7.8, 0.65);
-  /* 8.05 · the flash and the mark */
-  kick(8.05, 0.85); v(8.05, 1.6, 0.5, (c2, out, t) => { osc(c2, 'sine', 62, t, 1.6, out, 30); }, 0.2);
-  nz(8.05, 1.4, 0.07, 'highpass', 7000, undefined, 0.7, 0.7);
-  stab(8.1, [N.D3, N.A3, N.D4, N.E4, N.A4], 1.6, 0.04);
-  [N.A4, N.D5, N.A5].forEach((f, i) => v(8.3 + i * 0.12, 1.3, 0.06, (c2, out, t) => { osc(c2, 'sine', f, t, 1.3, out); }, 0.7));
+  /* 7.45–8.05 · cornered: snare roll crescendo + rising strings, a hard cut of silence */
+  for (let i = 0; i < 16; i++) nz(7.45 + i * 0.035, 0.05, 0.04 + i * 0.012, 'highpass', 1800, undefined, 0.7, 0.4);
+  section(7.45, 0.55, [N.D3, N.A3, N.D4], 0.05, 800, 5000, 0.5, 0.4);
+  v(7.45, 0.55, 0.06, (c2, out, t) => { osc(c2, 'sawtooth', N.D3, t, 0.55, lp(c2, 3000, out), N.D4 * 2); }, 0.4);
+  [7.55, 7.8].forEach((st) => [0, 0.13].forEach((d, i) => v(st + d, 0.22, i ? 0.4 : 0.55, (c2, out, t) => { osc(c2, 'sine', 60, t, 0.22, out, 36); }, 0.1)));
+  /* 8.05 · the flash: final BRAAM into a rising D-major chord (choir + strings) */
+  braam(8.05, 1.8, 0.11);
+  taiko(8.05, 0.8, 70);
+  section(8.25, 1.75, [N.D3, N.A3, N.D4, 369.99, N.A4], 0.035, 600, 3200, 0.5, 0.6);
+  [N.D4, 369.99, N.A4, N.D5].forEach((f, i) => v(8.3 + i * 0.05, 1.7, 0.035, (c2, out, t) => { const o = osc(c2, 'triangle', f, t, 1.7, lp(c2, 2500, out)); const l = c2.createOscillator(); l.frequency.value = 5.5; const lg = c2.createGain(); lg.gain.value = f * 0.006; l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t + 1.7); }, 0.7));
+  nz(8.05, 1.6, 0.05, 'highpass', 7000, undefined, 0.7, 0.8);
 }
 
 /** Render the opening score to a WAV (used only to make preview videos: open the app with ?scorewav). */
