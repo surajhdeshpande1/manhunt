@@ -71,7 +71,7 @@ export function TaskDeck({ s, refresh }: { s: RoomState; refresh: () => void }) 
         {task && (
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }}
             style={{ position: 'fixed', inset: 0, zIndex: 650, background: 'var(--bg)', overflowY: 'auto' }}>
-            <RunnerAmbience intensity={0.7} />
+            <RunnerAmbience intensity={0.35} />
             <div className="screen" style={{ gap: 18 }}>
               <div className="row between">
                 <div>
