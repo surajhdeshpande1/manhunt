@@ -26,3 +26,9 @@ npm run dev
 ## Secrets
 
 No secret keys are stored in this repo. The server functions read `SUPABASE_SERVICE_ROLE_KEY`, `BREVO_API_KEY`, `BREVO_SENDER`, `LIVEKIT_URL`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` from the Supabase project's function secrets.
+
+## Developer DEMO section
+
+- The first screen has a small **Developer** button. It asks for a NAME and PASSWORD, which the owner sets in **Profile → Developer access**. The server stores only a bcrypt hash (`dev_access`), rate-limits wrong tries and hands out 30-day developer sessions (`dev_login`, `dev_check`).
+- After login the app reloads into DEMO mode (`web/src/demo/`). Every server call is answered by `sim.ts`, an in-browser copy of the game server with bot players. Your own GPS stays real. No real data is read or written.
+- The gold **DEMO** tab on the left edge opens the controls: quick matches as runner/hunter/admin around your location, bot count and speed, and event triggers. "Exit demo" (or Sign out) returns to the real app.

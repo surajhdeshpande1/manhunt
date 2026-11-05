@@ -138,7 +138,7 @@ export function Slash({ children, k, className = '' }: { children: ReactNode; k?
 }
 
 /* ---------- Bottom sheet modal ---------- */
-export function Modal({ open, onClose, title, children, full }: { open: boolean; onClose: () => void; title?: string; children: ReactNode; full?: boolean }) {
+export function Modal({ open, onClose, title, children, full, z = 400 }: { open: boolean; onClose: () => void; title?: string; children: ReactNode; full?: boolean; z?: number }) {
   useEffect(() => {
     if (!open) return;
     const h = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -148,7 +148,7 @@ export function Modal({ open, onClose, title, children, full }: { open: boolean;
   return createPortal(
     <AnimatePresence>
       {open && (
-        <motion.div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'var(--scrim)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+        <motion.div style={{ position: 'fixed', inset: 0, zIndex: z, background: 'var(--scrim)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
           <motion.div role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}
             style={{ width: '100%', maxWidth: 560, maxHeight: full ? '100%' : '90%', height: full ? '100%' : undefined, overflow: 'auto', background: 'var(--bg2)',

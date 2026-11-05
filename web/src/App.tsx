@@ -6,8 +6,10 @@ import { Forgot, Permissions, ResetPassword, Selfie, SignIn, SignUp, Welcome } f
 import Home from './screens/Home';
 import { useSession } from './lib/session';
 import { Backdrop, Orbit } from './components/Art';
+import { DEMO, takeSkipIntro } from './demo/mode';
 
 const RoomScreen = lazy(() => import('./screens/Room'));
+const DemoPanel = lazy(() => import('./demo/DemoPanel'));
 
 function Splash() {
   return <div style={{ position: 'fixed', inset: 0, display: 'grid', placeItems: 'center' }}><Orbit size={44} /></div>;
@@ -32,7 +34,7 @@ function Entry() {
 
 export default function App() {
   // The opening film plays on every launch. Automated browsers skip it unless ?intro is in the URL.
-  const [intro, setIntro] = useState(() => !(navigator.webdriver && !location.search.includes('intro')));
+  const [intro, setIntro] = useState(() => !takeSkipIntro() && !(navigator.webdriver && !location.search.includes('intro')));
   const { recovering } = useSession();
   const loc = useLocation();
   const done = () => setIntro(false);
@@ -42,6 +44,7 @@ export default function App() {
     <>
       <Backdrop />
       <div style={{ position: 'relative', zIndex: 1, minHeight: '100%' }}>
+      {DEMO && !intro && <Suspense fallback={null}><DemoPanel /></Suspense>}
       <AnimatePresence>{intro && loc.pathname !== '/reset' && <Landing key="intro" onDone={done} />}</AnimatePresence>
       {!intro || loc.pathname === '/reset' ? (
         <Suspense fallback={<Splash />}>

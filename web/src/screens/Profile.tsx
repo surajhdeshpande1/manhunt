@@ -12,6 +12,8 @@ import { callFunction, rpc } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { fmtDist } from '../lib/clock';
 import { haptic } from '../lib/feel';
+import { realRpc } from '../lib/supabase';
+import { DEMO } from '../demo/mode';
 
 export const BADGES: Record<string, { name: string; desc: string; glyph: string }> = {
   first_blood: { name: 'First Blood', desc: 'Catch a runner', glyph: '✕' },
@@ -111,6 +113,7 @@ export default function Profile() {
       <Friends />
       <Leaderboard />
       {profile.is_owner && <OwnerPanel />}
+      {profile.is_owner && !DEMO && <DeveloperAccess />}
 
       <Section title="Appearance">
         <AppearancePicker />
@@ -406,5 +409,38 @@ function Customise({ open, onClose }: { open: boolean; onClose: () => void }) {
         </div>
       </div>
     </Modal>
+  );
+}
+
+/* ---------- DEVELOPER ACCESS (owner only) ---------- */
+function DeveloperAccess() {
+  const toast = useToast();
+  const [st, setSt] = useState<{ set: boolean; name: string | null; updated_at: string | null } | null>(null);
+  const [name, setName] = useState('');
+  const [pw, setPw] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => realRpc('dev_status').then(setSt).catch(() => {}), []);
+  useEffect(() => { load(); }, [load]);
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    if (pw !== pw2) { toast('The two passwords do not match', true); return; }
+    setBusy(true);
+    try { await realRpc('set_dev_credentials', { p_name: name, p_password: pw }); haptic.ok(); toast('Developer login saved'); setPw(''); setPw2(''); load(); }
+    catch (e: any) { toast(e.message, true); } finally { setBusy(false); }
+  }
+  return (
+    <Section title="Developer access">
+      <form onSubmit={save} className="card stack" style={{ padding: 16, gap: 12 }}>
+        <div style={{ fontSize: 14 }}>
+          {st?.set ? <>Developer login is set for <b className="mono">{st.name}</b>. Use <b>Developer</b> on the first screen to open the DEMO section.</> : 'Set the NAME and PASSWORD for the Developer button on the first screen. It opens the DEMO section.'}
+        </div>
+        <Field label="NAME" autoCapitalize="none" autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} hint="At least 3 characters" />
+        <Field label="PASSWORD" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} hint="At least 8 characters. Only a scrambled copy is stored." />
+        <Field label="Repeat PASSWORD" type="password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
+        <Button type="submit" loading={busy} disabled={name.trim().length < 3 || pw.length < 8}>{st?.set ? 'Change developer login' : 'Save developer login'}</Button>
+        {st?.set && <div className="muted" style={{ fontSize: 12.5 }}>Changing it signs every device out of developer mode.</div>}
+      </form>
+    </Section>
   );
 }

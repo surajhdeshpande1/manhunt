@@ -9,6 +9,8 @@ import { haptic } from '../lib/feel';
 import { ArtPanel } from '../components/Brut';
 import { resolvedDay, useAppearance } from '../lib/theme';
 import { HowItWorks } from '../components/Diagrams';
+import { DevLoginButton } from '../demo/DevLogin';
+import { DEMO } from '../demo/mode';
 
 /* ---------- Welcome ---------- */
 const WORDS = ['Hide.', 'Run.', 'Hunt.', 'Tag.'];
@@ -51,6 +53,7 @@ export function Welcome() {
         <motion.div {...rise(5)} className="stack" style={{ gap: 14, marginTop: 'auto' }}>
           <Button kind="hot" size="lg" block onClick={() => nav('/signup')}>Create account</Button>
           <Button size="lg" kind="ghost" block onClick={() => nav('/signin')}>I already have an account</Button>
+          <DevLoginButton />
         </motion.div>
       </div>
     </Slash>
@@ -401,6 +404,13 @@ export function Selfie({ retake = false }: { retake?: boolean }) {
     if (!shot || !session) return;
     setBusy(true);
     try {
+      if (DEMO) {
+        // demo: keep a small copy in the simulated world instead of uploading
+        const bmp = await createImageBitmap(shot); const c = document.createElement('canvas'); c.width = c.height = 160;
+        c.getContext('2d')!.drawImage(bmp, 0, 0, 160, 160);
+        await rpc('demo_set_selfie', { p_path: c.toDataURL('image/jpeg', 0.7) }); await refresh(); haptic.ok();
+        nav(retake ? '/home/profile' : '/home', { replace: true }); return;
+      }
       const path = `${session.user.id}-${Date.now()}.jpg`;
       const { error: upErr } = await supabase.storage.from('selfies').upload(path, shot, { contentType: 'image/jpeg', upsert: false });
       if (upErr) throw upErr;

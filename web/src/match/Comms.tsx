@@ -4,6 +4,7 @@ import { rpc, supabase, callFunction } from '../lib/supabase';
 import { Avatar, IconMic, useToast } from '../components/ui';
 import { haptic } from '../lib/feel';
 import type { Member } from '../lib/types';
+import { DEMO } from '../demo/mode';
 
 type Msg = { id: number; user_id: string; body: string; at: string };
 
@@ -17,6 +18,20 @@ export function Chat({ roomId, channel, members, meId, height = 280, compact }: 
   const byId = new Map(members.map((m) => [m.id, m]));
 
   useEffect(() => {
+    if (DEMO) {
+      let off = () => {};
+      let alive = true;
+      import('../demo/sim').then((sim) => {
+        if (!alive) return;
+        setMsgs(sim.messages(roomId, channel) as Msg[]);
+        off = sim.onMessage((m) => {
+          if (m.room_id !== roomId || m.channel !== channel) return;
+          setMsgs((x) => (x.some((y) => y.id === m.id) ? x : [...x, m].slice(-100)));
+          if (m.user_id !== meId) haptic.tap();
+        });
+      });
+      return () => { alive = false; off(); };
+    }
     let alive = true;
     supabase.from('messages').select('id,user_id,body,at').eq('room_id', roomId).eq('channel', channel).order('id', { ascending: false }).limit(60)
       .then(({ data }) => { if (alive && data) setMsgs(data.reverse() as Msg[]); });
