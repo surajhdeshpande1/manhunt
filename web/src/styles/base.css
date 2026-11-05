@@ -540,3 +540,27 @@ body { font-size: 16px; }
 .toast.err { box-shadow: 0 0 0 1px var(--danger), 0 18px 40px -16px rgba(0,0,0,.6) !important; }
 .maplibregl-ctrl-group { box-shadow: 0 0 0 1px var(--line2) !important; }
 .screen { padding: calc(env(safe-area-inset-top) + 24px) 22px calc(env(safe-area-inset-bottom) + 32px); }
+
+/* ---------- opening film: jointed cartoon characters ----------
+   every limb hangs from its joint (top centre of its own box) and swings with CSS,
+   so runs are smooth at any frame rate and the whole film can freeze in one class. */
+.cc .j { transform-box: view-box; transform-origin: 0 0; }
+.cc.run .legA { animation: legSwing 0.32s linear infinite; }
+.cc.run .legB { animation: legSwing 0.32s linear infinite; animation-delay: -0.16s; }
+.cc.run .shinA { animation: shinBend 0.32s linear infinite; }
+.cc.run .shinB { animation: shinBend 0.32s linear infinite; animation-delay: -0.16s; }
+.cc.run .armA { animation: armSwing 0.32s linear infinite; animation-delay: -0.16s; }
+.cc.run .armB { animation: armSwing 0.32s linear infinite; }
+.cc.run .body { animation: bob 0.16s ease-in-out infinite alternate; }
+.cc.fast.run .legA, .cc.fast.run .legB, .cc.fast.run .shinA, .cc.fast.run .shinB, .cc.fast.run .armA, .cc.fast.run .armB { animation-duration: 0.2s; }
+.cc.fast.run .legB, .cc.fast.run .shinB, .cc.fast.run .armA { animation-delay: -0.1s; }
+.cc.fast.run .body { animation-duration: 0.1s; }
+@keyframes legSwing { 0% { transform: rotate(38deg); } 50% { transform: rotate(-42deg); } 100% { transform: rotate(38deg); } }
+@keyframes shinBend { 0% { transform: rotate(10deg); } 25% { transform: rotate(-70deg); } 50% { transform: rotate(-8deg); } 75% { transform: rotate(-20deg); } 100% { transform: rotate(10deg); } }
+@keyframes armSwing { 0% { transform: rotate(50deg); } 50% { transform: rotate(-60deg); } 100% { transform: rotate(50deg); } }
+@keyframes bob { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+.cc.wag .tail { animation: wag 0.18s ease-in-out infinite alternate; }
+@keyframes wag { from { transform: rotate(-25deg); } to { transform: rotate(25deg); } }
+.film-frozen .cc *, .film-frozen .cc, .film-frozen .scrollL { animation-play-state: paused !important; }
+.scrollL { animation: scrollL 1.2s linear infinite; }
+@keyframes scrollL { to { transform: translateX(-160px); } }

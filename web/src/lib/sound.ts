@@ -190,13 +190,82 @@ export function scoreLine(from = 0) {
   heart(9.35, 0.3);
 }
 
+/* ---------- score for "Caught in the act" ---------- */
+export function scoreCaught(from = 0) {
+  const c = ensure(); if (!c || !master || !soundOn()) return;
+  bus();
+  const t0 = c.currentTime + 0.03 - from;
+  const at = (s: number) => s - from;
+  const v = (s: number, dur: number, gain: number, build: (c2: AudioContext, out: GainNode, t: number) => void, wetSend = 0.25) => voice(t0, build, { at: at(s), dur, gain }, wetSend);
+  const nz = (s: number, d: number, g: number, type: BiquadFilterType, f0: number, f1?: number, q = 1, ws = 0.2) => v(s, d, g, (c2, out, t) => { const n = noiseSrc(c2, d); const b = c2.createBiquadFilter(); b.type = type; b.Q.value = q; b.frequency.setValueAtTime(f0, t); if (f1) b.frequency.exponentialRampToValueAtTime(f1, t + d); n.connect(b); b.connect(out); n.start(t); }, ws);
+  const kick = (s: number, g = 0.6) => v(s, 0.28, g, (c2, out, t) => { osc(c2, 'sine', 130, t, 0.28, out, 42); }, 0.02);
+  const snare = (s: number, g = 0.22) => { nz(s, 0.16, g, 'highpass', 1800, undefined, 0.7, 0.3); v(s, 0.1, g * 0.6, (c2, out, t) => { osc(c2, 'triangle', 220, t, 0.1, out, 160); }, 0.2); };
+  const hat = (s: number, g = 0.05) => nz(s, 0.035, g, 'highpass', 8000, undefined, 0.7, 0.05);
+  const snap = (s: number) => { nz(s, 0.05, 0.16, 'bandpass', 2600, undefined, 2, 0.4); };
+  const bass = (s: number, f: number, d = 0.18, g = 0.3) => v(s, d, g, (c2, out, t) => { const fl = lp(c2, 600, out, 4); fl.frequency.setValueAtTime(1200, t); fl.frequency.exponentialRampToValueAtTime(300, t + d); osc(c2, 'sawtooth', f, t, d, fl); osc(c2, 'sine', f, t, d, out); }, 0.05);
+  const pizz = (s: number, f: number, g = 0.12) => v(s, 0.16, g, (c2, out, t) => { osc(c2, 'triangle', f, t, 0.16, lp(c2, 3000, out)); }, 0.35);
+  const stab = (s: number, fs: number[], d = 0.22, g = 0.06) => fs.forEach((f) => v(s, d, g, (c2, out, t) => { const fl = lp(c2, 2400, out, 2); osc(c2, 'sawtooth', f, t, d, fl); osc(c2, 'sawtooth', f * 1.005, t, d, fl); }, 0.3));
+  const rattle = (s: number) => [0, 0.09, 0.18, 0.27].forEach((d, i) => { nz(s + d, 0.06, 0.12, 'bandpass', 3800 + i * 200, undefined, 6, 0.1); v(s + d, 0.05, 0.08, (c2, out, t) => { osc(c2, 'sine', 2600 + i * 90, t, 0.04, out); }, 0.1); });
+  const hiss = (s: number, d: number) => nz(s, d, 0.13, 'bandpass', 5200, 6400, 0.8, 0.15);
+
+  /* 0–2.6 · sneaky groove under the spray can */
+  rattle(0.1);
+  [['D2', 0.2], ['D2', 0.65], ['F2', 0.9], ['G2', 1.1], ['Ab2', 1.55], ['A2', 1.8], ['C3', 2.0], ['A2', 2.25]].forEach(([n, s]) => bass(s as number, N[n as string], 0.22, 0.24));
+  [0.42, 0.87, 1.32, 1.77, 2.22].forEach(snap);
+  [0.2, 0.65, 1.1, 1.55, 2.0].forEach((s) => kick(s, 0.35));
+  hiss(0.7, 0.55); rattle(1.3); hiss(1.55, 0.5);
+  [['D5', 2.1], ['F5', 2.2], ['A5', 2.3]].forEach(([n, s]) => pizz(s as number, N[n as string] ?? 880, 0.1)); // proud flourish
+
+  /* 2.6 · CLICK — the torch. music drops out */
+  v(2.6, 0.05, 0.18, (c2, out, t) => { osc(c2, 'square', 1900, t, 0.04, out); }, 0.3);
+  v(2.6, 1.2, 0.35, (c2, out, t) => { osc(c2, 'sine', 55, t, 1.2, out, 40); }, 0.3);
+  /* 2.75 · the dog: two sharp barks */
+  [2.75, 2.92].forEach((s) => { v(s, 0.12, 0.2, (c2, out, t) => { const fl = lp(c2, 2200, out, 5); osc(c2, 'sawtooth', 620, t, 0.12, fl, 380); }, 0.3); nz(s, 0.1, 0.1, 'bandpass', 1500, 900, 2, 0.2); });
+  /* 3.0 · uh-oh */
+  v(3.02, 0.18, 0.16, (c2, out, t) => { osc(c2, 'sawtooth', N.D3, t, 0.18, lp(c2, 900, out, 4)); }, 0.3);
+  v(3.2, 0.3, 0.16, (c2, out, t) => { osc(c2, 'sawtooth', N.A2, t, 0.3, lp(c2, 700, out, 4), 98); }, 0.3);
+  /* 3.25 · the can drops and clatters */
+  [3.28, 3.38, 3.44].forEach((s, i) => v(s, 0.12, 0.12 / (i + 1), (c2, out, t) => { osc(c2, 'square', 1400 - i * 150, t, 0.06, lp(c2, 4000, out)); osc(c2, 'sine', 3100, t, 0.08, out); }, 0.4));
+  /* 3.35 · WHISTLE and the chase beat drops (150 bpm) */
+  v(3.35, 0.7, 0.13, (c2, out, t) => { const o = osc(c2, 'sine', 2800, t, 0.7, out); const l = c2.createOscillator(); l.frequency.value = 32; const lg = c2.createGain(); lg.gain.value = 120; l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t + 0.7); }, 0.3);
+  const b = 0.2; // eighth note
+  const riff = ['D2', 'D2', 'D3', 'D2', 'F2', 'G2', 'D3', 'Ab2', 'D2', 'D2', 'D3', 'D2', 'C3', 'A2', 'G2', 'F2'];
+  for (let i = 0; i < 21; i++) {
+    const s = 3.45 + i * b;
+    if (s > 7.66) break;
+    bass(s, N[riff[i % riff.length]], 0.17, 0.26);
+    hat(s + b / 2);
+    if (i % 4 === 0) kick(s, 0.55);
+    if (i % 4 === 2) snare(s, 0.2);
+    if (i % 8 === 0) stab(s, [N.D4, N.F4, N.A4], 0.2, 0.05);
+  }
+  /* obstacles */
+  v(4.45, 0.35, 0.16, (c2, out, t) => { osc(c2, 'sine', 300, t, 0.3, out, 900); }, 0.2); // jump
+  v(4.9, 0.08, 0.14, (c2, out, t) => { osc(c2, 'sawtooth', 900, t, 0.08, lp(c2, 2500, out), 1300); }, 0.2); // dog yip
+  v(5.15, 0.18, 0.14, (c2, out, t) => { osc(c2, 'sawtooth', 140, t, 0.18, lp(c2, 600, out), 110); }, 0.1); // hunter grunt
+  nz(5.55, 0.42, 0.14, 'bandpass', 600, 2400, 1.2, 0.2); // slide
+  v(6.2, 0.3, 0.2, (c2, out, t) => { osc(c2, 'square', 520, t, 0.04, lp(c2, 3000, out)); osc(c2, 'sine', 700, t, 0.3, out, 240); }, 0.3); // BONK
+  nz(6.5, 0.35, 0.16, 'lowpass', 2400, 600, 0.6, 0.3); // splash
+  nz(7.5, 0.25, 0.14, 'bandpass', 500, 3500, 1, 0.2); // lunge
+  /* 7.7 · the grab: record scratch, freeze, silence */
+  v(7.7, 0.32, 0.2, (c2, out, t) => { const n = noiseSrc(c2, 0.32); const bq = c2.createBiquadFilter(); bq.type = 'bandpass'; bq.Q.value = 5; bq.frequency.setValueAtTime(3000, t); bq.frequency.exponentialRampToValueAtTime(400, t + 0.16); bq.frequency.exponentialRampToValueAtTime(2200, t + 0.32); n.connect(bq); bq.connect(out); n.start(t); osc(c2, 'sawtooth', 400, t, 0.3, lp(c2, 1500, out), 70); }, 0.2);
+  stab(7.72, [N.D3, N.Ab2 * 2, N.D4], 0.6, 0.07);
+  v(7.72, 0.9, 0.5, (c2, out, t) => { osc(c2, 'sine', 65, t, 0.9, out, 34); }, 0.2);
+  /* 8.45 · the painted logo: spray burst, two drips, final chord */
+  hiss(8.45, 0.35);
+  [8.75, 8.9].forEach((s, i) => v(s, 0.25, 0.1, (c2, out, t) => { osc(c2, 'sine', 1200 - i * 200, t, 0.22, out, 500 - i * 80); }, 0.5));
+  stab(8.55, [N.D3, N.A3, N.D4, N.F4], 1.3, 0.05);
+  kick(8.55, 0.6); bass(8.55, N.D2, 1.0, 0.3);
+  [N.A4, N.D5, N.F5].forEach((f, i) => v(8.7 + i * 0.1, 1.1, 0.06, (c2, out, t) => { osc(c2, 'triangle', f, t, 1.1, out); }, 0.6));
+}
+
 /** Render the opening score to a WAV (used only to make preview videos: open the app with ?scorewav). */
-export async function renderScoreWav(which: 'line' | 'pins' = 'line'): Promise<string> {
+export async function renderScoreWav(which: 'line' | 'pins' | 'caught' = 'caught'): Promise<string> {
   const save = { ctx, master, wet };
   const oc = new OfflineAudioContext(2, 44100 * 11, 44100);
   ctx = oc as unknown as AudioContext; master = oc.createGain(); master.gain.value = 0.8;
   const comp = oc.createDynamicsCompressor(); master.connect(comp); comp.connect(oc.destination); wet = null;
-  (which === 'pins' ? score : scoreLine)(-0.03);
+  (which === 'pins' ? score : which === 'line' ? scoreLine : scoreCaught)(-0.03);
   const buf = await oc.startRendering();
   ctx = save.ctx; master = save.master; wet = save.wet;
   const n = buf.length, out = new DataView(new ArrayBuffer(44 + n * 4));
