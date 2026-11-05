@@ -143,13 +143,60 @@ export function score(from = 0) {
   pluck(9.05, N.D2, 0.4, 1.0);
   voice(t0, (c2, out, t) => { const n = noiseSrc(c2, 1.2); const b = c2.createBiquadFilter(); b.type = 'highpass'; b.frequency.value = 8000; n.connect(b); b.connect(out); n.start(t); }, { at: at(9.05), dur: 1.2, gain: 0.05 }, 0.6);
 }
+/* ---------- score for the one-line chase film ---------- */
+export function scoreLine(from = 0) {
+  const c = ensure(); if (!c || !master || !soundOn()) return;
+  bus();
+  const t0 = c.currentTime + 0.03 - from;
+  const at = (s: number) => s - from;
+  const v = (s: number, dur: number, gain: number, build: (c2: AudioContext, out: GainNode, t: number) => void, wetSend = 0.3) => voice(t0, build, { at: at(s), dur, gain }, wetSend);
+  const heart = (s: number, g = 0.55) => { [0, 0.13].forEach((d, i) => v(s + d, 0.22, g * (i ? 0.7 : 1), (c2, out, t) => { osc(c2, 'sine', 62, t, 0.22, out, 38); }, 0.05)); };
+  const pluck = (s: number, f: number, g = 0.26, d = 0.3) => v(s, d, g, (c2, out, t) => { const fl = lp(c2, 900, out, 3); osc(c2, 'triangle', f, t, d, fl); osc(c2, 'sine', f / 2, t, d, fl); }, 0.15);
+  const tick = (s: number, g = 0.05) => v(s, 0.04, g, (c2, out, t) => { const n = noiseSrc(c2, 0.04); const b = c2.createBiquadFilter(); b.type = 'highpass'; b.frequency.value = 7500; n.connect(b); b.connect(out); n.start(t); }, 0.1);
+  const scratch = (s: number, d: number, g: number, f0 = 2500, f1 = 5000) => v(s, d, g, (c2, out, t) => { const n = noiseSrc(c2, d); const b = c2.createBiquadFilter(); b.type = 'bandpass'; b.Q.value = 4; b.frequency.setValueAtTime(f0, t); b.frequency.exponentialRampToValueAtTime(f1, t + d); const am = c2.createGain(); const lfo = c2.createOscillator(); lfo.frequency.value = 23; const lg = c2.createGain(); lg.gain.value = 0.5; lfo.connect(lg); lg.connect(am.gain); am.gain.value = 0.5; n.connect(b); b.connect(am); am.connect(out); n.start(t); lfo.start(t); lfo.stop(t + d); }, 0.2);
+  const pad = (s: number, d: number, fs: number[], g = 0.05) => fs.forEach((f) => v(s, d, g, (c2, out, t) => { const fl = lp(c2, 1100, out); const o = osc(c2, 'sawtooth', f, t, d, fl); o.detune.value = (Math.random() - 0.5) * 12; }, 0.5));
+
+  /* 0–1.4 · a heartbeat line crosses the dark */
+  pad(0, 2.6, [N.D2, N.A2], 0.035);
+  heart(0.48, 0.45); heart(0.92, 0.5);
+  /* 1.4–2.3 · the line sketches a runner; it comes alive */
+  scratch(1.4, 0.9, 0.06);
+  [N.D3, N.F3, N.A3, N.D4].forEach((f, i) => pluck(2.3 + i * 0.03, f, 0.12, 0.8));
+  /* 2.6–4.6 · it runs, drawing the campus behind it */
+  const os = ['D2', 'D3', 'A2', 'D3', 'F2', 'D3', 'A2', 'C3'];
+  for (let i = 0; i < 9; i++) pluck(2.6 + i * 0.22, N[os[i % os.length]], 0.22, 0.2);
+  for (let s = 2.71; s < 6.6; s += 0.22) tick(s);
+  [[3.1, 'A4'], [3.32, 'D5'], [3.98, 'C5'], [4.2, 'A4']].forEach(([s, n]) => v(s as number, 0.2, 0.08, (c2, out, t) => { osc(c2, 'triangle', N[n as string], t, 0.2, lp(c2, 3000, out)); }, 0.4));
+  /* 4.6 · the hunter's line arrives: low stab, torch click, the chase tightens */
+  v(4.6, 0.7, 0.16, (c2, out, t) => { const fl = lp(c2, 600, out, 4); fl.frequency.setValueAtTime(300, t); fl.frequency.linearRampToValueAtTime(1400, t + 0.15); fl.frequency.linearRampToValueAtTime(400, t + 0.7); osc(c2, 'sawtooth', N.D2, t, 0.7, fl); osc(c2, 'sawtooth', N.Ab2, t, 0.7, fl); }, 0.3);
+  v(4.75, 0.05, 0.12, (c2, out, t) => { osc(c2, 'square', 2400, t, 0.04, out); }, 0.2);
+  const climb = ['D2', 'D3', 'F2', 'D3', 'G2', 'D3', 'Ab2', 'D3', 'A2', 'E3', 'Bb2', 'F3', 'C3', 'F3'];
+  climb.forEach((n, i) => pluck(4.6 + i * 0.14, N[n], 0.26, 0.16));
+  [5.0, 5.4, 5.8, 6.0, 6.2, 6.35, 6.5].forEach((s, i) => heart(s, 0.4 + i * 0.05));
+  v(5.2, 1.4, 0.05, (c2, out, t) => { const n = noiseSrc(c2, 1.4); const b = c2.createBiquadFilter(); b.type = 'bandpass'; b.Q.value = 1; b.frequency.setValueAtTime(400, t); b.frequency.exponentialRampToValueAtTime(5000, t + 1.4); n.connect(b); b.connect(out); n.start(t); }, 0.3);
+  /* 6.6 · everything stops. lunge. the lines tangle */
+  v(6.85, 0.35, 0.16, (c2, out, t) => { const n = noiseSrc(c2, 0.35); const b = c2.createBiquadFilter(); b.type = 'bandpass'; b.Q.value = 1; b.frequency.setValueAtTime(800, t); b.frequency.exponentialRampToValueAtTime(4000, t + 0.35); n.connect(b); b.connect(out); n.start(t); }, 0.3);
+  scratch(7.0, 0.45, 0.14, 1500, 6000);
+  [N.D3, N.Ab2 * 2, N.C3 * 2.02].forEach((f) => v(7.05, 0.5, 0.06, (c2, out, t) => { osc(c2, 'sawtooth', f, t, 0.5, lp(c2, 2000, out)); }, 0.3));
+  /* 7.5–8.1 · the knot pulls tight: reverse swell into a deep hit; two discs pop out */
+  v(7.45, 0.62, 0.14, (c2, out, t) => { const n = noiseSrc(c2, 0.62); const b = c2.createBiquadFilter(); b.type = 'highpass'; b.frequency.value = 3000; n.connect(b); b.connect(out); n.start(t); out.gain.cancelScheduledValues(t); out.gain.setValueAtTime(0.0001, t); out.gain.exponentialRampToValueAtTime(0.14, t + 0.6); out.gain.exponentialRampToValueAtTime(0.0001, t + 0.62); }, 0.4);
+  v(8.07, 1.4, 0.7, (c2, out, t) => { osc(c2, 'sine', 70, t, 1.4, out, 30); }, 0.1);
+  v(8.07, 0.4, 0.2, (c2, out, t) => { const n = noiseSrc(c2, 0.4); const b = c2.createBiquadFilter(); b.type = 'lowpass'; b.frequency.value = 1500; n.connect(b); b.connect(out); n.start(t); }, 0.3);
+  v(8.12, 0.14, 0.16, (c2, out, t) => { osc(c2, 'sine', 520, t, 0.12, out, 1300); }, 0.3);
+  v(8.2, 0.14, 0.13, (c2, out, t) => { osc(c2, 'sine', 420, t, 0.12, out, 1100); }, 0.3);
+  /* 8.4–10 · the name: a calm open chord, one last soft heartbeat */
+  pad(8.4, 1.6, [N.D3, N.A3, N.E4, N.F4], 0.04);
+  [N.D4, N.A4, N.E4 * 2].forEach((f, i) => v(8.45 + i * 0.12, 1.4, 0.07, (c2, out, t) => { osc(c2, 'sine', f, t, 1.4, out); }, 0.6));
+  heart(9.35, 0.3);
+}
+
 /** Render the opening score to a WAV (used only to make preview videos: open the app with ?scorewav). */
-export async function renderScoreWav(): Promise<string> {
+export async function renderScoreWav(which: 'line' | 'pins' = 'line'): Promise<string> {
   const save = { ctx, master, wet };
   const oc = new OfflineAudioContext(2, 44100 * 11, 44100);
   ctx = oc as unknown as AudioContext; master = oc.createGain(); master.gain.value = 0.8;
   const comp = oc.createDynamicsCompressor(); master.connect(comp); comp.connect(oc.destination); wet = null;
-  score(-0.03);
+  (which === 'pins' ? score : scoreLine)(-0.03);
   const buf = await oc.startRendering();
   ctx = save.ctx; master = save.master; wet = save.wet;
   const n = buf.length, out = new DataView(new ArrayBuffer(44 + n * 4));
