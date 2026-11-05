@@ -6,6 +6,7 @@ import { rpc } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { fmtClock, fmtDist, msUntil, serverNow, timeAgo } from '../lib/clock';
 import { haptic, keepAwake } from '../lib/feel';
+import { useViewportH } from '../lib/viewport';
 import { titleLabel } from '../lib/identity';
 import { haversine } from '../lib/geo';
 import type { GameEvent, Member, RoomState } from '../lib/types';
@@ -61,6 +62,21 @@ export function Match({ s, feed, geo, refresh, themeKey }: { s: RoomState; feed:
   const st = s.room.settings;
 
   useEffect(() => { keepAwake(true); return () => { keepAwake(false); }; }, []);
+
+  // Android back button / back gesture: close whatever is open, never drop out of a live match by accident.
+  const overlay = useRef({ qr, scan, menu });
+  overlay.current = { qr, scan, menu };
+  useEffect(() => {
+    history.pushState({ tagGuard: 1 }, '');
+    const onPop = () => {
+      history.pushState({ tagGuard: 1 }, '');
+      const o = overlay.current;
+      if (o.scan) setScan(false); else if (o.qr) setQr(false); else if (o.menu) setMenu(false);
+      else toast('Match in progress. Use the menu to leave.');
+    };
+    window.addEventListener('popstate', onPop);
+    return () => { window.removeEventListener('popstate', onPop); if (history.state?.tagGuard) history.back(); };
+  }, []);
 
   const sosIds = useMemo(() => new Set(isAdmin ? feed.filter((e) => e.kind === 'sos' && serverNow() - new Date(e.at).getTime() < 5 * 60e3).map((e) => e.actor!) : []), [feed, isAdmin]);
   const markers: Marker[] = useMemo(() => {
@@ -225,12 +241,12 @@ export function ProgressBar({ p, big }: { p: NonNullable<RoomState['progress']>;
 
 /* ---------- Bottom sheet ---------- */
 function Sheet({ children, peek }: { children: React.ReactNode; peek: number }) {
-  const H = typeof window !== 'undefined' ? window.innerHeight : 800;
+  const H = useViewportH();
   const full = Math.round(H * 0.86);
   const snaps = [full - peek, full - Math.round(H * 0.5), 0];
   const ctl = useAnimationControls();
   const [at, setAt] = useState(0);
-  useEffect(() => { ctl.start({ y: snaps[at], transition: { type: 'spring', damping: 30, stiffness: 300 } }); }, [at, peek]);
+  useEffect(() => { ctl.start({ y: snaps[at], transition: { type: 'spring', damping: 30, stiffness: 300 } }); }, [at, peek, H]);
   function end(_: any, info: PanInfo) {
     const y = snaps[at] + info.offset.y + info.velocity.y * 0.2;
     let best = 0; snaps.forEach((s, i) => { if (Math.abs(s - y) < Math.abs(snaps[best] - y)) best = i; });

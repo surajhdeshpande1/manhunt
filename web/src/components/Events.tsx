@@ -16,7 +16,7 @@ export const EVENTS: Record<EventKey, { label: string; blurb: string; swatch: st
 function Diya({ x, d, s }: { x: number; d: number; s: number }) {
   return (
     <motion.div style={{ position: 'absolute', left: `${x}%`, bottom: -40, width: 26 * s, height: 40 * s }}
-      initial={{ y: 0, opacity: 0 }} animate={{ y: -window.innerHeight * 0.55, opacity: [0, 1, 1, 0] }} transition={{ duration: 14 + d * 6, delay: d * 9, repeat: Infinity, ease: 'linear' }}>
+      initial={{ y: 0, opacity: 0 }} animate={{ y: '-55vh', opacity: [0, 1, 1, 0] }} transition={{ duration: 14 + d * 6, delay: d * 9, repeat: Infinity, ease: 'linear' }}>
       <svg viewBox="0 0 26 40" width="100%" height="100%">
         <defs><radialGradient id="dg"><stop offset="0%" stopColor="#e6d79a" /><stop offset="60%" stopColor="#c98a2e" stopOpacity=".6" /><stop offset="100%" stopColor="#d9541e" stopOpacity="0" /></radialGradient></defs>
         <circle cx="13" cy="14" r="13" fill="url(#dg)" />
@@ -62,7 +62,7 @@ export const EventLayer = memo(function EventLayer({ event }: { event?: string |
     <div aria-hidden style={wrap}>
       {items.map((it, i) => (
         <motion.span key={i} style={{ position: 'absolute', left: `${it.x}%`, top: -20, width: 7 * it.s, height: 12 * it.s, borderRadius: 2, background: ['#d9541e', '#c9a227', '#ede6da', '#3d4fd6'][it.c] }}
-          animate={{ y: [0, window.innerHeight + 40], rotate: [0, 360 * (it.c % 2 ? 1 : -1)], x: [0, (it.d - 0.5) * 80] }} transition={{ duration: 7 + it.d * 6, delay: it.d * 7, repeat: Infinity, ease: 'linear' }} />
+          animate={{ y: ['0vh', '106vh'], rotate: [0, 360 * (it.c % 2 ? 1 : -1)], x: [0, (it.d - 0.5) * 80] }} transition={{ duration: 7 + it.d * 6, delay: it.d * 7, repeat: Infinity, ease: 'linear' }} />
       ))}
     </div>
   );

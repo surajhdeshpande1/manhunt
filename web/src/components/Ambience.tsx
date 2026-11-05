@@ -1,5 +1,6 @@
 import { memo, useMemo } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
+import { lite } from '../lib/viewport';
 import { mulberry32 } from '../lib/rng';
 
 /*
@@ -12,7 +13,7 @@ import { mulberry32 } from '../lib/rng';
 
 export const RunnerAmbience = memo(function RunnerAmbience({ exposed = false, intensity = 1 }: { exposed?: boolean; intensity?: number }) {
   const reduce = useReducedMotion();
-  const embers = useMemo(() => { const r = mulberry32(31); return Array.from({ length: 16 }, () => ({ x: r() * 100, d: r(), s: 2 + r() * 4, drift: (r() - 0.5) * 60, hot: r() > 0.6 })); }, []);
+  const embers = useMemo(() => { const r = mulberry32(31); return Array.from({ length: lite ? 7 : 16 }, () => ({ x: r() * 100, d: r(), s: 2 + r() * 4, drift: (r() - 0.5) * 60, hot: r() > 0.6 })); }, []);
   if (reduce) return null;
   const beat = exposed ? 0.55 : 1.1;
   return (
@@ -30,7 +31,7 @@ export const RunnerAmbience = memo(function RunnerAmbience({ exposed = false, in
       {/* footprints crossing the bottom edge now and then */}
       <motion.div style={{ position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom) + 6px)', left: 0, display: 'flex', gap: 22 }}
         initial={{ x: '-40vw' }} animate={{ x: ['-40vw', '120vw'] }} transition={{ duration: 16, repeat: Infinity, repeatDelay: 10, ease: 'linear' }}>
-        {Array.from({ length: 8 }, (_, i) => (
+        {Array.from({ length: lite ? 4 : 8 }, (_, i) => (
           <motion.svg key={i} width="10" height="16" viewBox="0 0 10 16" style={{ transform: `translateY(${i % 2 ? -7 : 0}px) rotate(90deg)` }}
             animate={{ opacity: [0, 0.9, 0] }} transition={{ duration: 3, delay: i * 0.25, repeat: Infinity, repeatDelay: 1 }}>
             <ellipse cx="5" cy="10" rx="4" ry="5.5" fill="#d9541e" stroke="#0b0b0c" strokeWidth="1.2" /><ellipse cx="5" cy="2.6" rx="2.6" ry="2.4" fill="#d9541e" stroke="#0b0b0c" strokeWidth="1.2" />

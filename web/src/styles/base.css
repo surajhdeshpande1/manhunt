@@ -575,3 +575,21 @@ body { font-size: 16px; }
 @keyframes tdSwing { from { transform: translateY(-7px); } to { transform: translateY(7px); } }
 .td.dizzy { animation: tdDizzy 0.5s linear infinite; }
 @keyframes tdDizzy { 0% { transform: rotate(-14deg); } 50% { transform: rotate(14deg); } 100% { transform: rotate(-14deg); } }
+
+/* ---------- PHONES: iOS + Android polish ---------- */
+body { min-height: 100vh; min-height: 100dvh; overscroll-behavior-y: none; -webkit-touch-callout: none; }
+#root { min-height: 100%; }
+/* no long-press menus, image drags or text selection on game UI; text fields stay selectable */
+button, a, [role='button'], .btn, .card, .tabbar, svg, img, canvas { -webkit-user-select: none; user-select: none; -webkit-user-drag: none; }
+button, a, [role='button'], .btn, label, summary { touch-action: manipulation; }
+input, textarea, select, [contenteditable] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; font-size: max(16px, 1em); }
+/* safe sides in landscape notches */
+.screen { padding-left: max(22px, env(safe-area-inset-left)); padding-right: max(22px, env(safe-area-inset-right)); }
+/* Android: keep the scrollbar out of the layout */
+@supports (scrollbar-gutter: stable) { html { scrollbar-width: none; } }
+html::-webkit-scrollbar { display: none; }
+/* cheap phones: drop blurs and constant background motion */
+[data-lite='1'] * { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+[data-lite='1'] .backdrop .orb { animation: none !important; }
+/* the map takes all gestures; the page must never rubber-band under it */
+.maplibregl-canvas { touch-action: none; }

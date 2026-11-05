@@ -34,6 +34,8 @@ if (typeof window !== 'undefined') {
   };
   window.addEventListener('pointerdown', unlock, { capture: true });
   window.addEventListener('keydown', unlock, { capture: true });
+  // iOS suspends ('interrupted') the audio engine after a call or when the app is backgrounded
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); });
 }
 
 /* ---------- building blocks ---------- */
