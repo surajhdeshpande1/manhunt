@@ -615,3 +615,67 @@ button.card:active { transform: scale(.975); }
 .chip, .tag { transition: background .18s, color .18s, transform .12s; }
 button.chip:active, button.tag:active { transform: scale(.94); }
 .icon-btn { transition: transform .12s, background .18s; } .icon-btn:active { transform: scale(.88); }
+
+/* =========================================================
+   ELEVATION LAYER — depth, atmosphere and touch response on top of Ink & Ember
+   ========================================================= */
+:root { --aura: #d9541e; --aura2: #c9a227; }
+[data-theme='hunter'] { --aura: #c9a227; --aura2: #3e5c8a; }
+[data-day='1'] { --aura: #d9541e; --aura2: #c98a2e; }
+
+/* atmosphere: a slow-breathing wash of the side's colour behind every screen */
+.backdrop::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(85% 42% at 50% -6%, color-mix(in srgb, var(--aura) 17%, transparent), transparent 72%),
+    radial-gradient(70% 34% at 105% 104%, color-mix(in srgb, var(--aura2) 10%, transparent), transparent 70%),
+    radial-gradient(60% 30% at -8% 70%, color-mix(in srgb, var(--aura) 6%, transparent), transparent 70%);
+  animation: aura 11s ease-in-out infinite alternate; transition: opacity .8s; }
+@keyframes aura { from { opacity: .7; transform: scale(1); } to { opacity: 1; transform: scale(1.06) translateY(1.5%); } }
+[data-day='1'] .backdrop::after { opacity: .55; animation: none; }
+[data-lite='1'] .backdrop::after { animation: none; }
+
+/* surfaces catch light from above */
+.card { background-image: linear-gradient(180deg, rgba(255, 240, 225, .045), rgba(255, 240, 225, 0) 46%); }
+[data-day='1'] .card { background-image: linear-gradient(180deg, rgba(255, 255, 255, .7), rgba(255, 255, 255, 0) 50%); }
+.frame > .inner { background-image: linear-gradient(180deg, rgba(255, 240, 225, .04), transparent 40%); }
+
+/* the main action: a sheen crosses it now and then, and it glows in its own colour */
+.btn-primary.btn-block, .btn-hot.btn-block { overflow: hidden; }
+.btn-primary.btn-block:not(:disabled)::after { content: ''; position: absolute; top: 0; bottom: 0; left: -60%; width: 38%; z-index: 0; pointer-events: none; transform: skewX(-18deg);
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .38), transparent); animation: sheen 5.2s var(--ease-out) infinite; }
+.btn:focus-visible { outline-offset: 4px; }
+.btn-quiet, .btn-ghost { transition: transform .35s var(--ease-spring), background-color .25s, box-shadow .25s; }
+
+/* fields: the focused one lifts */
+.input-wrap { transition: box-shadow .25s var(--ease-out), background .25s, transform .25s var(--ease-out); }
+.input-wrap:focus-within { transform: translateY(-1px); }
+.field label { transition: color .2s; }
+.field:focus-within label { color: var(--text); }
+
+/* rows and grid tiles arrive in order */
+@keyframes row-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+.list-row { animation: row-in .34s var(--ease-out) both; }
+.list-row:nth-child(2) { animation-delay: .04s; } .list-row:nth-child(3) { animation-delay: .08s; } .list-row:nth-child(4) { animation-delay: .12s; }
+.list-row:nth-child(5) { animation-delay: .16s; } .list-row:nth-child(n+6) { animation-delay: .2s; }
+
+/* live things breathe */
+.tag.live { animation: live-pulse 2.4s ease-in-out infinite; }
+@keyframes live-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 50% { box-shadow: 0 0 0 5px transparent; } }
+.avatar { transition: transform .3s var(--ease-spring), box-shadow .3s; }
+button:active > .avatar, .avatar:active { transform: scale(.93); }
+
+/* sheets: frosted scrim, content follows the sheet up */
+.sheet-scrim { backdrop-filter: blur(7px) saturate(.9); -webkit-backdrop-filter: blur(7px) saturate(.9); }
+[data-lite='1'] .sheet-scrim { backdrop-filter: none; -webkit-backdrop-filter: none; }
+.sheet-grip { width: 100%; padding: 2px 0 14px; display: grid; place-items: center; touch-action: none; cursor: grab; }
+.sheet-grip > i { width: 44px; height: 5px; border-radius: 3px; background: var(--line2); transition: background .2s, width .2s; }
+.sheet-grip:active > i { background: var(--muted); width: 56px; }
+@keyframes sheet-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.sheet-body > * { animation: sheet-in .38s var(--ease-out) both; animation-delay: .08s; }
+.sheet-body > *:nth-child(2) { animation-delay: .13s; } .sheet-body > *:nth-child(n+3) { animation-delay: .18s; }
+
+/* headline accent: the marker under a screen title draws itself */
+.display { text-wrap: balance; }
+::-webkit-scrollbar { width: 0; height: 0; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .backdrop::after { animation: none; } }

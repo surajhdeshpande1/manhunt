@@ -24,7 +24,7 @@ type Mem = {
   room_id: string; user_id: string; status: string; role: string | null; alive: boolean; out_reason: string | null; caught_by: string | null;
   tasks_done: number; task_seed: number | null; task_kind: number | null; task_started_at: number | null; last_task_at: number | null; catches: number;
   distance_m: number; oob_since: number | null; oob_reason: string | null; spoof_strikes: number; qr_token: string | null; via_invite: boolean; joined_at: number;
-  ready?: boolean; last_task_kind?: number | null; ready_at?: number;
+  ready?: boolean; last_task_kind?: number | null; task_streak?: number; ready_at?: number;
 };
 type Pos = { lat: number; lng: number; acc: number; at: number };
 type Ev = { id: number; room_id: string; kind: string; vis: string; actor: string | null; target: string | null; data: any; at: number };
@@ -647,7 +647,7 @@ const H: Record<string, (a: any) => any> = {
     }
     const mastery = W.profiles[ME].task_mastery?.[String(m!.task_kind)] ?? 0;
     const off = r.settings.task_difficulty === 'easy' ? -1 : r.settings.task_difficulty === 'hard' ? 1 : 0;
-    const level = Math.max(1, Math.min(5, 1 + Math.min(2, Math.floor(mastery / 3)) + Math.min(2, Math.floor(m!.tasks_done / 4)) + off));
+    const level = Math.max(1, Math.min(5, 1 + Math.min(2, Math.floor(mastery / 3)) + Math.min(2, Math.floor(m!.tasks_done / 4)) + Math.min(2, Math.floor((m!.task_streak ?? 0) / 2)) + off));
     return { seed: m!.task_seed, kind: m!.task_kind, index: m!.tasks_done + 1, of: per, started_at: iso(m!.task_started_at), level };
   },
   complete_task: (a) => {
@@ -658,10 +658,10 @@ const H: Record<string, (a: any) => any> = {
     if (now() < m!.task_started_at! + 4000) fail('Too fast');
     const pr = W.profiles[ME]; const k = String(m!.task_kind ?? 0);
     pr.task_mastery = { ...(pr.task_mastery ?? {}), [k]: ((pr.task_mastery ?? {})[k] ?? 0) + 1 };
-    Object.assign(m!, { tasks_done: m!.tasks_done + 1, last_task_at: now(), last_task_kind: m!.task_kind, task_seed: null, task_kind: null, task_started_at: null });
+    Object.assign(m!, { tasks_done: m!.tasks_done + 1, task_streak: (m!.task_streak ?? 0) + 1, last_task_at: now(), last_task_kind: m!.task_kind, task_seed: null, task_kind: null, task_started_at: null });
     ev(r.id, 'task', 'admin', ME, null, { n: m!.tasks_done }); advance(r); return progress(r);
   },
-  fail_task: (a) => { const r = W.rooms[a.p_room]; const m = r && mem(r.id, ME); if (m && m.task_seed != null) Object.assign(m, { last_task_kind: m.task_kind, task_seed: null, task_kind: null, task_started_at: null, last_task_at: now() - set(r!, 'cooldown_secs') * 1000 + 10000 }); },
+  fail_task: (a) => { const r = W.rooms[a.p_room]; const m = r && mem(r.id, ME); if (m && m.task_seed != null) Object.assign(m, { task_streak: 0, last_task_kind: m.task_kind, task_seed: null, task_kind: null, task_started_at: null, last_task_at: now() - set(r!, 'cooldown_secs') * 1000 + 10000 }); },
   send_sos: (a) => { const m = mem(a.p_room, ME); if (!m || m.status !== 'accepted') fail('Not in this room'); const p = W.profiles[ME]; ev(a.p_room, 'sos', 'admin', ME, null, { lat: a.p_lat, lng: a.p_lng, username: p.username, phone: p.phone }); },
   send_message: (a) => {
     const r = W.rooms[a.p_room] ?? fail('Room not found'); const m = mem(r.id, ME);

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useDragControls } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { selfieUrl } from '../lib/supabase';
 import { haptic } from '../lib/feel';
@@ -139,6 +139,7 @@ export function Slash({ children, k, className = '' }: { children: ReactNode; k?
 
 /* ---------- Bottom sheet modal ---------- */
 export function Modal({ open, onClose, title, children, full, z = 400 }: { open: boolean; onClose: () => void; title?: string; children: ReactNode; full?: boolean; z?: number }) {
+  const grip = useDragControls();
   useEffect(() => {
     if (!open) return;
     const h = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -148,21 +149,23 @@ export function Modal({ open, onClose, title, children, full, z = 400 }: { open:
   return createPortal(
     <AnimatePresence>
       {open && (
-        <motion.div style={{ position: 'fixed', inset: 0, zIndex: z, background: 'var(--scrim)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+        <motion.div className="sheet-scrim" style={{ position: 'fixed', inset: 0, zIndex: z, background: 'var(--scrim)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
           <motion.div role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}
+            drag={full ? false : 'y'} dragControls={grip} dragListener={false} dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: 0.7 }}
+            onDragEnd={(_, i) => { if (i.offset.y > 110 || i.velocity.y > 650) onClose(); }}
             style={{ width: '100%', maxWidth: 560, maxHeight: full ? '100%' : '90%', height: full ? '100%' : undefined, overflow: 'auto', background: 'var(--bg2)',
-              borderRadius: full ? 0 : '16px 16px 0 0', boxShadow: full ? 'none' : '0 0 0 1px var(--line2), 0 -30px 60px -30px rgba(0,0,0,.6)',
+              borderRadius: full ? 0 : '20px 20px 0 0', boxShadow: full ? 'none' : '0 0 0 1px var(--line2), 0 -30px 70px -24px rgba(0,0,0,.75), inset 0 1px 0 var(--hi)',
               padding: `12px 22px calc(env(safe-area-inset-bottom) + 24px)` }}
-            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 32, stiffness: 340, mass: 0.85 }}>
-            {!full && <div aria-hidden style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--line2)', margin: '0 auto 16px' }} />}
+            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 330, mass: 0.85 }}>
+            {!full && <div aria-hidden className="sheet-grip" onPointerDown={(e) => grip.start(e)}><i /></div>}
             {title && (
               <div className="row between" style={{ marginBottom: 20 }}>
                 <div className="display" style={{ fontSize: 30 }}>{title}</div>
                 <button className="icon-btn" aria-label="Close" onClick={onClose}><X /></button>
               </div>
             )}
-            {children}
+            {full ? children : <div className="sheet-body">{children}</div>}
           </motion.div>
         </motion.div>
       )}
