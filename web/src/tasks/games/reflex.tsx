@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { haptic } from '../../lib/feel';
-import { INK, genEmber, genInk, genSteady, genZone } from '../gen';
+import { INK, genEmber, genInk, genMaze, genSteady, genZone, mazeStep, type MazeDir } from '../gen';
 import { Status } from '../ui';
 import type { GP } from './types';
 
@@ -230,6 +230,75 @@ export function Ink({ seed, level, twist, onWin, onFail }: GP) {
           <motion.button key={c} type="button" whileTap={{ scale: 0.94 }} onPointerDown={(e) => { e.preventDefault(); next(c === want); }}
             style={{ minHeight: 58, minWidth: 0, borderRadius: 12, background: 'var(--surface2)', display: 'flex', alignItems: 'center', gap: 10, padding: '0 12px', touchAction: 'manipulation', fontWeight: 800, letterSpacing: '.04em', color: 'var(--text)', overflow: 'hidden' }}>
             <span style={{ width: 22, height: 22, borderRadius: 6, background: INK[c][1], flex: 'none' }} />{INK[c][0]}
+          </motion.button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/* 5 · MAZE RUN */
+const OPPOSITE: Record<MazeDir, MazeDir> = { N: 'S', S: 'N', E: 'W', W: 'E' };
+const ARROWS: { k: MazeDir; label: string; d: string; col: number; row: number }[] = [
+  { k: 'N', label: 'Up', d: 'M12 5l7 9H5z', col: 2, row: 1 }, { k: 'W', label: 'Left', d: 'M5 12l9-7v14z', col: 1, row: 2 },
+  { k: 'S', label: 'Down', d: 'M12 19l7-9H5z', col: 2, row: 2 }, { k: 'E', label: 'Right', d: 'M19 12l-9-7v14z', col: 3, row: 2 },
+];
+export function Maze({ seed, level, twist, onWin, penalize }: GP) {
+  const p = useMemo(() => genMaze(seed, level, twist), [seed, level, twist]);
+  const [at, setAt] = useState(p.start);
+  const [seen, setSeen] = useState<Set<number>>(() => new Set([p.start]));
+  const [bump, setBump] = useState(0);
+  const [steps, setSteps] = useState(0);
+  const atRef = useRef(p.start), over = useRef(false), drag = useRef<{ x: number; y: number } | null>(null);
+  const n = p.n;
+
+  function move(pressed: MazeDir) {
+    if (over.current) return;
+    const k = p.flip ? OPPOSITE[pressed] : pressed;
+    const nx = mazeStep(p.open, n, atRef.current, k);
+    if (nx === null) { haptic.warn(); setBump((b) => b + 1); if (p.bumpMs) penalize(p.bumpMs); return; }
+    haptic.tap(); atRef.current = nx; setAt(nx); setSteps((s) => s + 1);
+    setSeen((s) => (s.has(nx) ? s : new Set(s).add(nx)));
+    if (nx === p.exit) { over.current = true; haptic.ok(); setTimeout(onWin, 350); }
+  }
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => { const k = ({ ArrowUp: 'N', ArrowDown: 'S', ArrowLeft: 'W', ArrowRight: 'E' } as Record<string, MazeDir>)[e.key]; if (k) { e.preventDefault(); move(k); } };
+    window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key);
+  });
+
+  const ax = at % n, ay = Math.floor(at / n);
+  const near = (c: number) => Math.abs((c % n) - ax) <= 1 && Math.abs(Math.floor(c / n) - ay) <= 1;
+  const wall = '2.5px solid var(--text)', none = '2.5px solid transparent';
+  return (
+    <>
+      <motion.div key={bump} animate={bump ? { x: [0, -7, 7, -4, 4, 0] } : undefined} transition={{ duration: 0.28 }}
+        onPointerDown={(e) => { drag.current = { x: e.clientX, y: e.clientY }; }}
+        onPointerMove={(e) => { const d = drag.current; if (!d) return; const dx = e.clientX - d.x, dy = e.clientY - d.y;
+          if (Math.max(Math.abs(dx), Math.abs(dy)) < 26) return; drag.current = { x: e.clientX, y: e.clientY };
+          move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'E' : 'W') : dy > 0 ? 'S' : 'N'); }}
+        onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}
+        style={{ position: 'relative', width: 'min(84vw, 340px)', aspectRatio: '1', display: 'grid', gridTemplateColumns: `repeat(${n}, 1fr)`, touchAction: 'none', borderRadius: 6, background: 'var(--surface)' }}>
+        {p.open.map((o, c) => {
+          const vis = !p.fog || near(c);
+          const been = seen.has(c);
+          return (
+            <div key={c} style={{ boxSizing: 'border-box', position: 'relative', transition: 'opacity .2s, background .2s',
+              background: c === p.exit ? 'color-mix(in srgb, var(--ok) 45%, transparent)' : been ? 'color-mix(in srgb, var(--accent) 16%, transparent)' : 'transparent',
+              opacity: vis || c === p.exit ? 1 : been ? 0.55 : 0.12,
+              borderTop: vis && !(o & 1) ? wall : none, borderRight: vis && !(o & 2) ? wall : none, borderBottom: vis && !(o & 4) ? wall : none, borderLeft: vis && !(o & 8) ? wall : none }}>
+              {c === p.exit && <span className="mono" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: n > 7 ? 8 : 10, fontWeight: 900, letterSpacing: '.06em', color: 'var(--ok)' }}>EXIT</span>}
+            </div>
+          );
+        })}
+        <motion.div animate={{ left: `${((ax + 0.5) / n) * 100}%`, top: `${((ay + 0.5) / n) * 100}%` }} transition={{ type: 'spring', stiffness: 520, damping: 32 }}
+          style={{ position: 'absolute', width: `${52 / n}%`, aspectRatio: '1', borderRadius: '50%', background: 'var(--accent)', transform: 'translate(-50%, -50%)', boxShadow: '0 0 18px var(--accent-glow)', pointerEvents: 'none' }} />
+      </motion.div>
+      <Status left={p.flip ? 'Arrows are reversed' : p.fog ? 'Fog · feel your way' : 'Find the route'} right={`${steps} moves`} tone={p.flip ? 'bad' : undefined} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 64px)', gridTemplateRows: 'repeat(2, 56px)', gap: 8 }}>
+        {ARROWS.map((a) => (
+          <motion.button key={a.k} type="button" aria-label={a.label} whileTap={{ scale: 0.9 }} onPointerDown={(e) => { e.preventDefault(); move(a.k); }}
+            style={{ gridColumn: a.col, gridRow: a.row, borderRadius: 12, background: 'var(--surface2)', display: 'grid', placeItems: 'center', color: 'var(--text)', touchAction: 'manipulation', boxShadow: 'inset 0 0 0 1px rgba(237,230,218,.08)' }}>
+            <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden><path d={a.d} fill="currentColor" /></svg>
           </motion.button>
         ))}
       </div>

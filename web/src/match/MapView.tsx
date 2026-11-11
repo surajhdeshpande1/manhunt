@@ -76,6 +76,21 @@ function recolor(map: MLMap) {
   }
 }
 
+/** Pins slide to their new spot instead of teleporting between position updates. */
+function glide(inst: maplibregl.Marker, lng: number, lat: number) {
+  const from = inst.getLngLat(); const run = ((inst as any)._glide = ((inst as any)._glide ?? 0) + 1);
+  const dLng = lng - from.lng, dLat = lat - from.lat; const far = Math.hypot(dLng, dLat);
+  if (far < 1e-7) return;
+  if (far > 0.004 || document.hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) { inst.setLngLat([lng, lat]); return; }
+  const t0 = performance.now(), dur = 900;
+  const step = (now: number) => {
+    if ((inst as any)._glide !== run) return;
+    const t = Math.min(1, (now - t0) / dur), e = 1 - (1 - t) ** 3;
+    inst.setLngLat([from.lng + dLng * e, from.lat + dLat * e]);
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
 function markerEl(m: Marker) {
   const el = document.createElement('div');
   el.className = 'tag-marker';
@@ -293,7 +308,7 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
         const el = markerEl(mk);
         inst = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([mk.lng, mk.lat]).addTo(m);
         markers.current.set(mk.id, inst);
-      } else inst.setLngLat([mk.lng, mk.lat]);
+      } else glide(inst, mk.lng, mk.lat);
       updateMarkerEl(inst.getElement(), mk);
     }
     for (const [id, inst] of markers.current) if (!want.has(id)) { inst.remove(); markers.current.delete(id); }

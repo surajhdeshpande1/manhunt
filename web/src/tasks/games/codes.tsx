@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { haptic } from '../../lib/feel';
-import { binValue, genBinary, genCipher, genGlyph, genSafe, genWires, scoreGuess, type Wire } from '../gen';
+import { binValue, genBinary, genGlyph, genSafe, genWires, scoreGuess, type Wire } from '../gen';
 import { Actions, Glyph, Keypad, Slots, Status } from '../ui';
 import type { GP } from './types';
 
@@ -45,43 +45,6 @@ export function SafeCrack({ seed, level, twist, onWin, onFail }: GP) {
       <Actions>
         <button className="btn btn-quiet grow" onClick={() => setCur(cur.slice(0, -1))} disabled={!cur.length}>Delete</button>
         <button className="btn btn-primary grow" onClick={submit} disabled={cur.length !== p.len}>Try</button>
-      </Actions>
-    </>
-  );
-}
-
-/* 5 · CIPHER */
-const AZ = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-export function Cipher({ seed, level, twist, onWin, onFail }: GP) {
-  const p = useMemo(() => genCipher(seed, level, twist), [seed, level, twist]);
-  const [cur, setCur] = useState<string[]>([]);
-  const [tries, setTries] = useState(p.tries);
-  const [bad, setBad] = useState(false);
-  const over = useRef(false);
-  function key(k: string) { if (cur.length < p.word.length) { haptic.tap(); setCur([...cur, k]); } }
-  function submit() {
-    if (over.current || cur.length !== p.word.length) return;
-    if (cur.join('') === p.word) { over.current = true; haptic.ok(); setTimeout(onWin, 300); return; }
-    haptic.warn(); setBad(true); setTimeout(() => { setBad(false); setCur([]); }, 600);
-    if (tries <= 1) { over.current = true; setTimeout(() => onFail(`It was ${p.word}`), 650); } else setTries(tries - 1);
-  }
-  return (
-    <>
-      <div className="stack center" style={{ gap: 6 }}>
-        <div className="display mono" style={{ fontSize: p.enc.length > 8 ? 30 : 38, letterSpacing: '0.18em', color: 'var(--police)' }}>{p.enc}</div>
-        <div className="row" style={{ gap: 8, justifyContent: 'center' }}>
-          {p.showKey ? <span className="tag" style={{ fontSize: 13 }}>Key A → {p.keyTo}</span> : <span className="tag" style={{ fontSize: 13 }}>Starts with {p.first}</span>}
-          <span className="tag" style={{ fontSize: 13 }}>{p.cat}</span>
-          {twist === 'mirror' && <span className="tag bad" style={{ fontSize: 13 }}>Written backwards</span>}
-        </div>
-      </div>
-      {level <= 3 && <div className="mono muted" style={{ fontSize: 12, letterSpacing: '0.2em', textAlign: 'center', width: 'min(90vw, 380px)', wordBreak: 'break-all' }}>{AZ.join('')}</div>}
-      <Slots n={p.word.length} values={cur} tone={bad ? 'bad' : undefined} width="min(90vw, 380px)" />
-      <Status left={`${tries} tr${tries === 1 ? 'y' : 'ies'} left`} />
-      <Keypad keys={AZ} cols={7} onKey={(k) => key(String(k))} width="min(92vw, 380px)" />
-      <Actions>
-        <button className="btn btn-quiet grow" onClick={() => setCur(cur.slice(0, -1))} disabled={!cur.length}>Delete</button>
-        <button className="btn btn-primary grow" onClick={submit} disabled={cur.length !== p.word.length}>Decode</button>
       </Actions>
     </>
   );

@@ -6,7 +6,32 @@ import type { GameEvent, RoomState } from '../lib/types';
 export type Fix = { lat: number; lng: number; acc: number; at: number };
 export type GeoStatus = 'off' | 'waiting' | 'ok' | 'weak' | 'denied' | 'unsupported';
 
-/** Continuous high-accuracy GPS while `on`. */
+const M_LAT = 111320;
+/**
+ * Steadies raw GPS. Phones jitter by several metres even standing still and now and then throw a wild fix;
+ * this blends each fix by how much it can be trusted (a per-fix Kalman gain) and drops impossible jumps.
+ */
+export function makeGeoFilter() {
+  let s: { lat: number; lng: number; v: number; at: number } | null = null;
+  let rejects = 0;
+  return (raw: Fix): Fix => {
+    const acc = Math.max(3, raw.acc || 50);
+    if (!s || raw.at - s.at > 30000) { s = { lat: raw.lat, lng: raw.lng, v: acc * acc, at: raw.at }; rejects = 0; return { ...raw, acc }; }
+    const dt = Math.max(0.2, (raw.at - s.at) / 1000);
+    const mLng = M_LAT * Math.cos((s.lat * Math.PI) / 180);
+    const d = Math.hypot((raw.lat - s.lat) * M_LAT, (raw.lng - s.lng) * mLng);
+    // nobody on foot covers this: a sprint is ~9 m/s. Ignore up to 3 such fixes, then believe the phone.
+    if (d > 9 * dt + 2.5 * acc + 15 && rejects < 3) { rejects++; return { lat: s.lat, lng: s.lng, acc: Math.max(Math.sqrt(s.v), acc * 0.5), at: raw.at }; }
+    rejects = 0;
+    const v = s.v + (4 * dt) ** 2; // a runner can move ~4 m each second we didn't look
+    const k = v / (v + acc * acc);
+    s = { lat: s.lat + k * (raw.lat - s.lat), lng: s.lng + k * (raw.lng - s.lng), v: (1 - k) * v, at: raw.at };
+    // GPS errors are correlated, so never claim much better than the phone itself reports
+    return { lat: s.lat, lng: s.lng, acc: Math.max(Math.sqrt(s.v), acc * 0.6), at: raw.at };
+  };
+}
+
+/** Continuous high-accuracy GPS while `on`, smoothed. */
 export function useGeo(on: boolean, maxAcc = 35) {
   const [fix, setFix] = useState<Fix | null>(null);
   const [status, setStatus] = useState<GeoStatus>('off');
@@ -15,9 +40,10 @@ export function useGeo(on: boolean, maxAcc = 35) {
     if (!on) { setStatus('off'); return; }
     if (!navigator.geolocation) { setStatus('unsupported'); return; }
     setStatus((s) => (s === 'ok' ? s : 'waiting'));
+    const filter = makeGeoFilter();
     const id = navigator.geolocation.watchPosition(
       (p) => {
-        const f = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy, at: Date.now() };
+        const f = filter({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy, at: Date.now() });
         latest.current = f; setFix(f); setStatus(f.acc <= maxAcc ? 'ok' : 'weak');
       },
       (e) => setStatus(e.code === e.PERMISSION_DENIED ? 'denied' : 'weak'),

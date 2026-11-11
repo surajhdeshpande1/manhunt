@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Back, Button, Modal, Section, Segmented } from '../components/ui';
 import { useSession } from '../lib/session';
 import { haptic } from '../lib/feel';
-import { TASKS, autoLevel, masteryOf, type Cat } from '../tasks/core';
+import { TASKS, autoLevel, clampLevel, masteryOf, type Cat } from '../tasks/core';
 import { TaskStage, type StageResult } from '../tasks/TaskStage';
 import { Sparks } from '../components/Art';
 
@@ -31,7 +31,8 @@ export default function Training() {
   const [run, setRun] = useState<{ kind: number; seed: number; level: number } | null>(null);
   const [res, setRes] = useState<(StageResult & { pb: boolean }) | null>(null);
   const mastery = (k: number) => (profile?.task_mastery?.[String(k)] ?? 0);
-  const levelFor = (k: number) => (lvl === 'auto' ? autoLevel(mastery(k) + Math.floor((recs[k]?.wins ?? 0) / 2)) : lvl);
+  const [heat, setHeat] = useState(0); // wins in a row this session: Auto climbs with it
+  const levelFor = (k: number) => (lvl === 'auto' ? clampLevel(autoLevel(mastery(k) + Math.floor((recs[k]?.wins ?? 0) / 2)) + Math.floor(heat / 2)) : lvl);
   const done = useMemo(() => TASKS.filter((t) => (recs[t.id]?.wins ?? 0) + mastery(t.id) > 0).length, [recs, profile]);
 
   function start(kind: number, level = levelFor(kind)) {
@@ -44,6 +45,7 @@ export default function Training() {
     const pb = r.ok && (cur.best == null || r.ms < cur.best);
     const next = { ...recs, [run.kind]: { n: cur.n + 1, wins: cur.wins + (r.ok ? 1 : 0), best: pb ? r.ms : cur.best } };
     setRecs(next); saveRecs(next); setRes({ ...r, pb });
+    setHeat((h) => (r.ok ? h + 1 : 0));
     if (r.ok) haptic.ok(); else haptic.warn();
   }
   const t = pick !== null ? TASKS[pick] : null;
@@ -53,7 +55,7 @@ export default function Training() {
       <header>
         <div className="row between" style={{ marginLeft: -10 }}>
           <button className="icon-btn" aria-label="Back" onClick={() => nav('/home')}><Back /></button>
-          <span className="tag">{done}/20 learnt</span>
+          <div className="row" style={{ gap: 6 }}>{heat >= 2 && <motion.span key={heat} initial={{ scale: 1.4 }} animate={{ scale: 1 }} className="tag" style={{ background: 'var(--accent)', color: '#0b0b0c', fontWeight: 800 }}>Heat ×{heat}</motion.span>}<span className="tag">{done}/20 learnt</span></div>
         </div>
         <h1 className="display" style={{ fontSize: 'clamp(40px, 12vw, 54px)', margin: '12px 0 8px' }}>Training</h1>
         <p className="muted" style={{ margin: 0, fontSize: 15, lineHeight: 1.45 }}>Every task has one rule that never changes. Learn the rule here. The puzzle is new every run, so practise the <b style={{ color: 'var(--text)' }}>method</b>, not the answer.</p>
@@ -63,7 +65,7 @@ export default function Training() {
         <div className="eyebrow">Practice level</div>
         <Segmented value={String(lvl)} onChange={(v) => setLvl(v === 'auto' ? 'auto' : (Number(v) as 1))}
           options={[{ v: 'auto', label: 'Auto' }, ...[1, 2, 3, 4, 5].map((n) => ({ v: String(n), label: String(n) }))]} />
-        <div className="muted" style={{ fontSize: 12.5 }}>Auto matches what you'd get in a match: it rises as you master a task. From level 2, twists bend the rule.</div>
+        <div className="muted" style={{ fontSize: 12.5 }}>Auto matches what you'd get in a match: it rises as you master a task, and every 2 wins in a row push it up another level until you slip. From level 2, twists bend the rule.</div>
       </div>
 
       {CATS.map((c) => (
@@ -121,7 +123,7 @@ export default function Training() {
                   </div>
                   <div className="muted" style={{ maxWidth: 320 }}>{res.ok ? (res.pb ? 'New personal best.' : `Best ${fmt(recs[run.kind]?.best ?? null)}.`) : res.why}</div>
                   <div className="row" style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-                    <Button kind="hot" onClick={() => start(run.kind, run.level)}>Again</Button>
+                    <Button kind="hot" onClick={() => start(run.kind, lvl === 'auto' ? undefined : run.level)}>Again</Button>
                     {run.level < 5 && <Button onClick={() => start(run.kind, run.level + 1)}>Level {run.level + 1}</Button>}
                     <Button kind="ghost" onClick={() => { setRun(null); setRes(null); }}>Done</Button>
                   </div>

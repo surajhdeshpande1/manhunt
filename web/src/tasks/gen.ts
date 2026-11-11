@@ -100,15 +100,37 @@ export function scoreGuess(code: number[], g: number[]) {
   return marks;
 }
 
-/* 5 · CIPHER */
-export function genCipher(seed: number, L: number, twist: string | null) {
+/* 5 · MAZE RUN — open sides per cell: N1 E2 S4 W8 */
+export const MAZE_DIRS = [{ k: 'N', bit: 1, dx: 0, dy: -1, opp: 4 }, { k: 'E', bit: 2, dx: 1, dy: 0, opp: 8 }, { k: 'S', bit: 4, dx: 0, dy: 1, opp: 1 }, { k: 'W', bit: 8, dx: -1, dy: 0, opp: 2 }] as const;
+export type MazeDir = (typeof MAZE_DIRS)[number]['k'];
+export function mazeStep(open: number[], n: number, at: number, k: MazeDir): number | null {
+  const d = MAZE_DIRS.find((x) => x.k === k)!;
+  return open[at] & d.bit ? at + d.dx + d.dy * n : null;
+}
+/** shortest route as a list of directions (the maze is perfect, so it is the only route) */
+export function mazePath(open: number[], n: number, from: number, to: number): MazeDir[] {
+  const prev = new Map<number, [number, MazeDir]>(); const q = [from]; const seen = new Set([from]);
+  while (q.length) { const c = q.shift()!; if (c === to) break;
+    for (const d of MAZE_DIRS) { const nx = mazeStep(open, n, c, d.k); if (nx !== null && !seen.has(nx)) { seen.add(nx); prev.set(nx, [c, d.k]); q.push(nx); } } }
+  const out: MazeDir[] = []; let c = to;
+  while (c !== from) { const pv = prev.get(c); if (!pv) return []; out.unshift(pv[1]); c = pv[0]; }
+  return out;
+}
+export function genMaze(seed: number, L: number, twist: string | null) {
   const r = R(seed, 6);
-  const [mn, mx] = L5(L, [[4, 5], [5, 6], [6, 7], [7, 8], [8, 10]]);
-  const pick = pickOne(r, wordsBetween(mn, mx));
-  const shift = L === 1 ? ri(r, 1, 4) : L === 2 ? ri(r, 1, 8) : ri(r, 1, 25);
-  const enc = pick.w.split('').map((ch) => String.fromCharCode(((ch.charCodeAt(0) - 65 + shift) % 26) + 65)).join('');
-  return { word: pick.w, cat: pick.cat, shift, enc: twist === 'mirror' ? enc.split('').reverse().join('') : enc,
-    keyTo: String.fromCharCode(65 + shift), showKey: twist !== 'nokey', first: pick.w[0], tries: 2 };
+  const n = L5(L, [5, 6, 7, 8, 9]);
+  const open = new Array<number>(n * n).fill(0);
+  const seen = new Set<number>([0]); const stack = [0];
+  while (stack.length) {
+    const c = stack[stack.length - 1]; const x = c % n, y = Math.floor(c / n);
+    const opts = MAZE_DIRS.filter((d) => { const nx = x + d.dx, ny = y + d.dy; return nx >= 0 && ny >= 0 && nx < n && ny < n && !seen.has(nx + ny * n); });
+    if (!opts.length) { stack.pop(); continue; }
+    const d = pickOne(r, opts); const nx = c + d.dx + d.dy * n;
+    open[c] |= d.bit; open[nx] |= d.opp; seen.add(nx); stack.push(nx);
+  }
+  const corners = [0, n - 1, n * (n - 1), n * n - 1];
+  const si = ri(r, 0, 3); const start = corners[si], exit = corners[3 - si];
+  return { n, open, start, exit, fog: twist === 'fog', flip: twist === 'flip', bumpMs: L >= 3 ? 1000 : 0, path: mazePath(open, n, start, exit) };
 }
 
 /* 6 · GLYPH LOCK */

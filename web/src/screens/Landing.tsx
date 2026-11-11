@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useAnimationControls } from 'framer-motion';
 import { useTheme } from '../lib/theme';
 import { haptic } from '../lib/feel';
 import { scoreSurround, tryAutoplay, whenUnlocked } from '../lib/sound';
@@ -160,11 +160,15 @@ export default function Landing({ onDone }: { onDone: () => void }) {
   const runnerMode = now >= 4.6 && now < 7.65 ? 'run' : 'stand';
   const huntMode = (h: (typeof HUNTERS)[number]) => (h.dizzy && now >= 4.95 && now < 5.6 ? 'dizzy' : now >= 4.6 && now < 7.65 ? 'run' : now >= 2.2 && now < 4.4 ? 'walk' : 'stand');
   const showLogo = reduce || now >= 8.3;
+  const impact = now >= 8.0 ? 3 : now >= 4.95 ? 2 : now >= 4.6 ? 1 : 0;
+  const shake = useAnimationControls();
+  useEffect(() => { if (impact) shake.start({ x: [0, -10, 9, -6, 4, 0], y: [0, 6, -7, 4, -2, 0], scale: [1.035, 1], transition: { duration: impact === 3 ? 0.5 : 0.34, ease: 'easeOut' } }); }, [impact, shake]);
 
   return (
     <motion.div style={{ position: 'fixed', inset: 0, background: INK, zIndex: 900, overflow: 'hidden' }}
       exit={{ opacity: 0, transition: { duration: 0.45, ease: [0.7, 0, 0.2, 1] } }}>
       {!reduce && (
+        <motion.div style={{ position: 'absolute', inset: -14 }} animate={shake}>
         <svg viewBox="-200 -430 400 860" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" style={{ position: 'absolute', inset: 0 }} aria-hidden>
           <motion.g initial={{ scale: CAMT.s[0], x: 0, y: 0 }} animate={{ scale: CAMT.s, x: CAMT.x, y: CAMT.y }} transition={{ scale: lin(RT), x: lin(RT), y: lin(RT) }}>
             <rect x="-3000" y="-3000" width="6000" height="6000" fill="none" />
@@ -221,7 +225,17 @@ export default function Landing({ onDone }: { onDone: () => void }) {
               transition={{ r: tr([0, 7.75, 8.0, 8.35], [0.7, 0, 0.9, 0.4] as any), opacity: tr([0, 7.75, 7.8, 10], 'linear') }} />
           </motion.g>
         </svg>
+        </motion.div>
       )}
+
+      {/* cinema finish: vignette, grain, the white-hot frame of the breakout, letterbox bars */}
+      {!reduce && <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse at 50% 45%, transparent 38%, rgba(0,0,0,.72) 100%)' }} />}
+      {!reduce && <div className="film-grain" />}
+      {!reduce && now >= 4.6 && now < 4.95 && <motion.div initial={{ opacity: 0.55 }} animate={{ opacity: 0 }} transition={{ duration: 0.3 }} style={{ position: 'absolute', inset: 0, background: BONE, pointerEvents: 'none', mixBlendMode: 'overlay' }} />}
+      {!reduce && [0, 1].map((i) => (
+        <motion.div key={i} style={{ position: 'absolute', left: 0, right: 0, [i ? 'bottom' : 'top']: 0, height: '9vh', background: '#000', transformOrigin: i ? 'bottom' : 'top', pointerEvents: 'none' }}
+          initial={{ scaleY: 0 }} animate={{ scaleY: now >= 1.0 && now < 8.0 ? 1 : 0 }} transition={{ duration: now >= 8.0 ? 0.25 : 0.9, ease: [0.7, 0, 0.2, 1] }} />
+      ))}
 
       {/* the mark */}
       <motion.div style={{ position: 'absolute', inset: 0, background: INK }} initial={{ clipPath: 'circle(0% at 50% 45%)' }}
@@ -235,10 +249,21 @@ export default function Landing({ onDone }: { onDone: () => void }) {
                   initial={{ scale: 0, x: i ? -40 : 40 }} animate={{ scale: [0, 1.2, 0.94, 1], x: 0 }} transition={{ delay: reduce ? 0 : 0.18 + i * 0.07, duration: 0.6, ease: [0.3, 1.3, 0.6, 1] }} />
               ))}
             </div>
-            <motion.div className="logo-word" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: reduce ? 0.1 : 0.45, type: 'spring', stiffness: 380, damping: 26 }}
-              style={{ marginTop: 24, fontSize: 'clamp(84px, 27vw, 120px)', fontWeight: 900, color: BONE, lineHeight: 0.85, paddingRight: 8 }}>tag</motion.div>
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: reduce ? 0.2 : 0.75, duration: 0.5, ease: [0.2, 0.9, 0.25, 1] }}
-              style={{ marginTop: 22, fontSize: 13, fontWeight: 750, letterSpacing: '0.18em', textTransform: 'uppercase', color: BRASS }}>Hide. Run. Don’t get caught.</motion.div>
+            <div style={{ position: 'relative', marginTop: 24 }}>
+              {!reduce && [EMBER, BRASS].map((c, i) => (
+                <motion.div key={c} aria-hidden className="logo-word" initial={{ opacity: 0, x: i ? 46 : -46 }} animate={{ opacity: [0, 0.9, 0], x: [i ? 46 : -46, 0, 0] }} transition={{ delay: 0.4, duration: 0.42, times: [0, 0.7, 1], ease: 'easeOut' }}
+                  style={{ position: 'absolute', inset: 0, fontSize: 'clamp(84px, 27vw, 120px)', fontWeight: 900, color: c, lineHeight: 0.85, paddingRight: 8, mixBlendMode: 'screen' }}>tag</motion.div>
+              ))}
+              <motion.div className="logo-word" initial={{ opacity: 0, scale: 1.5, filter: 'blur(10px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} transition={{ delay: reduce ? 0.1 : 0.62, duration: reduce ? 0.2 : 0.28, ease: [0.2, 1.4, 0.4, 1] }}
+                style={{ fontSize: 'clamp(84px, 27vw, 120px)', fontWeight: 900, color: BONE, lineHeight: 0.85, paddingRight: 8 }}>tag</motion.div>
+              {!reduce && <motion.span aria-hidden initial={{ scale: 0.2, opacity: 0 }} animate={{ scale: [0.2, 3.2], opacity: [0, 0.7, 0] }} transition={{ delay: 0.62, duration: 0.7, ease: 'easeOut' }}
+                style={{ position: 'absolute', left: '50%', top: '50%', width: 160, height: 160, margin: -80, borderRadius: '50%', border: `2px solid ${BONE}`, pointerEvents: 'none' }} />}
+            </div>
+            <div style={{ marginTop: 22, fontSize: 13, fontWeight: 750, letterSpacing: '0.18em', textTransform: 'uppercase', color: BRASS, display: 'flex', gap: '0.5em' }}>
+              {['Hide.', 'Run.', 'Don’t get caught.'].map((w, i) => (
+                <motion.span key={w} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: reduce ? 0.2 : 0.85 + i * 0.16, duration: 0.3, ease: [0.2, 0.9, 0.25, 1] }}>{w}</motion.span>
+              ))}
+            </div>
           </div>
         </div>
       )}

@@ -1,22 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useAnimationControls } from 'framer-motion';
 import { X } from '../components/ui';
 import { haptic } from '../lib/feel';
 import { sfx } from '../lib/sound';
 import { TASKS, timeFor, twistFor } from './core';
+import { dare, taunt } from './taunts';
 import { Echo, FlashGrid, Mirror, Pairs, Trail } from './games/memory';
-import { Binary, Cipher, GlyphLock, SafeCrack, WireCut } from './games/codes';
+import { Binary, GlyphLock, SafeCrack, WireCut } from './games/codes';
 import { LightsOut, NextNumber, OddOne, Pipeline, Scramble, TargetSum } from './games/logic';
-import { DeadZone, EmberStrike, Ink, SteadyHand } from './games/reflex';
+import { DeadZone, EmberStrike, Ink, Maze, SteadyHand } from './games/reflex';
 import type { GP } from './games/types';
 
-export const GAMES: ((p: GP) => JSX.Element)[] = [Echo, Pairs, FlashGrid, Trail, SafeCrack, Cipher, GlyphLock, Binary, WireCut, LightsOut, Pipeline, DeadZone, EmberStrike, SteadyHand, Ink, OddOne, TargetSum, NextNumber, Scramble, Mirror];
+export const GAMES: ((p: GP) => JSX.Element)[] = [Echo, Pairs, FlashGrid, Trail, SafeCrack, Maze, GlyphLock, Binary, WireCut, LightsOut, Pipeline, DeadZone, EmberStrike, SteadyHand, Ink, OddOne, TargetSum, NextNumber, Scramble, Mirror];
 
 const seenKey = (k: string) => `tag-task-seen-${k}`;
 function hasSeen(k: string) { try { return localStorage.getItem(seenKey(k)) === '1'; } catch { return true; } }
 function markSeen(k: string) { try { localStorage.setItem(seenKey(k), '1'); } catch { /* private mode */ } }
 
-export type StageResult = { ok: boolean; ms: number; why?: string };
+export type StageResult = { ok: boolean; ms: number; why?: string; left: number };
 
 /**
  * Full-screen task surface used in matches and in Training.
@@ -36,12 +37,19 @@ export function TaskStage({ kind, seed, level, eyebrow, onDone, onClose, result,
   const G = GAMES[kind] ?? GAMES[0];
   if ((import.meta as any).env?.DEV) (window as any).__tagTask = { kind, seed, level, twist };
 
-  const finish = useCallback((r: Omit<StageResult, 'ms'>) => {
+  const [verdict, setVerdict] = useState<string | null>(null);
+  const [hits, setHits] = useState(0);
+  const shake = useAnimationControls();
+  useEffect(() => { if (hits) shake.start({ x: [0, -9, 8, -5, 4, 0], transition: { duration: 0.32 } }); }, [hits, shake]);
+  const finish = useCallback((r: Omit<StageResult, 'ms' | 'left'>) => {
     if (finished.current) return;
     finished.current = true; setPhase('over');
-    if (r.ok) sfx.task(); else sfx.fail();
-    onDone({ ...r, ms: Math.round(performance.now() - startedAt.current) });
-  }, [onDone]);
+    if (r.ok) sfx.task(); else { sfx.fail(); setHits((h) => h + 1); }
+    const now = performance.now();
+    const ms = Math.round(now - startedAt.current), left = Math.round(deadline.current - now);
+    setVerdict(taunt({ ok: r.ok, ms, left, total, twist: !!twist, why: r.why, level, seed }));
+    onDone({ ...r, ms, left });
+  }, [onDone, total, twist, level, seed]);
 
   useEffect(() => {
     if (phase !== 'play') return;
@@ -62,7 +70,7 @@ export function TaskStage({ kind, seed, level, eyebrow, onDone, onClose, result,
     return () => cancelAnimationFrame(raf);
   }, [phase, total, twist, finish]);
 
-  const penalize = useCallback((ms: number) => { deadline.current -= ms; }, []);
+  const penalize = useCallback((ms: number) => { deadline.current -= ms; setHits((h) => h + 1); }, []);
 
   // keyboard users can back out the same way they close any sheet
   useEffect(() => {
@@ -88,7 +96,7 @@ export function TaskStage({ kind, seed, level, eyebrow, onDone, onClose, result,
 
       <AnimatePresence>
         {tdef && phase !== 'learn' && (
-          <motion.div initial={{ opacity: 0, y: -8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: [1.06, 1] }} transition={{ duration: 0.35 }}
+          <motion.div initial={{ opacity: 0, y: -14, scale: 1.25, rotate: -3 }} animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 520, damping: 17 }}
             className="row" style={{ gap: 10, padding: '9px 12px', borderRadius: 12, background: '#c9a227', color: '#0b0b0c' }}>
             <span style={{ fontWeight: 900, fontSize: 12, letterSpacing: '.16em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Twist · {tdef.label}</span>
             <span style={{ fontWeight: 650, fontSize: 13.5, lineHeight: 1.3 }}>{tdef.hint}</span>
@@ -114,15 +122,21 @@ export function TaskStage({ kind, seed, level, eyebrow, onDone, onClose, result,
               <span style={{ fontSize: 15.5, lineHeight: 1.4, paddingTop: 3 }}>{h}</span>
             </div>
           ))}
-          <p className="muted" style={{ margin: '4px 0 0', fontSize: 13.5 }}>The rule never changes. The puzzle is new every time, and twists get more likely as you get better.</p>
+          <p style={{ margin: '4px 0 0', fontSize: 14.5, fontWeight: 700, color: 'var(--accent)' }}>{dare(level, !!twist, seed)}</p>
+          <p className="muted" style={{ margin: 0, fontSize: 13.5 }}>The rule never changes. The puzzle is new every time, and twists get more likely as you get better.</p>
           <button className="btn btn-hot btn-lg" style={{ marginTop: 8 }} onClick={() => { markSeen(def.key); haptic.tap(); setPhase('play'); }}>Start · {Math.round(total / 1000)} s on the clock</button>
         </motion.div>
       ) : result ? (
-        <div style={{ display: 'grid', placeItems: 'center', flex: 1, paddingTop: 20 }}>{result}</div>
-      ) : (
-        <div className="stack" style={{ alignItems: 'center', gap: 14, paddingTop: 6, pointerEvents: phase === 'over' ? 'none' : undefined }}>
-          <G seed={seed} level={level} twist={twist} penalize={penalize} onWin={() => finish({ ok: true })} onFail={(why) => finish({ ok: false, why })} />
+        <div style={{ display: 'grid', placeItems: 'center', alignContent: 'center', gap: 18, flex: 1, paddingTop: 20 }}>
+          {result}
+          {verdict && <motion.div initial={{ opacity: 0, y: 8, rotate: -1.5 }} animate={{ opacity: 1, y: 0, rotate: -1.5 }} transition={{ delay: 0.45, type: 'spring', damping: 14 }} className="taunt">{verdict}</motion.div>}
         </div>
+      ) : (
+        <motion.div animate={shake}
+          className="stack" style={{ alignItems: 'center', gap: 14, paddingTop: 6, pointerEvents: phase === 'over' ? 'none' : undefined }}>
+          <G seed={seed} level={level} twist={twist} penalize={penalize} onWin={() => finish({ ok: true })} onFail={(why) => finish({ ok: false, why })} />
+          {hits > 0 && <motion.div key={`f${hits}`} initial={{ opacity: 0.5 }} animate={{ opacity: 0 }} transition={{ duration: 0.5 }} className="hit-flash" />}
+        </motion.div>
       )}
     </div>
   );

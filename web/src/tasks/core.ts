@@ -40,10 +40,10 @@ export const TASKS: TaskDef[] = [
     how: ['Guess the code.', 'Green: keep it there. Amber: move it. Grey: drop it.', 'Use each guess to rule digits out.'],
     twists: [{ key: 'blind', label: 'Blind', hint: 'You only get counts, not which digit.' }, { key: 'repeat', label: 'Repeats', hint: 'Digits can repeat in the code.' }],
     time: [75, 72, 68, 64, 60] },
-  { id: 5, key: 'cipher', name: 'Cipher', cat: 'Codes', rule: 'Every letter is shifted by the key. Shift each one back.',
-    how: ['The key A→D means every letter moved 3 forward.', 'Move each letter 3 back: D→A, E→B.', 'Type the real word.'],
-    twists: [{ key: 'nokey', label: 'No key', hint: 'No key. You only get the first letter.' }, { key: 'mirror', label: 'Mirror', hint: 'The coded word is also written backwards.' }],
-    time: [55, 50, 46, 42, 38] },
+  { id: 5, key: 'maze', name: 'Maze Run', cat: 'Reflex', rule: 'Get the dot to the EXIT. Walls block you.',
+    how: ['Use the arrows, or swipe on the maze.', 'There is exactly one route. Dead ends cost you time.', 'Look before you move: trace the route back from the exit.'],
+    twists: [{ key: 'fog', label: 'Fog', hint: 'You only see the walls right next to you.' }, { key: 'flip', label: 'Crossed wires', hint: 'Every arrow moves you the opposite way.' }],
+    time: [30, 32, 36, 42, 46] },
   { id: 6, key: 'glyph', name: 'Glyph Lock', cat: 'Codes', rule: 'Each symbol stands for a digit. Look it up and punch it in.',
     how: ['The legend pairs symbols with digits.', 'Read the code symbol by symbol.', 'Type the matching digits.'],
     twists: [{ key: 'vanish', label: 'Vanish', hint: 'The legend disappears after a few seconds.' }, { key: 'scramble', label: 'Scrambled pad', hint: 'The keypad digits are out of order.' }, { key: 'reverse', label: 'Backwards', hint: 'Enter the code in reverse.' }],
@@ -108,10 +108,12 @@ export function twistFor(id: number, seed: number, level: number): string | null
   const t = TASKS[id]?.twists ?? [];
   if (!t.length) return null;
   const r = mulberry32((seed ^ 0x5bd1e995) + id * 7919);
-  const chance = [0, 0.35, 0.6, 0.8, 1][Math.max(1, Math.min(5, level)) - 1];
+  const chance = [0, 0.3, 0.6, 0.8, 1][Math.max(1, Math.min(5, level)) - 1];
   return r() < chance ? t[Math.floor(r() * t.length)].key : null;
 }
-export const timeFor = (id: number, level: number) => (TASKS[id]?.time[Math.max(1, Math.min(5, level)) - 1] ?? 30) * 1000;
+/** Early levels are generous on purpose: easy to start, then the slack disappears. */
+const SLACK = [1.25, 1.1, 1, 1, 1];
+export const timeFor = (id: number, level: number) => { const i = Math.max(1, Math.min(5, level)) - 1; return Math.round((TASKS[id]?.time[i] ?? 30) * SLACK[i]) * 1000; };
 export const clampLevel = (n: number) => Math.max(1, Math.min(5, Math.round(n)));
 
 /** Same formula the server uses, for practice. */
