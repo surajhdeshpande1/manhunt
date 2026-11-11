@@ -11,7 +11,9 @@ import { titleLabel } from '../lib/identity';
 import { haversine } from '../lib/geo';
 import type { GameEvent, Member, RoomState } from '../lib/types';
 import { MapView, type MapHandle, type Marker } from './MapView';
-import { Chat, PushToTalk } from './Comms';
+import { GKEY } from '../lib/gmaps';
+import { Chat, PushToTalk, useRadio, type Radio } from './Comms';
+import { HunterLobby } from './HunterLobby';
 import { RunnerQR, Scanner } from './QR';
 import { TaskDeck } from './Tasks';
 import type { Fix, GeoStatus } from './useRoom';
@@ -58,6 +60,7 @@ export function Match({ s, feed, geo, refresh, themeKey }: { s: RoomState; feed:
   const spectator = isAdmin || !alive;
   const byId = useMemo(() => new Map(s.members.map((m) => [m.id, m])), [s.members]);
   const hunters = s.members.filter((m) => m.role === 'hunter');
+  const radio = useRadio(s.room.id);
   const runners = s.members.filter((m) => m.role === 'runner');
   const st = s.room.settings;
 
@@ -68,8 +71,10 @@ export function Match({ s, feed, geo, refresh, themeKey }: { s: RoomState; feed:
   overlay.current = { qr, scan, menu };
   useEffect(() => {
     history.pushState({ tagGuard: 1 }, '');
+    const mounted = Date.now();
     const onPop = () => {
       history.pushState({ tagGuard: 1 }, '');
+      if (Date.now() - mounted < 800) return; // our own history bookkeeping, not the user
       const o = overlay.current;
       if (o.scan) setScan(false); else if (o.qr) setQr(false); else if (o.menu) setMenu(false);
       else toast('Match in progress. Use the menu to leave.');
@@ -98,31 +103,46 @@ export function Match({ s, feed, geo, refresh, themeKey }: { s: RoomState; feed:
       {isAdmin ? <AdminPanel s={s} refresh={refresh} feed={feed} byId={byId} mapRef={mapRef} />
         : !alive ? <SpectatorBanner me={me!} byId={byId} />
         : role === 'runner' ? <RunnerPanel s={s} onQR={() => setQr(true)} refresh={refresh} />
-        : <HunterPanel s={s} onScan={() => setScan(true)} myFix={geo.fix} byId={byId} />}
+        : <HunterPanel s={s} onScan={() => setScan(true)} myFix={geo.fix} byId={byId} radio={radio} />}
       {!isAdmin && role === 'hunter' && <Section title="Hunter channel"><Chat roomId={s.room.id} channel="hunters" members={s.members} meId={profile!.id} height={200} compact /></Section>}
       <Rosters hunters={hunters} runners={runners} myFix={geo.fix} positions={s.positions} />
       <Feed feed={feed} byId={byId} isAdmin={isAdmin} />
     </div>
   );
 
+  // hunters wait in their own lobby while runners hide
+  const inHunterLobby = !isAdmin && alive && role === 'hunter' && (s.room.status === 'hiding' || (s.room.status === 'paused' && s.room.paused_from === 'hiding'));
+  if (inHunterLobby) {
+    return (
+      <>
+        <HunterLobby s={s} radio={radio} meId={profile!.id} onMenu={() => setMenu(true)} themeKey={themeKey}
+          sos={<SOSButton roomId={s.room.id} getFix={() => geo.latest.current} />} />
+        <MatchMenu open={menu} onClose={() => setMenu(false)} s={s} />
+      </>
+    );
+  }
+  const peek = role === 'runner' && alive ? 184 : role === 'hunter' && alive ? 164 : 132;
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'var(--bg)' }}>
       <div style={{ position: 'absolute', inset: 0, right: wide ? 420 : 0 }}>
         <MapView ref={mapRef} themeKey={themeKey} boundary={s.room.boundary} nogo={s.room.nogo} zone={s.room.zone} zoneNext={s.room.status === 'hunt' ? s.room.zone_next : null}
-          markers={markers} me={!isAdmin && alive && geo.fix ? geo.fix : null}
+          markers={markers} me={!isAdmin && alive && geo.fix ? geo.fix : null} chromeBottom={wide ? 0 : peek}
           fitPad={wide ? { top: 150, bottom: 40, left: 40, right: 70 } : { top: 150, bottom: 210, left: 30, right: 70 }} />
         <Hud s={s} geo={geo} isAdmin={isAdmin} alive={alive} role={role} onMenu={() => setMenu(true)} />
         <div className="stack" style={{ position: 'absolute', right: 12, top: 'calc(env(safe-area-inset-top) + 132px)', gap: 8, zIndex: 20 }}>
           {!isAdmin && alive && <SOSButton roomId={s.room.id} getFix={() => geo.latest.current} />}
           <MapBtn label="Fit play area" onClick={() => mapRef.current?.fit()}><IconMap s={20} /></MapBtn>
-          {geo.fix && !isAdmin && <MapBtn label="Centre on me" onClick={() => mapRef.current?.flyTo(geo.fix!.lat, geo.fix!.lng)}><IconTarget s={20} /></MapBtn>}
+          {geo.fix && !isAdmin && <MapBtn label="Centre on me" onClick={() => mapRef.current?.flyTo(geo.fix!.lat, geo.fix!.lng, 18)}><IconTarget s={20} /></MapBtn>}
+          {GKEY && <MapBtn label="Switch map or satellite" onClick={() => { const m = mapRef.current; if (m) m.setBasemap(m.basemap() === 'satellite' ? 'street' : 'satellite'); }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden><path d="M12 3 2 8l10 5 10-5-10-5zm-8.2 9.1L2 13l10 5 10-5-1.8-.9L12 16.2 3.8 12.1zm0 4L2 17l10 5 10-5-1.8-.9L12 20.2 3.8 16.1z" fill="currentColor" /></svg>
+          </MapBtn>}
         </div>
       </div>
 
       {wide ? (
         <aside style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 420, overflowY: 'auto', background: 'var(--bg2)', borderLeft: '1px solid var(--line)', padding: '20px 20px 40px' }}>{panel}</aside>
       ) : (
-        <Sheet peek={role === 'runner' && alive ? 184 : role === 'hunter' && alive ? 164 : 132}>{panel}</Sheet>
+        <Sheet peek={peek}>{panel}</Sheet>
       )}
 
       {!isAdmin && alive && role === 'runner' && <RunnerAmbience exposed={s.room.status === 'hunt' && s.reveal.active} intensity={s.room.status === 'paused' ? 0.4 : 0.85} />}
@@ -282,7 +302,7 @@ function RunnerPanel({ s, onQR, refresh }: { s: RoomState; onQR: () => void; ref
   );
 }
 
-function HunterPanel({ s, onScan, myFix, byId }: { s: RoomState; onScan: () => void; myFix: Fix | null; byId: Map<string, Member> }) {
+function HunterPanel({ s, onScan, myFix, byId, radio }: { s: RoomState; onScan: () => void; myFix: Fix | null; byId: Map<string, Member>; radio: Radio }) {
   const hunt = s.room.status === 'hunt';
   const visible = s.positions.filter((p) => p.role === 'runner');
   const nearest = myFix && visible.length ? Math.min(...visible.map((p) => haversine(myFix.lat, myFix.lng, p.lat, p.lng))) : null;
@@ -301,7 +321,7 @@ function HunterPanel({ s, onScan, myFix, byId }: { s: RoomState; onScan: () => v
           : s.reveal.active ? `${visible.length} runner${visible.length === 1 ? '' : 's'} visible now${nearest != null ? ` · nearest ≈ ${fmtDist(nearest)}` : ''}.`
           : `Runners are hidden. Next reveal in ${fmtClock(msUntil(s.reveal.next_at))}.`}
       </div>
-      <PushToTalk roomId={s.room.id} />
+      <PushToTalk radio={radio} />
     </div>
   );
 }

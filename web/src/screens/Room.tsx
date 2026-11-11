@@ -59,7 +59,8 @@ export default function RoomScreen() {
   }, [s?.reveal.active, s?.room.status]);
 
   // role reveal once per match
-  const revealKey = s && s.me?.role && s.room.hide_ends_at ? `tag-role-${id}-${s.room.hide_ends_at}` : null;
+  // one match per room, so the room id is enough (pausing shifts the hide timer and must not replay this)
+  const revealKey = s && s.me?.role && s.room.status !== 'lobby' ? `tag-role-${id}` : null;
   const [seen, setSeen] = useState(true);
   useEffect(() => { if (revealKey) setSeen(!!sessionStorage.getItem(revealKey)); }, [revealKey]);
   const showReveal = !!s && !s.is_admin && !!s.me?.role && s.me.status === 'accepted' && (s.room.status === 'hiding' || s.room.status === 'hunt' || s.room.status === 'paused') && !seen;

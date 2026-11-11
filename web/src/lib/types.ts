@@ -4,6 +4,7 @@ export type Settings = {
   hide_secs: number; tasks_per_runner: number; cooldown_secs: number; win_pct: number;
   reveal_every: number; reveal_for: number; shrink_every: number; shrink_factor: number; min_zone_m: number;
   match_secs: number; catch_radius_m: number; buffer_m: number; grace_secs: number; max_acc_m: number; curfew_at: string | null; event?: string;
+  task_kinds?: number[]; task_difficulty?: 'easy' | 'normal' | 'hard';
 };
 export type Profile = {
   id: string; username: string; full_name: string; phone: string; dob: string; college: string; branch: string; year: number;
@@ -12,11 +13,12 @@ export type Profile = {
   badges: { code: string; at: string }[]; application: 'pending' | 'approved' | 'rejected' | null;
   friends_pending: number; invites: number;
   title: string; card_style: string; unlocks?: { titles: string[]; styles: string[] };
+  task_mastery?: Record<string, number>;
 };
 export type Member = {
   id: string; username: string; name: string; selfie: string | null; college: string; branch: string; year: number;
   status: 'pending' | 'accepted' | 'rejected' | 'left' | 'removed'; role: Role | null; alive: boolean; out_reason: string | null;
-  tasks: number; catches: number; distance?: number | null; phone?: string | null; oob?: boolean | null; invite?: boolean; title?: string | null;
+  tasks: number; catches: number; distance?: number | null; phone?: string | null; oob?: boolean | null; invite?: boolean; title?: string | null; ready?: boolean;
 };
 export type Pos = { id: string; lat: number; lng: number; acc: number | null; at: string; role: Role };
 export type GameEvent = { id: number; kind: string; actor: string | null; target: string | null; data: any; at: string };

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { PhaseTimeline } from '../components/Diagrams';
 import { NightCampus } from '../components/Scenes';
 import { Segmented, Avatar, Back, Button, IconCopy, IconMap, IconPhone, IconPlus, IconShare, IconUndo, Modal, Section, Slash, useToast } from '../components/ui';
@@ -10,8 +10,10 @@ import { haptic } from '../lib/feel';
 import { EVENTS, EventBadge, type EventKey } from '../components/Events';
 import { titleLabel } from '../lib/identity';
 import { polyAreaM2, type LngLat } from '../lib/geo';
+import { strokeToPolygon } from '../lib/freehand';
 import { fmtDist } from '../lib/clock';
 import { MapView, type MapHandle } from './MapView';
+import { TASKS } from '../tasks/core';
 import { Chat } from './Comms';
 import type { Member, RoomState, Settings } from '../lib/types';
 
@@ -69,14 +71,19 @@ function MapPreview({ s, height = 220, themeKey }: { s: RoomState; height?: numb
   );
 }
 
-function PlayerGrid({ members }: { members: Member[] }) {
+function PlayerGrid({ members, meId }: { members: Member[]; meId?: string }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))', gap: 10 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))', gap: 12 }}>
       {members.map((m, i) => (
         <motion.div key={m.id} className="center" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: Math.min(i, 10) * 0.03 }}>
-          <Avatar src={m.selfie} name={m.username} size={64} className="" />
-          <div style={{ fontSize: 12, fontWeight: 600, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@{m.username}</div>
-          <div className="muted" style={{ fontSize: 10 }}>{m.branch} · {YEAR[m.year]}</div>
+          <div style={{ position: 'relative', width: 'fit-content', margin: '0 auto', borderRadius: 10, boxShadow: m.ready ? '0 0 0 3px var(--ok)' : '0 0 0 1px var(--line2)', transition: 'box-shadow .25s' }}>
+            <Avatar src={m.selfie} name={m.username} size={64} className="" />
+            <AnimatePresence>{m.ready && (
+              <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} style={{ position: 'absolute', right: -7, bottom: -7, width: 22, height: 22, borderRadius: 6, display: 'grid', placeItems: 'center', background: 'var(--ok)', color: '#0b0b0c', fontSize: 13, fontWeight: 900, boxShadow: '0 0 0 2px var(--bg)' }}>✓</motion.span>
+            )}</AnimatePresence>
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 600, marginTop: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.id === meId ? 'You' : `@${m.username}`}</div>
+          <div className="muted" style={{ fontSize: 10 }}>{m.ready ? 'Ready' : `${m.branch} · ${YEAR[m.year]}`}</div>
         </motion.div>
       ))}
     </div>
@@ -158,27 +165,48 @@ export function PlayerLobby({ s, themeKey }: { s: RoomState; themeKey: string })
   const toast = useToast();
   const { profile } = useSession();
   const [inv, setInv] = useState(false);
+  const [busy, setBusy] = useState(false);
   const players = s.members.filter((m) => m.status === 'accepted');
+  const mine = players.find((m) => m.id === profile?.id);
+  const [ready, setReady] = useState(!!mine?.ready);
+  useEffect(() => { if (!busy) setReady(!!mine?.ready); }, [mine?.ready]);
+  const readyCount = players.filter((m) => (m.id === profile?.id ? ready : m.ready)).length;
   async function leave() { if (!confirm('Leave this room?')) return; try { await rpc('leave_room', { p_room: s.room.id }); nav('/home'); } catch (e: any) { toast(e.message, true); } }
+  async function toggle() {
+    const next = !ready; setReady(next); setBusy(true); haptic[next ? 'ok' : 'tap']();
+    try { await rpc('set_ready', { p_room: s.room.id, p_ready: next }); } catch (e: any) { setReady(!next); toast(e.message, true); } finally { setBusy(false); }
+  }
+  const shown = players.map((m) => (m.id === profile?.id ? { ...m, ready } : m));
   return (
     <Slash>
-      <div className="screen" style={{ gap: 24 }}>
+      <div className="screen" style={{ gap: 24, paddingBottom: 'calc(env(safe-area-inset-bottom) + 130px)' }}>
         <RoomHeader s={s} onLeave={leave} />
         <div className="frame cut" style={{ background: 'var(--accent)' }}>
           <div className="inner cut row" style={{ padding: 14, gap: 12 }}>
             <Avatar src={s.room.admin.selfie} name={s.room.admin.username} size={44} />
             <div className="grow">
-              <div className="display" style={{ fontSize: 19 }}>Standing by</div>
-              <div className="muted" style={{ fontSize: 13 }}>@{s.room.admin.username} assigns roles in secret and starts the match. You'll find out if you're a runner or hunter the moment it begins.</div>
+              <div className="display" style={{ fontSize: 19 }}>Match lobby</div>
+              <div className="muted" style={{ fontSize: 13 }}>Everyone waits here together. @{s.room.admin.username} starts the match, then roles go out and the hunters are revealed.</div>
             </div>
           </div>
         </div>
+        <Section title={`Squad · ${players.length}/${s.room.max_players}`} right={<div className="row" style={{ gap: 6 }}>
+          <span className={`tag ${readyCount === players.length && players.length ? 'ok' : ''}`}>{readyCount}/{players.length} ready</span>
+          <button className="tag" style={{ padding: '6px 10px' }} onClick={() => setInv(true)}>+ Invite</button>
+        </div>}>
+          <PlayerGrid members={shown} meId={profile?.id} />
+        </Section>
         <MapPreview s={s} themeKey={themeKey} />
         <RulesSummary st={s.room.settings} />
-        <Section title={`Squad · ${players.length}/${s.room.max_players}`} right={<button className="tag" style={{ padding: '6px 10px' }} onClick={() => setInv(true)}>+ Invite</button>}>
-          <PlayerGrid members={players} />
-        </Section>
         <Section title="Lobby chat"><Chat roomId={s.room.id} channel="lobby" members={[...s.members, { ...s.room.admin, college: '', branch: '', year: 0 } as any]} meId={profile!.id} height={240} /></Section>
+      </div>
+      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 50, background: 'color-mix(in srgb, var(--bg) 92%, transparent)', borderTop: '1px solid var(--line)', padding: '12px 20px calc(env(safe-area-inset-bottom) + 12px)' }}>
+        <div style={{ maxWidth: 560, margin: '0 auto' }}>
+          <motion.button whileTap={{ scale: 0.97 }} onClick={toggle} disabled={busy} className="btn btn-lg btn-block"
+            style={{ background: ready ? 'var(--ok)' : 'var(--text)', color: '#0b0b0c', fontWeight: 900, letterSpacing: '.06em' }}>
+            {ready ? '✓ Ready · tap to undo' : "I'm ready"}
+          </motion.button>
+        </div>
       </div>
       <InviteFriends roomId={s.room.id} open={inv} onClose={() => setInv(false)} members={s.members} />
     </Slash>
@@ -207,9 +235,11 @@ export function AdminLobby({ s, refresh, themeKey }: { s: RoomState; refresh: ()
     { ok: unassigned === 0 && accepted.length >= 2, t: unassigned ? `${unassigned} without a role` : accepted.length < 2 ? 'Need at least 2 players' : 'Every player has a role', go: 'players' as const },
   ];
   const ready = checks.every((c) => c.ok);
+  const readyN = accepted.filter((m) => m.ready).length;
 
   async function start() {
-    if (!confirm(`Start the match? ${pending.length ? `${pending.length} pending request(s) will be declined. ` : ''}Roles go out to everyone and the hide timer begins.`)) return;
+    const notReady = accepted.length - readyN;
+    if (!confirm(`Start the match? ${notReady ? `${notReady} player${notReady === 1 ? ' isn\'t' : 's aren\'t'} ready yet. ` : ''}${pending.length ? `${pending.length} pending request(s) will be declined. ` : ''}Roles go out, the hunters are revealed and the hide timer begins.`)) return;
     setBusy(true);
     try { await rpc('start_match', { p_room: s.room.id }); haptic.big(); refresh(); } catch (e: any) { toast(e.message, true); } finally { setBusy(false); }
   }
@@ -244,6 +274,7 @@ export function AdminLobby({ s, refresh, themeKey }: { s: RoomState; refresh: ()
             {checks.map((c) => (
               <button key={c.t} onClick={() => setTab(c.go)} className={`tag ${c.ok ? 'ok' : 'bad'}`} style={{ whiteSpace: 'nowrap', padding: '5px 9px' }}>{c.ok ? '✓' : '!'} {c.t}</button>
             ))}
+            {accepted.length > 0 && <button onClick={() => setTab('players')} className={`tag ${readyN === accepted.length ? 'ok' : ''}`} style={{ whiteSpace: 'nowrap', padding: '5px 9px' }}>{readyN}/{accepted.length} ready</button>}
           </div>
           <Button kind="hot" size="lg" block arrow loading={busy} disabled={!ready} onClick={start}>Start match</Button>
         </div>
@@ -302,7 +333,7 @@ function Roster({ s, refresh, onInvite }: { s: RoomState; refresh: () => void; o
               <div key={m.id} className="list-row">
                 <Avatar src={m.selfie} name={m.username} size={40} />
                 <div className="grow" style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 600 }}>@{m.username}{titleLabel(m.title) && <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gold)', marginLeft: 6 }}>{titleLabel(m.title)}</span>}</div>
+                  <div style={{ fontWeight: 600 }}>@{m.username}{titleLabel(m.title) && <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gold)', marginLeft: 6 }}>{titleLabel(m.title)}</span>}{m.ready && <span className="tag ok" style={{ marginLeft: 6, fontSize: 10, padding: '1px 5px' }}>Ready</span>}</div>
                   <div className="muted" style={{ fontSize: 12 }}>{m.branch} · {YEAR[m.year]}</div>
                 </div>
                 {m.phone && <a className="icon-btn muted" href={`tel:${m.phone}`} aria-label={`Call ${m.username}`} style={{ width: 34 }}><IconPhone s={18} /></a>}
@@ -325,68 +356,94 @@ function Roster({ s, refresh, onInvite }: { s: RoomState; refresh: () => void; o
 }
 
 /* ---------- AREA EDITOR ---------- */
+type Tool = 'draw' | 'move' | 'points';
 function AreaEditor({ s, refresh, themeKey }: { s: RoomState; refresh: () => void; themeKey: string }) {
   const toast = useToast();
   const mapRef = useRef<MapHandle>(null);
   const [boundary, setBoundary] = useState<LngLat[]>(s.room.boundary || []);
   const [nogo, setNogo] = useState<LngLat[][]>(s.room.nogo || []);
   const [mode, setMode] = useState<'boundary' | 'nogo'>('boundary');
+  const [tool, setTool] = useState<Tool>(s.room.boundary ? 'move' : 'draw');
   const [draft, setDraft] = useState<LngLat[]>([]);
+  const [hist, setHist] = useState<{ b: LngLat[]; n: LngLat[][] }[]>([]);
   const [saving, setSaving] = useState(false);
   const [me, setMe] = useState<{ lat: number; lng: number; acc: number } | null>(null);
   const dirty = JSON.stringify(boundary) !== JSON.stringify(s.room.boundary || []) || JSON.stringify(nogo) !== JSON.stringify(s.room.nogo || []);
 
-  function locate() {
+  function locate(fly = true) {
     navigator.geolocation?.getCurrentPosition((p) => {
       const f = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
-      setMe(f); mapRef.current?.flyTo(f.lat, f.lng, 17);
-    }, () => toast('Location blocked. Allow it in your browser settings.', true), { enableHighAccuracy: true, timeout: 15000 });
+      setMe(f); if (fly) mapRef.current?.flyTo(f.lat, f.lng, 18);
+    }, () => toast('Location blocked. Allow it in your browser settings.', true), { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
   }
-  useEffect(() => { if (!s.room.boundary) locate(); }, []);
+  // keep your own dot live while you draw
+  useEffect(() => {
+    if (!s.room.boundary) locate();
+    const id = navigator.geolocation?.watchPosition((p) => setMe({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy }), () => {}, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+    return () => { if (id != null) navigator.geolocation?.clearWatch(id); };
+  }, []);
 
-  function tap(p: LngLat) {
-    haptic.tap();
-    if (mode === 'boundary') setBoundary((b) => (b.length >= 60 ? b : [...b, p]));
-    else setDraft((d) => (d.length >= 60 ? d : [...d, p]));
+  const snap = () => setHist((h) => [...h.slice(-19), { b: boundary, n: nogo }]);
+  function stroke(raw: LngLat[]) {
+    const poly = strokeToPolygon(raw);
+    if (!poly) { haptic.warn(); toast('Draw a bigger loop around the area', true); return; }
+    snap(); haptic.ok();
+    if (mode === 'boundary') setBoundary(poly); else setNogo((n) => (n.length >= 10 ? n : [...n, poly]));
   }
-  function undo() { if (mode === 'boundary') setBoundary((b) => b.slice(0, -1)); else setDraft((d) => d.slice(0, -1)); }
-  function addNogo() { if (draft.length < 3) return; setNogo((n) => [...n, draft]); setDraft([]); haptic.ok(); }
+  function tap(p: LngLat) {
+    if (tool !== 'points') return;
+    haptic.tap();
+    if (mode === 'boundary') { if (boundary.length < 200) { snap(); setBoundary([...boundary, p]); } }
+    else setDraft((d) => (d.length >= 200 ? d : [...d, p]));
+  }
+  function undo() {
+    if (tool === 'points' && mode === 'nogo' && draft.length) { setDraft((d) => d.slice(0, -1)); return; }
+    const last = hist[hist.length - 1]; if (!last) return;
+    setBoundary(last.b); setNogo(last.n); setHist(hist.slice(0, -1)); haptic.tap();
+  }
+  function addNogo() { if (draft.length < 3) return; snap(); setNogo((n) => [...n, draft]); setDraft([]); haptic.ok(); }
   async function save() {
-    if (boundary.length < 3) { toast('Tap at least 3 points for the boundary', true); return; }
+    if (boundary.length < 3) { toast('Draw the boundary first', true); return; }
     setSaving(true);
     try { await rpc('set_area', { p_room: s.room.id, p_boundary: boundary, p_nogo: nogo }); haptic.ok(); toast('Play area saved'); refresh(); }
     catch (e: any) { toast(e.message, true); } finally { setSaving(false); }
   }
   const area = polyAreaM2(boundary);
+  const tip = tool === 'draw'
+    ? (mode === 'boundary' ? 'Draw around the play area with one finger. Lift to finish; it closes itself. Two fingers move the map.' : 'Draw around a road, lab or hostel players must stay out of. Each loop adds a zone.')
+    : tool === 'points' ? (mode === 'boundary' ? 'Tap the map corner by corner.' : 'Tap points around the zone, then “Add zone”.') : 'Move and zoom the map to find your spot.';
+  const btn = { width: 42, height: 42, display: 'grid', placeItems: 'center', background: 'rgba(11,11,12,.86)', borderRadius: 9, boxShadow: '0 0 0 1px rgba(237,230,218,.16)', color: '#ede6da' } as const;
   return (
     <div className="stack" style={{ gap: 12 }}>
       <div className="row" style={{ gap: 8 }}>
         <button className={`chip ${mode === 'boundary' ? 'on' : ''}`} style={{ flex: 1 }} onClick={() => { setMode('boundary'); setDraft([]); }}>Boundary</button>
         <button className={`chip ${mode === 'nogo' ? 'on' : ''}`} style={{ flex: 1, ...(mode === 'nogo' ? { background: 'var(--danger)', color: '#fff' } : {}) }} onClick={() => setMode('nogo')}>No-go zone</button>
       </div>
-      <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-        {mode === 'boundary' ? 'Tap the map corner by corner to outline where the game is played.' : 'Tap points around a road, lab or hostel players must stay out of, then tap “Add zone”.'}
-      </p>
-      <div className="frame cut" style={{ height: '56vh', minHeight: 340, position: 'relative' }}>
+      <Segmented value={tool} onChange={(v) => { setTool(v as Tool); setDraft([]); haptic.tap(); }}
+        options={[{ v: 'draw', label: '✏︎ Draw' }, { v: 'move', label: '✋ Move' }, { v: 'points', label: '• Points' }]} />
+      <p className="muted" style={{ margin: 0, fontSize: 13 }}>{tip}</p>
+      <div className="frame cut" style={{ height: '58vh', minHeight: 360, position: 'relative' }}>
         <div className="inner cut" style={{ position: 'relative', overflow: 'hidden' }}>
-          <MapView ref={mapRef} themeKey={themeKey} boundary={boundary} nogo={nogo} draft={mode === 'boundary' ? boundary : draft} draftKind={mode}
-            onMapClick={tap} me={me} markers={me ? [{ id: 'me', lat: me.lat, lng: me.lng, me: true }] : []} showMask={false} />
-          <div className="stack" style={{ position: 'absolute', right: 10, top: 10, gap: 6 }}>
-            <button className="cut cut-sm" style={{ width: 42, height: 42, display: 'grid', placeItems: 'center', background: 'var(--bg)' }} aria-label="My location" onClick={locate}><IconMap s={20} /></button>
-            <button className="cut cut-sm" style={{ width: 42, height: 42, display: 'grid', placeItems: 'center', background: 'var(--bg)' }} aria-label="Undo point" onClick={undo}><IconUndo s={20} /></button>
+          <MapView ref={mapRef} themeKey={themeKey} boundary={boundary} nogo={nogo} draft={tool === 'points' ? (mode === 'boundary' ? boundary : draft) : null} draftKind={mode}
+            onMapClick={tap} me={me} markers={me ? [{ id: 'me', lat: me.lat, lng: me.lng, me: true }] : []} showMask={false}
+            drawMode={tool === 'draw' ? mode : null} onStroke={stroke} basemap="satellite" layerToggle />
+          <div className="stack" style={{ position: 'absolute', right: 10, top: 10, gap: 6, zIndex: 4 }}>
+            <button style={btn} aria-label="My location" onClick={() => locate()}><IconMap s={20} /></button>
+            <button style={btn} aria-label="Undo" onClick={undo}><IconUndo s={20} /></button>
           </div>
+          {me && <span className="mono" style={{ position: 'absolute', right: 10, top: 108, zIndex: 4, padding: '3px 7px', borderRadius: 6, fontSize: 11, fontWeight: 800, background: 'rgba(11,11,12,.86)', color: me.acc <= 15 ? '#7fd38f' : me.acc <= 35 ? '#f2c230' : '#ff8a7a' }}>GPS ±{Math.round(me.acc)} m</span>}
         </div>
       </div>
       <div className="row between">
         <div className="muted mono" style={{ fontSize: 13 }}>
-          {mode === 'boundary' ? `${boundary.length} points${area ? ` · ${area > 1e6 ? (area / 1e6).toFixed(2) + ' km²' : Math.round(area).toLocaleString() + ' m²'}` : ''}` : `${draft.length} points · ${nogo.length} zone${nogo.length === 1 ? '' : 's'}`}
+          {mode === 'boundary' ? (boundary.length >= 3 ? `${area > 1e6 ? (area / 1e6).toFixed(2) + ' km²' : Math.round(area).toLocaleString() + ' m²'} · ${boundary.length} corners` : 'No boundary yet') : `${nogo.length} zone${nogo.length === 1 ? '' : 's'}${tool === 'points' ? ` · ${draft.length} points` : ''}`}
         </div>
-        {mode === 'boundary' ? <button className="muted" style={{ fontSize: 13 }} onClick={() => setBoundary([])}>Clear</button>
-          : <Button size="sm" kind="danger" disabled={draft.length < 3} onClick={addNogo}><IconPlus s={16} /> Add zone</Button>}
+        {mode === 'boundary' ? <button className="muted" style={{ fontSize: 13 }} onClick={() => { if (boundary.length) { snap(); setBoundary([]); } }}>Clear</button>
+          : tool === 'points' ? <Button size="sm" kind="danger" disabled={draft.length < 3} onClick={addNogo}><IconPlus s={16} /> Add zone</Button> : null}
       </div>
       {nogo.length > 0 && (
         <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-          {nogo.map((z, i) => <button key={i} className="tag bad" style={{ padding: '6px 10px' }} onClick={() => setNogo(nogo.filter((_, j) => j !== i))}>No-go {i + 1} ✕</button>)}
+          {nogo.map((z, i) => <button key={i} className="tag bad" style={{ padding: '6px 10px' }} onClick={() => { snap(); setNogo(nogo.filter((_, j) => j !== i)); }}>No-go {i + 1} ✕</button>)}
         </div>
       )}
       <Button size="lg" block loading={saving} disabled={!dirty || boundary.length < 3} onClick={save}>{s.room.boundary && !dirty ? 'Saved' : 'Save play area'}</Button>
@@ -402,7 +459,7 @@ const RULES: { group: string; items: RuleDef[] }[] = [
     { k: 'match_secs', t: 'Match length', d: 'Hunt time. If it runs out before the mark, hunters win.', unit: 'min', min: 5, max: 240, step: 5 },
   ] },
   { group: 'Tasks', items: [
-    { k: 'tasks_per_runner', t: 'Tasks per runner', d: 'Each runner\'s deck of mini-games.', unit: 'x', min: 1, max: 30, step: 1 },
+    { k: 'tasks_per_runner', t: 'Tasks per runner', d: 'Each runner\'s deck of mini-games. Any number from 1 to 99.', unit: 'x', min: 1, max: 99, step: 1 },
     { k: 'win_pct', t: 'Win mark', d: 'Runners win when the shared bar reaches this.', unit: '%', min: 10, max: 100, step: 5 },
     { k: 'cooldown_secs', t: 'Task cooldown', d: 'Wait between tasks.', unit: 's', min: 0, max: 300, step: 5 },
   ] },
@@ -430,6 +487,7 @@ function RulesEditor({ s, refresh }: { s: RoomState; refresh: () => void }) {
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState(s.room.name);
   const [pw, setPw] = useState('');
+  const noTasks = (v.task_kinds ?? []).length === 0 && v.task_kinds !== undefined;
   const dirty = useMemo(() => JSON.stringify(v) !== JSON.stringify(s.room.settings) || curfew !== (s.room.settings.curfew_at ? toLocalInput(s.room.settings.curfew_at) : '') || name !== s.room.name || pw.length >= 4, [v, curfew, name, pw, s]);
 
   const shown = (r: RuleDef) => { const x = v[r.k] as number; return r.unit === 'min' ? Math.round(x / 60) : r.unit === '%' && r.k === 'shrink_factor' ? Math.round(x * 100) : x; };
@@ -470,6 +528,7 @@ function RulesEditor({ s, refresh }: { s: RoomState; refresh: () => void }) {
           </div>
         </Section>
       ))}
+      <TaskMix v={v} setV={setV} />
       <Section title="Event theme">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: 8 }}>
           {(Object.keys(EVENTS) as EventKey[]).map((k) => {
@@ -495,7 +554,7 @@ function RulesEditor({ s, refresh }: { s: RoomState; refresh: () => void }) {
           </div>
         </div>
       </Section>
-      <Button size="lg" block loading={saving} disabled={!dirty} onClick={save}>Save rules</Button>
+      <Button size="lg" block loading={saving} disabled={!dirty || noTasks} onClick={save}>{noTasks ? 'Pick at least one task' : 'Save rules'}</Button>
       <p className="muted" style={{ fontSize: 12, margin: 0 }}>Reveal timing: hunters see runners for {v.reveal_for}s every {v.reveal_every}s. Zone: {fmtDist(s.room.zone?.r ?? 0)} now, shrinking to {Math.round(v.shrink_factor * 100)}% each step.</p>
     </div>
   );
@@ -503,4 +562,42 @@ function RulesEditor({ s, refresh }: { s: RoomState; refresh: () => void }) {
 function toLocalInput(iso: string) {
   const d = new Date(iso); const p = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/* ---------- TASK MIX ---------- */
+function TaskMix({ v, setV }: { v: Settings; setV: (f: (o: Settings) => Settings) => void }) {
+  const on = new Set(v.task_kinds ?? TASKS.map((t) => t.id));
+  const set = (ids: number[]) => setV((o) => ({ ...o, task_kinds: [...ids].sort((a, b) => a - b) }));
+  const toggle = (id: number) => { haptic.tap(); const n = new Set(on); if (n.has(id)) n.delete(id); else n.add(id); set([...n]); };
+  const diff = v.task_difficulty ?? 'normal';
+  return (
+    <Section title={`Task mix · ${on.size} of ${TASKS.length}`} right={<div className="row" style={{ gap: 6 }}>
+      <button className="tag" style={{ padding: '6px 10px' }} onClick={() => set(TASKS.map((t) => t.id))}>All</button>
+      <button className="tag" style={{ padding: '6px 10px' }} onClick={() => set([])}>None</button>
+    </div>}>
+      <div className="card card-pad stack" style={{ gap: 10 }}>
+        <div className="row between"><div><div style={{ fontWeight: 600 }}>Difficulty</div><div className="muted" style={{ fontSize: 12 }}>Tasks also get harder as each runner masters them.</div></div></div>
+        <Segmented value={diff} onChange={(d) => { haptic.tap(); setV((o) => ({ ...o, task_difficulty: d as 'easy' })); }}
+          options={[{ v: 'easy', label: 'Easy' }, { v: 'normal', label: 'Normal' }, { v: 'hard', label: 'Hard' }]} />
+      </div>
+      {(['Memory', 'Codes', 'Reflex', 'Logic'] as const).map((cat) => (
+        <div key={cat} className="stack" style={{ gap: 6 }}>
+          <div className="eyebrow">{cat}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
+            {TASKS.filter((t) => t.cat === cat).map((t) => {
+              const lit = on.has(t.id);
+              return (
+                <motion.button key={t.id} whileTap={{ scale: 0.96 }} onClick={() => toggle(t.id)} aria-pressed={lit}
+                  style={{ textAlign: 'left', padding: '10px 12px', borderRadius: 10, background: lit ? 'var(--surface2)' : 'transparent', boxShadow: lit ? 'inset 0 0 0 2px var(--accent)' : 'inset 0 0 0 1px var(--line)', opacity: lit ? 1 : 0.6 }}>
+                  <div className="row between"><b style={{ fontSize: 14.5 }}>{t.name}</b><span style={{ fontSize: 13, fontWeight: 900, color: lit ? 'var(--accent)' : 'var(--faint)' }}>{lit ? '✓' : '+'}</span></div>
+                  <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.3, marginTop: 3 }}>{t.rule}</div>
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      <p className="muted" style={{ fontSize: 12, margin: 0 }}>Runners get a random task from this mix, never the same one twice in a row. Players can practise all 20 in Training.</p>
+    </Section>
+  );
 }

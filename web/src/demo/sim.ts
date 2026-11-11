@@ -12,7 +12,7 @@ type Zone = { lat: number; lng: number; r: number };
 type Prof = {
   id: string; username: string; full_name: string; phone: string; dob: string; college: string; branch: string; year: number;
   selfie_path: string | null; is_organiser: boolean; is_owner: boolean; email: string; matches: number; wins: number; catches: number;
-  tasks_done: number; times_caught: number; distance_m: number; title: string; card_style: string; bot?: boolean;
+  tasks_done: number; times_caught: number; distance_m: number; title: string; card_style: string; bot?: boolean; task_mastery?: Record<string, number>;
 };
 type Room = {
   id: string; code: string; name: string; is_public: boolean; password: string | null; admin_id: string; status: string; paused_from: string | null;
@@ -24,6 +24,7 @@ type Mem = {
   room_id: string; user_id: string; status: string; role: string | null; alive: boolean; out_reason: string | null; caught_by: string | null;
   tasks_done: number; task_seed: number | null; task_kind: number | null; task_started_at: number | null; last_task_at: number | null; catches: number;
   distance_m: number; oob_since: number | null; oob_reason: string | null; spoof_strikes: number; qr_token: string | null; via_invite: boolean; joined_at: number;
+  ready?: boolean; last_task_kind?: number | null; ready_at?: number;
 };
 type Pos = { lat: number; lng: number; acc: number; at: number };
 type Ev = { id: number; room_id: string; kind: string; vis: string; actor: string | null; target: string | null; data: any; at: number };
@@ -37,7 +38,7 @@ type World = {
   brains: Record<string, Brain>; home: { lat: number; lng: number }; ctl: { bots: number; speed: number };
 };
 
-const VERSION = 3;
+const VERSION = 4;
 const STORE = 'tag-demo-world';
 const now = () => Date.now();
 const iso = (t: number | null | undefined) => (t == null ? null : new Date(t).toISOString());
@@ -92,7 +93,7 @@ function num(s: any, k: string, lo: number, hi: number, def: number) { const v =
 function cleanSettings(s: any) {
   let c: string | null = null; try { c = s?.curfew_at ? new Date(s.curfew_at).toISOString() : null; } catch { c = null; }
   const o: any = {
-    hide_secs: Math.round(num(s, 'hide_secs', 30, 1800, 420)), tasks_per_runner: Math.round(num(s, 'tasks_per_runner', 1, 30, 10)),
+    hide_secs: Math.round(num(s, 'hide_secs', 30, 1800, 420)), tasks_per_runner: Math.round(num(s, 'tasks_per_runner', 1, 99, 10)),
     cooldown_secs: Math.round(num(s, 'cooldown_secs', 0, 600, 30)), win_pct: Math.round(num(s, 'win_pct', 10, 100, 70)),
     reveal_every: Math.round(num(s, 'reveal_every', 30, 1800, 120)), reveal_for: Math.round(num(s, 'reveal_for', 5, 600, 45)),
     shrink_every: Math.round(num(s, 'shrink_every', 60, 3600, 300)), shrink_factor: num(s, 'shrink_factor', 0.3, 0.95, 0.8),
@@ -100,6 +101,8 @@ function cleanSettings(s: any) {
     catch_radius_m: Math.round(num(s, 'catch_radius_m', 5, 200, 30)), buffer_m: Math.round(num(s, 'buffer_m', 0, 100, 10)),
     grace_secs: Math.round(num(s, 'grace_secs', 3, 120, 10)), max_acc_m: Math.round(num(s, 'max_acc_m', 10, 200, 35)), curfew_at: c,
     event: ['diwali', 'halloween', 'fest', 'holi'].includes(s?.event) ? s.event : 'none',
+    task_kinds: (() => { const k = Array.isArray(s?.task_kinds) ? [...new Set<number>(s.task_kinds.map(Number).filter((x: number) => Number.isInteger(x) && x >= 0 && x <= 19))].sort((a, b) => a - b) : []; return k.length ? k : [...Array(20).keys()]; })(),
+    task_difficulty: s?.task_difficulty === 'easy' || s?.task_difficulty === 'hard' ? s.task_difficulty : 'normal',
   };
   if (o.reveal_for > o.reveal_every) o.reveal_for = o.reveal_every;
   return o;
@@ -194,8 +197,8 @@ function mkRoom(admin: string, name: string, pub: boolean, pw: string | null, ar
 }
 function addMember(room: string, user: string, status: string, invite = false): Mem {
   let m = W.members.find((x) => x.room_id === room && x.user_id === user);
-  if (!m) { m = { room_id: room, user_id: user, status, role: null, alive: true, out_reason: null, caught_by: null, tasks_done: 0, task_seed: null, task_kind: null, task_started_at: null, last_task_at: null, catches: 0, distance_m: 0, oob_since: null, oob_reason: null, spoof_strikes: 0, qr_token: null, via_invite: invite, joined_at: now() }; W.members.push(m); }
-  else { m.status = status; m.role = null; m.via_invite = invite; m.joined_at = now(); }
+  if (!m) { m = { room_id: room, user_id: user, status, role: null, alive: true, out_reason: null, caught_by: null, tasks_done: 0, task_seed: null, task_kind: null, task_started_at: null, last_task_at: null, catches: 0, distance_m: 0, oob_since: null, oob_reason: null, spoof_strikes: 0, qr_token: null, via_invite: invite, joined_at: now(), ready: false }; W.members.push(m); }
+  else { m.status = status; m.role = null; m.via_invite = invite; m.joined_at = now(); m.ready = false; }
   return m;
 }
 const mem = (room: string, user: string) => W.members.find((x) => x.room_id === room && x.user_id === user);
@@ -427,6 +430,11 @@ function worldTick() {
         if (me && (!b.chatAt || now() > b.chatAt)) { b.chatAt = now() + rnd(15, 40) * 1000; const ids = roomMembers(r.id).filter((m) => m.status === 'accepted' && m.user_id !== ME); if (ids.length) say(r, 'lobby', pick(ids).user_id, pick(LOBBY_LINES)); }
       }
     }
+    if (r.status === 'lobby') for (const m of roomMembers(r.id)) {
+      if (m.status !== 'accepted' || !W.profiles[m.user_id]?.bot || m.ready) continue;
+      if (!m.ready_at) m.ready_at = now() + rnd(2, 14) * 1000 / W.ctl.speed;
+      if (now() >= m.ready_at) { m.ready = true; m.ready_at = 0; }
+    }
     if (r.status === 'hiding' && botAdmin && r.hide_ends_at && now() >= r.hide_ends_at) startHunt(r, r.admin_id);
     if (r.status === 'hiding' || r.status === 'hunt') { botTick(r, dt); advance(r); }
   }
@@ -450,7 +458,7 @@ function memberView(r: Room, m: Mem, isAdmin: boolean) {
   const p = W.profiles[m.user_id];
   return { id: p.id, username: p.username, name: p.full_name, selfie: p.selfie_path, college: p.college, branch: p.branch, year: p.year, title: p.title, status: m.status,
     role: isAdmin || r.status !== 'lobby' ? m.role : null, alive: m.alive, out_reason: m.out_reason, tasks: m.tasks_done, catches: m.catches,
-    distance: r.status === 'ended' ? Math.round(m.distance_m) : null, phone: isAdmin ? p.phone : null, oob: isAdmin ? m.oob_since != null : null, invite: m.via_invite };
+    distance: r.status === 'ended' ? Math.round(m.distance_m) : null, phone: isAdmin ? p.phone : null, oob: isAdmin ? m.oob_since != null : null, invite: m.via_invite, ready: !!m.ready };
 }
 function unlocks(p: Prof) {
   const has = (c: string) => (W.badges[p.id] || []).some((b) => b.code === c);
@@ -502,7 +510,7 @@ function roomState(a: any) {
 }
 function myProfile() {
   const p = W.profiles[ME];
-  return { ...p, badges: (W.badges[ME] || []).map((b) => ({ code: b.code, at: iso(b.at) })), application: null,
+  return { ...p, task_mastery: p.task_mastery ?? {}, badges: (W.badges[ME] || []).map((b) => ({ code: b.code, at: iso(b.at) })), application: null,
     friends_pending: W.friends.filter((f) => f.status === 'pending' && f.by !== ME).length,
     invites: W.invites.filter((i) => i.to_id === ME && W.rooms[i.room_id]?.status === 'lobby').length, unlocks: unlocks(p) };
 }
@@ -566,8 +574,8 @@ const H: Record<string, (a: any) => any> = {
   update_room: (a) => { const r = adminRoom(a.p_room); if (r.status !== 'lobby') fail('Settings lock once the match starts'); if (a.p_name?.trim()) r.name = a.p_name.trim(); if (a.p_settings) r.settings = cleanSettings({ ...r.settings, ...a.p_settings }); if (!r.is_public && a.p_password && a.p_password.length >= 4) r.password = a.p_password; },
   set_area: (a) => {
     const r = adminRoom(a.p_room); if (r.status !== 'lobby') fail('The play area locks once the match starts');
-    if (!Array.isArray(a.p_boundary) || a.p_boundary.length < 3 || a.p_boundary.length > 60) fail('The boundary needs 3 to 60 points');
-    const ng = a.p_nogo || []; if (ng.length > 10) fail('Up to 10 no-go zones'); ng.forEach((p: Pt[]) => { if (p.length < 3 || p.length > 60) fail('Each no-go zone needs 3 to 60 points'); });
+    if (!Array.isArray(a.p_boundary) || a.p_boundary.length < 3 || a.p_boundary.length > 200) fail('The boundary needs 3 to 200 points');
+    const ng = a.p_nogo || []; if (ng.length > 10) fail('Up to 10 no-go zones'); ng.forEach((p: Pt[]) => { if (p.length < 3 || p.length > 200) fail('Each no-go zone needs 3 to 200 points'); });
     r.boundary = a.p_boundary; r.nogo = ng; r.zone = initialZone(a.p_boundary);
   },
   request_join: (a) => {
@@ -589,8 +597,8 @@ const H: Record<string, (a: any) => any> = {
     if (['hiding', 'hunt', 'paused'].includes(r.status) && m.status === 'accepted' && m.alive) eliminate(r, ME, 'left', null);
     if (m.status !== 'removed') m.status = 'left'; delete W.pos[pk(r.id, ME)]; advance(r);
   },
-  decide_request: (a) => { const r = adminRoom(a.p_room); if (r.status !== 'lobby') fail('The match has started'); const m = mem(r.id, a.p_user); if (m?.status === 'pending') m.status = a.p_accept ? 'accepted' : 'rejected'; },
-  accept_all: (a) => { const r = adminRoom(a.p_room); if (r.status !== 'lobby') fail('The match has started'); let n = 0; roomMembers(r.id).forEach((m) => { if (m.status === 'pending') { m.status = 'accepted'; n++; } }); return n; },
+  decide_request: (a) => { const r = adminRoom(a.p_room); if (r.status !== 'lobby') fail('The match has started'); const m = mem(r.id, a.p_user); if (m?.status === 'pending') { m.status = a.p_accept ? 'accepted' : 'rejected'; m.ready = false; } },
+  accept_all: (a) => { const r = adminRoom(a.p_room); if (r.status !== 'lobby') fail('The match has started'); let n = 0; roomMembers(r.id).forEach((m) => { if (m.status === 'pending') { m.status = 'accepted'; m.ready = false; n++; } }); return n; },
   set_role: (a) => { const r = adminRoom(a.p_room); if (r.status !== 'lobby') fail('Roles lock once the match starts'); const m = mem(r.id, a.p_user); if (m?.status === 'accepted') m.role = a.p_role; },
   shuffle_roles: (a) => {
     const r = adminRoom(a.p_room); if (r.status !== 'lobby') fail('Roles lock once the match starts');
@@ -632,8 +640,15 @@ const H: Record<string, (a: any) => any> = {
     const per = set(r, 'tasks_per_runner'); if (m!.tasks_done >= per) fail('All your tasks are done');
     const cd = (m!.last_task_at ?? 0) + set(r, 'cooldown_secs') * 1000;
     if (m!.task_seed == null && m!.last_task_at && cd > now()) fail(`Cooldown: ${Math.ceil((cd - now()) / 1000)} s left`);
-    if (m!.task_seed == null) { let h = 0; for (const c of r.id + ME) h = (h * 31 + c.charCodeAt(0)) | 0; Object.assign(m!, { task_seed: Math.floor(Math.random() * 2e9), task_kind: (m!.tasks_done + Math.abs(h)) % 5, task_started_at: now() }); }
-    return { seed: m!.task_seed, kind: m!.task_kind, index: m!.tasks_done + 1, of: per, started_at: iso(m!.task_started_at) };
+    if (m!.task_seed == null) {
+      let kinds: number[] = (r.settings.task_kinds ?? [...Array(20).keys()]).slice();
+      if (kinds.length > 1 && m!.last_task_kind != null) kinds = kinds.filter((k) => k !== m!.last_task_kind);
+      Object.assign(m!, { task_seed: Math.floor(Math.random() * 2e9), task_kind: pick(kinds), task_started_at: now() });
+    }
+    const mastery = W.profiles[ME].task_mastery?.[String(m!.task_kind)] ?? 0;
+    const off = r.settings.task_difficulty === 'easy' ? -1 : r.settings.task_difficulty === 'hard' ? 1 : 0;
+    const level = Math.max(1, Math.min(5, 1 + Math.min(2, Math.floor(mastery / 3)) + Math.min(2, Math.floor(m!.tasks_done / 4)) + off));
+    return { seed: m!.task_seed, kind: m!.task_kind, index: m!.tasks_done + 1, of: per, started_at: iso(m!.task_started_at), level };
   },
   complete_task: (a) => {
     const r = W.rooms[a.p_room] ?? fail('Room not found'); advance(r); if (r.status !== 'hunt') fail('The hunt is not on right now');
@@ -641,10 +656,12 @@ const H: Record<string, (a: any) => any> = {
     if (m!.task_seed == null || m!.task_seed !== a.p_seed) fail('That task has expired. Start a new one.');
     if (m!.oob_since) fail('Tasks are locked while you are outside the zone');
     if (now() < m!.task_started_at! + 4000) fail('Too fast');
-    Object.assign(m!, { tasks_done: m!.tasks_done + 1, last_task_at: now(), task_seed: null, task_kind: null, task_started_at: null });
+    const pr = W.profiles[ME]; const k = String(m!.task_kind ?? 0);
+    pr.task_mastery = { ...(pr.task_mastery ?? {}), [k]: ((pr.task_mastery ?? {})[k] ?? 0) + 1 };
+    Object.assign(m!, { tasks_done: m!.tasks_done + 1, last_task_at: now(), last_task_kind: m!.task_kind, task_seed: null, task_kind: null, task_started_at: null });
     ev(r.id, 'task', 'admin', ME, null, { n: m!.tasks_done }); advance(r); return progress(r);
   },
-  fail_task: (a) => { const r = W.rooms[a.p_room]; const m = r && mem(r.id, ME); if (m && m.task_seed != null) Object.assign(m, { task_seed: null, task_kind: null, task_started_at: null, last_task_at: now() - set(r!, 'cooldown_secs') * 1000 + 10000 }); },
+  fail_task: (a) => { const r = W.rooms[a.p_room]; const m = r && mem(r.id, ME); if (m && m.task_seed != null) Object.assign(m, { last_task_kind: m.task_kind, task_seed: null, task_kind: null, task_started_at: null, last_task_at: now() - set(r!, 'cooldown_secs') * 1000 + 10000 }); },
   send_sos: (a) => { const m = mem(a.p_room, ME); if (!m || m.status !== 'accepted') fail('Not in this room'); const p = W.profiles[ME]; ev(a.p_room, 'sos', 'admin', ME, null, { lat: a.p_lat, lng: a.p_lng, username: p.username, phone: p.phone }); },
   send_message: (a) => {
     const r = W.rooms[a.p_room] ?? fail('Room not found'); const m = mem(r.id, ME);
@@ -654,6 +671,10 @@ const H: Record<string, (a: any) => any> = {
     say(r, a.p_channel, ME, body);
     // someone usually answers
     if (Math.random() < 0.5) setTimeout(() => { const ids = roomMembers(r.id).filter((x) => x.status === 'accepted' && x.user_id !== ME && (a.p_channel === 'lobby' || x.role === 'hunter')); if (ids.length) { say(r, a.p_channel, pick(ids).user_id, pick(a.p_channel === 'hunters' ? HUNTER_LINES : LOBBY_LINES)); touch(); } }, rnd(1500, 4000));
+  },
+  set_ready: (a) => {
+    const r = W.rooms[a.p_room] ?? fail('Room not found'); if (r.status !== 'lobby') fail('The match has already started');
+    const m = mem(r.id, ME); if (!m || m.status !== 'accepted') fail('You are not in this room yet'); m!.ready = !!a.p_ready;
   },
   room_state: roomState,
 };

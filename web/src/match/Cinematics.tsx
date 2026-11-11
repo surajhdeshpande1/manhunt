@@ -34,6 +34,12 @@ export function RoleReveal({ role, hunters, hideSecs, onDone }: { role: Role; hu
     const a = setTimeout(() => setStage(1), 1500);
     return () => clearTimeout(a);
   }, []);
+  // the hunters are unmasked to everyone before anyone moves
+  useEffect(() => {
+    if (stage !== 1) return;
+    const t = setTimeout(() => setStage(2), 2200 + hunters.length * 350);
+    return () => clearTimeout(t);
+  }, [stage]);
   const runner = role === 'runner';
   const color = runner ? 'var(--runner)' : 'var(--hunter)';
   const m = Math.round(hideSecs / 60);
@@ -68,11 +74,30 @@ export function RoleReveal({ role, hunters, hideSecs, onDone }: { role: Role; hu
         </div>
       </motion.div>
 
-      <AnimatePresence>
-        {stage >= 1 && (
-          <motion.div className="screen" style={{ gap: 22, paddingTop: 26, flex: 1 }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, duration: 0.6, ease }}>
+      <AnimatePresence mode="wait">
+        {stage === 1 && (
+          <motion.div key="lineup" className="screen" onClick={() => { haptic.tap(); setStage(2); }} style={{ gap: 18, paddingTop: 22, flex: 1, cursor: 'pointer' }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, y: -10, transition: { duration: 0.25 } }}>
+            <div className="eyebrow" style={{ color: 'var(--police)' }}>{runner ? 'Avoid these faces' : 'Your squad'}</div>
+            <motion.div className="display" initial={{ x: -30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.5, ease }} style={{ fontSize: 'min(15vw, 76px)', lineHeight: 0.95 }}>The hunters</motion.div>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${hunters.length > 4 ? 3 : 2}, 1fr)`, gap: 14, marginTop: 6 }}>
+              {hunters.map((h, i) => (
+                <motion.div key={h.id} className="center" initial={{ opacity: 0, scale: 1.6, rotate: i % 2 ? 8 : -8 }} animate={{ opacity: 1, scale: 1, rotate: i % 2 ? 2 : -2 }}
+                  transition={{ delay: 0.35 + i * 0.35, type: 'spring', damping: 14, stiffness: 180 }} onAnimationStart={() => { setTimeout(() => { haptic.tap(); if (unlocked()) sfx.ping(); }, 350 + i * 350); }}
+                  style={{ padding: 10, borderRadius: 12, background: '#c9a227', color: '#000', boxShadow: '0 0 0 3px #0b0b0c, 6px 6px 0 #0b0b0c' }}>
+                  <div style={{ width: 'fit-content', margin: '0 auto', borderRadius: 8, boxShadow: '0 0 0 3px #0b0b0c' }}><Avatar src={h.selfie} name={h.username} size={hunters.length > 4 ? 64 : 84} /></div>
+                  <div style={{ fontSize: 13, fontWeight: 850, marginTop: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{h.username}</div>
+                </motion.div>
+              ))}
+            </div>
+            <Tape text="HUNTERS REVEALED · HUNTERS REVEALED" rotate={-5} top="86%" delay={0.3} />
+            <div className="muted" style={{ marginTop: 'auto', fontSize: 13, textAlign: 'center' }}>Tap to continue</div>
+          </motion.div>
+        )}
+        {stage >= 2 && (
+          <motion.div key="brief" className="screen" style={{ gap: 22, paddingTop: 26, flex: 1 }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.6, ease }}>
             <p className="display" style={{ fontSize: 28, margin: 0, lineHeight: 1.05 }}>
-              {runner ? <>Go hide. You have {m} minute{m === 1 ? '' : 's'} before the hunt.</> : <>Hold your position. The hunt opens when the admin starts it.</>}
+              {runner ? <>Go hide. You have {m} minute{m === 1 ? '' : 's'} before the hunt.</> : <>Wait in the hunter lobby. You're released when the hunt starts.</>}
             </p>
             <div className="stack" style={{ gap: 12 }}>
               {(runner ? [
@@ -80,9 +105,9 @@ export function RoleReveal({ role, hunters, hideSecs, onDone }: { role: Role; hu
                 'Clear tasks to fill the shared bar. Reach the mark and runners win.',
                 'Hunters see you during reveals. If one reaches you, show your code.',
               ] : [
-                'Runners show up on your map during reveal windows.',
+                'Stay at the start point. Talk to your squad on the radio while you wait.',
+                'Once the hunt opens, runners show up on your map during reveal windows.',
                 'Get close and scan a runner’s code to catch them.',
-                'Catch everyone, or stop them reaching the mark.',
               ]).map((t, i) => (
                 <motion.div key={i} className="row" style={{ alignItems: 'flex-start', gap: 12 }} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 + i * 0.08, ease }}>
                   <span style={{ width: 28, height: 28, borderRadius: 6, flex: 'none', display: 'grid', placeItems: 'center', fontSize: 14, fontWeight: 900, background: color, color: '#0b0b0c', boxShadow: '0 0 0 2px #ede6da' }}>{i + 1}</span>
@@ -91,7 +116,7 @@ export function RoleReveal({ role, hunters, hideSecs, onDone }: { role: Role; hu
               ))}
             </div>
             <div className="stack" style={{ gap: 10 }}>
-              <div className="eyebrow">{hunters.length === 1 ? '1 hunter' : `${hunters.length} hunters`} on the field</div>
+              <div className="eyebrow">{runner ? (hunters.length === 1 ? '1 hunter is after you' : `${hunters.length} hunters are after you`) : 'Your squad'}</div>
               <div className="row scroll-x" style={{ gap: 14 }}>
                 {hunters.map((h, i) => (
                   <motion.div key={h.id} className="center" style={{ flex: 'none', width: 68 }} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.7 + i * 0.05, type: 'spring', damping: 20 }}>
@@ -102,7 +127,7 @@ export function RoleReveal({ role, hunters, hideSecs, onDone }: { role: Role; hu
               </div>
             </div>
             <div style={{ marginTop: 'auto' }}>
-              <button onClick={() => { haptic.tap(); onDone(); }} className="btn btn-lg btn-block" style={{ background: color, color: '#0b0b0c', ['--hard' as any]: '#ede6da', borderColor: '#ede6da' }}>{runner ? 'Go hide' : 'Ready'}</button>
+              <button onClick={() => { haptic.tap(); onDone(); }} className="btn btn-lg btn-block" style={{ background: color, color: '#0b0b0c', ['--hard' as any]: '#ede6da', borderColor: '#ede6da' }}>{runner ? 'Go hide' : 'Enter hunter lobby'}</button>
             </div>
           </motion.div>
         )}

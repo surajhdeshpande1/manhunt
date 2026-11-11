@@ -11,6 +11,7 @@ import { ArtPanel, ChaseScene } from '../components/Brut';
 import { resolvedDay, useAppearance } from '../lib/theme';
 import { HowItWorks } from '../components/Diagrams';
 import Profile from './Profile';
+import Training from './Training';
 
 export default function Home() {
   useTheme('neutral');
@@ -20,6 +21,7 @@ export default function Home() {
         <Route index element={<Slash k="rooms"><RoomsTab /></Slash>} />
         <Route path="host" element={<Slash k="host"><HostTab /></Slash>} />
         <Route path="profile/*" element={<Slash k="profile"><Profile /></Slash>} />
+        <Route path="train" element={<Slash k="train"><Training /></Slash>} />
       </Routes>
       <TabBar />
     </div>
@@ -145,6 +147,15 @@ function RoomsTab() {
         <div className="grow">
           <div style={{ fontSize: 16.5, fontWeight: 650 }}>Join a private room</div>
           <div className="muted" style={{ fontSize: 13.5 }}>Enter the room ID and password from your admin.</div>
+        </div>
+        <Chevron />
+      </motion.button>
+
+      <motion.button whileTap={{ scale: 0.98 }} onClick={() => nav('/home/train')} className="card row" style={{ textAlign: 'left', padding: 16, gap: 14 }}>
+        <div style={{ width: 48, height: 48, display: 'grid', placeItems: 'center', background: 'var(--accent)', color: '#0b0b0c', borderRadius: 8, boxShadow: '0 0 0 2.5px #0b0b0c', rotate: '3deg', fontWeight: 900, fontSize: 20 }}>20</div>
+        <div className="grow">
+          <div style={{ fontSize: 16.5, fontWeight: 650 }}>Training ground</div>
+          <div className="muted" style={{ fontSize: 13.5 }}>Learn the 20 task rules before your next hunt.</div>
         </div>
         <Chevron />
       </motion.button>

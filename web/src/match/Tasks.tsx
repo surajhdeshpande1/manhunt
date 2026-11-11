@@ -2,16 +2,17 @@ import { RunnerAmbience } from '../components/Ambience';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Button, X, useToast } from '../components/ui';
+import { Button, useToast } from '../components/ui';
 import { rpc } from '../lib/supabase';
 import { fmtClock, msUntil } from '../lib/clock';
 import { haptic } from '../lib/feel';
 import { sfx } from '../lib/sound';
-import { GAMES, GAME_INFO } from '../games/Games';
+import { TaskStage } from '../tasks/TaskStage';
+import { TASKS } from '../tasks/core';
 import { Sparks } from '../components/Art';
 import type { RoomState } from '../lib/types';
 
-type Task = { seed: number; kind: number; index: number; of: number };
+type Task = { seed: number; kind: number; index: number; of: number; level?: number };
 
 export function TaskDeck({ s, refresh }: { s: RoomState; refresh: () => void }) {
   const toast = useToast();
@@ -71,35 +72,20 @@ export function TaskDeck({ s, refresh }: { s: RoomState; refresh: () => void }) 
         {task && (
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }}
             style={{ position: 'fixed', inset: 0, zIndex: 650, background: 'var(--bg)', overflowY: 'auto' }}>
-            <RunnerAmbience intensity={0.35} />
-            <div className="screen" style={{ gap: 18 }}>
-              <div className="row between">
-                <div>
-                  <div className="eyebrow">Task {task.index} of {task.of}</div>
-                  <div className="display" style={{ fontSize: 40, fontWeight: 850, letterSpacing: "-0.05em" }}>{GAME_INFO[task.kind].name}</div>
-                </div>
-                <button className="icon-btn" aria-label="Close task" onClick={close}><X /></button>
-              </div>
-              <p className="muted" style={{ margin: 0 }}>{GAME_INFO[task.kind].brief}</p>
-              {locked && <div className="cut card-pad" style={{ background: 'var(--danger)', color: '#fff', fontWeight: 600 }}>You're outside the zone. Get back in to submit.</div>}
-              <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, flex: 1 }}>
-                {!result ? <Game kind={task.kind} seed={task.seed} onWin={win} onFail={fail} /> : (
-                  <motion.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="center stack" style={{ gap: 12, alignSelf: 'center' }}>
-                    <div style={{ position: 'relative' }}>{result.ok && <Sparks n={16} radius={140} />}<div className={`display ${result.ok ? 'text-flare' : ''}`} style={{ fontSize: 72, fontWeight: 850, letterSpacing: '-0.05em', color: result.ok ? undefined : 'var(--danger)', paddingRight: 6 }}>{result.ok ? '+1 task' : 'Failed'}</div></div>
-                    <div className="muted">{result.msg}</div>
-                    <Button onClick={close}>{result.ok ? 'Back to the map' : 'OK'}</Button>
-                  </motion.div>
-                )}
-              </div>
-            </div>
+            <RunnerAmbience intensity={0.3} />
+            {locked && !result && <div className="cut card-pad" style={{ position: 'relative', zIndex: 2, margin: '12px 20px 0', background: 'var(--danger)', color: '#fff', fontWeight: 600 }}>You're outside the zone. Get back in to submit.</div>}
+            <TaskStage key={task.seed} kind={task.kind % TASKS.length} seed={task.seed} level={task.level ?? 1} eyebrow={`Task ${task.index} of ${task.of}`}
+              onDone={(r) => (r.ok ? win() : fail(r.why ?? 'Failed'))} onClose={close}
+              result={result && (
+                <motion.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="center stack" style={{ gap: 12 }}>
+                  <div style={{ position: 'relative' }}>{result.ok && <Sparks n={16} radius={140} />}<div className={`display ${result.ok ? 'text-flare' : ''}`} style={{ fontSize: 72, fontWeight: 850, letterSpacing: '-0.05em', color: result.ok ? undefined : 'var(--danger)', paddingRight: 6 }}>{result.ok ? '+1 task' : 'Failed'}</div></div>
+                  <div className="muted" style={{ maxWidth: 320 }}>{result.msg}</div>
+                  <Button onClick={close}>{result.ok ? 'Back to the map' : 'OK'}</Button>
+                </motion.div>
+              )} />
           </motion.div>
         )}
       </AnimatePresence>, document.body)}
     </>
   );
-}
-
-function Game({ kind, seed, onWin, onFail }: { kind: number; seed: number; onWin: () => void; onFail: (w: string) => void }) {
-  const G = GAMES[kind] ?? GAMES[0];
-  return <G seed={seed} onWin={onWin} onFail={onFail} />;
 }

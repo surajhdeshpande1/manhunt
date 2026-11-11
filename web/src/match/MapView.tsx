@@ -1,19 +1,30 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import maplibregl, { type GeoJSONSource, type Map as MLMap } from 'maplibre-gl';
 import { bboxOf, circlePolygon, closeRing, type LngLat, type Zone } from '../lib/geo';
 import { selfieUrl } from '../lib/supabase';
 import { cssVar } from '../lib/theme';
+import { GKEY, basemapPref, gCopyright, gSession, googleBlocked, googleStyle, saveBasemapPref, type GKind } from '../lib/gmaps';
 
 const STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 const OUT_RED = '#c44536';
 export type Marker = { id: string; lat: number; lng: number; selfie?: string | null; role?: 'runner' | 'hunter' | null; label?: string; title?: string; me?: boolean; stale?: boolean; alert?: boolean };
-export type MapHandle = { fit: (pts?: LngLat[]) => void; flyTo: (lat: number, lng: number, zoom?: number) => void };
+export type MapHandle = { fit: (pts?: LngLat[]) => void; flyTo: (lat: number, lng: number, zoom?: number) => void; setBasemap: (k: GKind) => void; basemap: () => GKind; google: () => boolean };
 type Props = {
   themeKey: string; boundary?: LngLat[] | null; nogo?: LngLat[][]; zone?: Zone | null; zoneNext?: Zone | null;
   draft?: LngLat[] | null; draftKind?: 'boundary' | 'nogo'; markers?: Marker[]; me?: { lat: number; lng: number; acc: number } | null;
   onMapClick?: (p: LngLat) => void; interactive?: boolean; showMask?: boolean; className?: string; style?: React.CSSProperties;
   fitPad?: { top: number; bottom: number; left: number; right: number };
+  /** starting basemap when Google is available (remembered per device once switched) */
+  basemap?: GKind;
+  /** show the built-in Map / Satellite switch */
+  layerToggle?: boolean;
+  /** lift the Google logo and data credits above sheets that cover the bottom of the map */
+  chromeBottom?: number;
+  /** freehand: one finger draws a shape, two fingers move the map */
+  drawMode?: 'boundary' | 'nogo' | null;
+  onStroke?: (pts: LngLat[]) => void;
 };
+const BLANK = { version: 8 as const, sources: {}, layers: [{ id: 'bg', type: 'background' as const, paint: { 'background-color': '#141416' } }] };
 
 const empty = { type: 'FeatureCollection', features: [] } as any;
 const poly = (rings: LngLat[][]) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: rings } });
@@ -101,16 +112,52 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
       if (b && map.current) map.current.fitBounds(b, { padding: pad(), duration: 600, maxZoom: 18 });
     },
     flyTo: (lat, lng, zoom = 17) => map.current?.flyTo({ center: [lng, lat], zoom, duration: 700 }),
+    setBasemap: (k) => { saveBasemapPref(k); if (sess.current || (GKEY && !googleBlocked())) applyGoogle(k); },
+    basemap: () => kindRef.current,
+    google: () => !!sess.current,
   }));
 
+  const [gOn, setGOn] = useState(false);
+  const [kind, setKind] = useState<GKind>(() => basemapPref(p.basemap ?? 'street'));
+  const [credit, setCredit] = useState('');
+  const sess = useRef<string | null>(null);
+  const kindRef = useRef(kind);
+
+  async function applyGoogle(k: GKind) {
+    const m = map.current; if (!m) return;
+    try {
+      const day = document.documentElement.dataset.day === '1';
+      const sid = await gSession(k, day);
+      if (map.current !== m) return;
+      sess.current = sid; kindRef.current = k;
+      m.setStyle(googleStyle(sid, k) as any, { diff: false });
+      setGOn(true); setKind(k);
+    } catch {
+      if (map.current !== m) return;
+      sess.current = null; setGOn(false);
+      m.setStyle(STYLE, { diff: false });
+    }
+  }
+
   useEffect(() => {
+    const google = !!GKEY && !googleBlocked();
     const m = new maplibregl.Map({
-      container: box.current!, style: STYLE, center: [75.6905, 16.1805], zoom: 15, maxZoom: 20, attributionControl: { compact: true },
+      container: box.current!, style: google ? (BLANK as any) : STYLE, center: [75.6905, 16.1805], zoom: 15, maxZoom: 20, attributionControl: google ? false : { compact: true },
       interactive: p.interactive !== false, pitchWithRotate: false, dragRotate: false, maxPitch: 0,
     });
     m.touchZoomRotate.disableRotation();
     map.current = m;
+    if (google) applyGoogle(kindRef.current);
+    // if the base map can't load (offline, tile server down), fall back to a plain backdrop so every game layer still shows
+    let styled = false;
+    const fallback = () => { if (!styled && map.current === m) { styled = true; m.setStyle(BLANK as any, { diff: false }); } };
+    const fbTimer = window.setTimeout(fallback, 7000);
+    m.on('error', (e: any) => { if (!styled && !m.isStyleLoaded() && /fetch|style|network|load/i.test(String(e?.error?.message ?? ''))) fallback(); });
     m.on('style.load', () => {
+      styled = true; clearTimeout(fbTimer);
+      const isGoogle = !!(m.getStyle().sources as any)?.g;
+      const isBlank = !isGoogle && (m.getStyle().layers || []).length === 1;
+      if (!isGoogle && !isBlank) recolor(m);
       const accent = cssVar('--accent');
       m.addSource('tag-mask', { type: 'geojson', data: empty });
       m.addSource('tag-mask-b', { type: 'geojson', data: empty });
@@ -121,8 +168,8 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
       m.addSource('tag-draft', { type: 'geojson', data: empty });
       m.addSource('tag-acc', { type: 'geojson', data: empty });
       // everything players must stay out of is tinted translucent red; the map stays readable underneath
-      m.addLayer({ id: 'tag-mask', type: 'fill', source: 'tag-mask', paint: { 'fill-color': OUT_RED, 'fill-opacity': 0.16 } });
-      m.addLayer({ id: 'tag-mask-b', type: 'fill', source: 'tag-mask-b', paint: { 'fill-color': OUT_RED, 'fill-opacity': 0.12 } });
+      m.addLayer({ id: 'tag-mask', type: 'fill', source: 'tag-mask', paint: { 'fill-color': OUT_RED, 'fill-opacity': isGoogle ? 0.22 : 0.16 } });
+      m.addLayer({ id: 'tag-mask-b', type: 'fill', source: 'tag-mask-b', paint: { 'fill-color': OUT_RED, 'fill-opacity': isGoogle ? 0.18 : 0.12 } });
       m.addLayer({ id: 'tag-boundary-line-casing', type: 'line', source: 'tag-boundary', paint: { 'line-color': '#0b0b0c', 'line-width': 5, 'line-opacity': 0.55 } });
       m.addLayer({ id: 'tag-boundary-line', type: 'line', source: 'tag-boundary', paint: { 'line-color': OUT_RED, 'line-width': 3 } });
       m.addLayer({ id: 'tag-nogo-fill', type: 'fill', source: 'tag-nogo', paint: { 'fill-color': OUT_RED, 'fill-opacity': 0.38 } });
@@ -130,18 +177,76 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
       m.addLayer({ id: 'tag-zone-casing', type: 'line', source: 'tag-zone', paint: { 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': 0.9 } });
       m.addLayer({ id: 'tag-zone-line', type: 'line', source: 'tag-zone', paint: { 'line-color': '#0f172a', 'line-width': 3 } });
       m.addLayer({ id: 'tag-zone-next-line', type: 'line', source: 'tag-zone-next', paint: { 'line-color': '#0f172a', 'line-width': 2, 'line-dasharray': [2.5, 2], 'line-opacity': 0.85 } });
-      m.addLayer({ id: 'tag-acc', type: 'fill', source: 'tag-acc', paint: { 'fill-color': '#2563eb', 'fill-opacity': 0.14 } });
+      m.addLayer({ id: 'tag-acc', type: 'fill', source: 'tag-acc', paint: { 'fill-color': '#2563eb', 'fill-opacity': 0.16 } });
+      m.addLayer({ id: 'tag-acc-line', type: 'line', source: 'tag-acc', paint: { 'line-color': '#3b82f6', 'line-width': 1.5, 'line-opacity': 0.7 } });
       m.addLayer({ id: 'tag-draft-fill', type: 'fill', source: 'tag-draft', filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': accent, 'fill-opacity': 0.18 } });
-      m.addLayer({ id: 'tag-draft-line', type: 'line', source: 'tag-draft', filter: ['!=', '$type', 'Point'], paint: { 'line-color': accent, 'line-width': 3, 'line-dasharray': [2, 1] } });
+      m.addLayer({ id: 'tag-draft-line', type: 'line', source: 'tag-draft', filter: ['!=', '$type', 'Point'], paint: { 'line-color': accent, 'line-width': 3.5, 'line-dasharray': [2, 1] } });
       m.addLayer({ id: 'tag-draft-pts', type: 'circle', source: 'tag-draft', filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 7, 'circle-color': '#ffffff', 'circle-stroke-color': accent, 'circle-stroke-width': 3 } });
       ready.current = true;
       sync();
     });
-    m.on('click', (e) => props.current.onMapClick?.([e.lngLat.lng, e.lngLat.lat]));
+    m.on('click', (e) => { if (!props.current.drawMode) props.current.onMapClick?.([e.lngLat.lng, e.lngLat.lat]); });
+    // Google asks for its data credits to match what's on screen
+    let ct = 0, lastC = 0;
+    m.on('moveend', () => {
+      if (!sess.current) return;
+      clearTimeout(ct);
+      ct = window.setTimeout(async () => {
+        if (!sess.current || Date.now() - lastC < 4000) return; lastC = Date.now();
+        const b = m.getBounds();
+        setCredit(await gCopyright(sess.current, m.getZoom(), { n: b.getNorth(), s: b.getSouth(), e: b.getEast(), w: b.getWest() }));
+      }, 1200);
+    });
     const ro = new ResizeObserver(() => m.resize());
     ro.observe(box.current!);
-    return () => { ro.disconnect(); markers.current.forEach((mk) => mk.remove()); markers.current.clear(); m.remove(); map.current = null; ready.current = false; };
+    return () => { clearTimeout(ct); clearTimeout(fbTimer); ro.disconnect(); markers.current.forEach((mk) => mk.remove()); markers.current.clear(); m.remove(); map.current = null; ready.current = false; };
   }, []);
+
+  // ---------- freehand drawing ----------
+  useEffect(() => {
+    const m = map.current, el = box.current; if (!m || !el) return;
+    const mode = p.drawMode;
+    if (!mode) { m.cooperativeGestures.disable(); m.dragPan.enable(); m.doubleClickZoom.enable(); el.classList.remove('tag-drawing'); return; }
+    m.cooperativeGestures.enable(); m.doubleClickZoom.disable(); el.classList.add('tag-drawing');
+    const touches = new Set<number>();
+    let stroke: LngLat[] | null = null, pid = -1;
+    const at = (e: PointerEvent): LngLat => { const r = el.getBoundingClientRect(); const ll = m.unproject([e.clientX - r.left, e.clientY - r.top]); return [ll.lng, ll.lat]; };
+    const preview = (pts: LngLat[]) => {
+      const src = m.getSource('tag-draft') as GeoJSONSource | undefined; if (!src) return;
+      src.setData((pts.length >= 2 ? { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } } : empty) as any);
+      try { const c = mode === 'nogo' ? OUT_RED : cssVar('--accent'); m.setPaintProperty('tag-draft-line', 'line-color', c); } catch { /* */ }
+    };
+    const down = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') { if (e.button !== 0) return; e.stopPropagation(); e.preventDefault(); stroke = [at(e)]; pid = e.pointerId; return; }
+      touches.add(e.pointerId);
+      if (touches.size === 1) { stroke = [at(e)]; pid = e.pointerId; }
+      else { stroke = null; pid = -1; preview([]); } // second finger: they're moving the map
+    };
+    const move = (e: PointerEvent) => {
+      if (!stroke || e.pointerId !== pid) return;
+      if (e.pointerType === 'mouse') { e.stopPropagation(); e.preventDefault(); }
+      const q = at(e), last = stroke[stroke.length - 1];
+      const a = m.project(last as any), b = m.project(q as any);
+      if (Math.hypot(a.x - b.x, a.y - b.y) < 3) return;
+      stroke.push(q); preview(stroke);
+    };
+    const up = (e: PointerEvent) => {
+      touches.delete(e.pointerId);
+      if (!stroke || e.pointerId !== pid) return;
+      const pts = stroke; stroke = null; pid = -1; preview([]);
+      if (pts.length >= 6) props.current.onStroke?.(pts);
+    };
+    el.addEventListener('pointerdown', down, true);
+    window.addEventListener('pointermove', move, true);
+    window.addEventListener('pointerup', up, true);
+    window.addEventListener('pointercancel', up, true);
+    return () => {
+      el.removeEventListener('pointerdown', down, true);
+      window.removeEventListener('pointermove', move, true);
+      window.removeEventListener('pointerup', up, true);
+      window.removeEventListener('pointercancel', up, true);
+    };
+  }, [p.drawMode]);
 
   // theme switch: recolour base map + overlays
   useEffect(() => {
@@ -177,7 +282,7 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
         const c = draftKind === 'nogo' ? OUT_RED : cssVar('--accent');
         m.setPaintProperty('tag-draft-line', 'line-color', c); m.setPaintProperty('tag-draft-fill', 'fill-color', c); m.setPaintProperty('tag-draft-pts', 'circle-stroke-color', c);
       } catch { /* */ }
-    } else src('tag-draft')?.setData(empty);
+    } else if (!props.current.drawMode) src('tag-draft')?.setData(empty);
 
     // markers
     const want = new Set<string>();
@@ -199,7 +304,31 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
   }
   useEffect(sync);
 
-  return <div ref={box} className={p.className} style={{ position: 'absolute', inset: 0, ...p.style }} />;
+  const day = typeof document !== 'undefined' && document.documentElement.dataset.day === '1' && kind === 'street';
+  const cb = p.chromeBottom ?? 0;
+  return (
+    <div className={p.className} style={{ position: 'absolute', inset: 0, ...p.style }}>
+      <div ref={box} style={{ position: 'absolute', inset: 0 }} />
+      {gOn && (
+        <>
+          <img src={day ? '/gmaps-logo-light.svg' : '/gmaps-logo-dark.svg'} alt="Google Maps" height={18}
+            style={{ position: 'absolute', left: 10, bottom: cb + 6, height: 18, width: 'auto', pointerEvents: 'none', zIndex: 3 }} />
+          {credit && <div style={{ position: 'absolute', right: 4, bottom: cb + 3, maxWidth: '62%', padding: '1px 5px', borderRadius: 3, fontSize: 9.5, lineHeight: 1.3, color: day ? '#3a342c' : '#d6cec0',
+            background: day ? 'rgba(239,233,223,.8)' : 'rgba(11,11,12,.6)', zIndex: 3, pointerEvents: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{credit}</div>}
+        </>
+      )}
+      {p.layerToggle && gOn && (
+        <div className="row" style={{ position: 'absolute', left: 10, top: 10, zIndex: 3, gap: 2, padding: 3, borderRadius: 9, background: 'rgba(11,11,12,.82)', boxShadow: '0 0 0 1px rgba(237,230,218,.14)' }}>
+          {(['street', 'satellite'] as GKind[]).map((k) => (
+            <button key={k} type="button" onClick={() => { saveBasemapPref(k); applyGoogle(k); }}
+              style={{ padding: '6px 10px', borderRadius: 6, fontSize: 11.5, fontWeight: 800, letterSpacing: '.05em', textTransform: 'uppercase', color: kind === k ? '#0b0b0c' : '#ede6da', background: kind === k ? '#ede6da' : 'transparent' }}>
+              {k === 'street' ? 'Map' : 'Satellite'}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 });
 
 // marker styles (injected once)
@@ -223,6 +352,9 @@ const css = `
 .tag-marker[data-role="hunter"] .tm-pin::before { content:''; position:absolute; inset:-3px; border-radius:10px; border:2px solid #c9a227; animation: tmSonar 2.4s cubic-bezier(.2,.8,.3,1) infinite; }
 @keyframes tmEmber { 0%,100% { transform:scale(1); } 50% { transform:scale(1.06); } }
 @keyframes tmSonar { 0% { transform:scale(1); opacity:.95; } 100% { transform:scale(2.8); opacity:0; } }
+/* freehand drawing: one finger draws (no page scroll), two fingers move the map */
+.tag-drawing .maplibregl-canvas-container, .tag-drawing .maplibregl-canvas { touch-action: none !important; cursor: crosshair !important; }
+.tag-drawing .maplibregl-cooperative-gesture-screen { display: none !important; }
 @media (prefers-reduced-motion: reduce) { .tag-marker .tm-pin, .tag-marker .tm-pin::before, .tag-marker .tm-pin::after { animation:none !important; } }
 `;
 if (typeof document !== 'undefined' && !document.getElementById('tag-marker-css')) {

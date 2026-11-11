@@ -88,62 +88,81 @@ export function Chat({ roomId, channel, members, meId, height = 280, compact }: 
   );
 }
 
-/** Push-to-talk voice for hunters over LiveKit. */
-export function PushToTalk({ roomId }: { roomId: string }) {
-  const [state, setState] = useState<'idle' | 'connecting' | 'ready' | 'off' | 'error'>('idle');
+/** Hunter radio over LiveKit. Lives at match level so the line stays open from the hunter lobby into the hunt. */
+export type Radio = { state: 'idle' | 'connecting' | 'ready' | 'off' | 'error'; canTalk: boolean; talking: boolean; speakers: string[]; connect: () => void; press: (on: boolean) => void };
+export function useRadio(roomId: string): Radio {
+  const [state, setState] = useState<Radio['state']>('idle');
   const [talking, setTalking] = useState(false);
   const [canTalk, setCanTalk] = useState(false);
   const [speakers, setSpeakers] = useState<string[]>([]);
   const room = useRef<Room | null>(null);
-  const audioBox = useRef<HTMLDivElement>(null);
-
+  const box = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const d = document.createElement('div'); d.style.display = 'none'; document.body.appendChild(d); box.current = d;
+    return () => { room.current?.disconnect(); room.current = null; d.remove(); };
+  }, []);
   async function connect() {
+    if (state === 'connecting' || state === 'ready') return;
     setState('connecting');
     try {
       const r = await callFunction<{ url: string; token: string; can_talk: boolean }>('voice-token', { room_id: roomId });
       const lk = new Room({ adaptiveStream: true, dynacast: true, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
-      lk.on(RoomEvent.TrackSubscribed, (track) => {
-        if (track.kind === Track.Kind.Audio) { const el = track.attach(); audioBox.current?.appendChild(el); }
-      });
+      lk.on(RoomEvent.TrackSubscribed, (track) => { if (track.kind === Track.Kind.Audio) { const el = track.attach(); box.current?.appendChild(el); } });
       lk.on(RoomEvent.TrackUnsubscribed, (track) => track.detach().forEach((el) => el.remove()));
-      lk.on(RoomEvent.ActiveSpeakersChanged, (sp) => setSpeakers(sp.filter((p) => p.identity !== lk.localParticipant.identity).map((p) => p.name || 'hunter')));
-      lk.on(RoomEvent.Disconnected, () => setState('idle'));
+      lk.on(RoomEvent.ActiveSpeakersChanged, (sp) => setSpeakers(sp.filter((x) => x.identity !== lk.localParticipant.identity).map((x) => x.name || 'hunter')));
+      lk.on(RoomEvent.Disconnected, () => { setState('idle'); setTalking(false); });
       await lk.connect(r.url, r.token);
       await lk.startAudio();
-      room.current = lk; setCanTalk(r.can_talk); setState('ready');
+      room.current = lk; setCanTalk(r.can_talk); setState('ready'); haptic.ok();
     } catch (e: any) {
       setState(/not_configured/.test(e.code || e.message) ? 'off' : 'error');
     }
   }
-  useEffect(() => () => { room.current?.disconnect(); }, []);
-
   async function press(on: boolean) {
     const lk = room.current; if (!lk || !canTalk) return;
     setTalking(on); haptic.tap();
     try { await lk.localParticipant.setMicrophoneEnabled(on); } catch { setTalking(false); }
   }
+  return { state, canTalk, talking, speakers, connect, press };
+}
 
+/** Push-to-talk control. `big` is the hunter-lobby version. */
+export function PushToTalk({ radio, big }: { radio: Radio; big?: boolean }) {
+  const { state, canTalk, talking, speakers } = radio;
+  const sub = state === 'ready' ? (speakers.length ? `${speakers.join(', ')} talking…` : canTalk ? 'Hold to talk. Hunters only.' : 'Listening only.')
+    : state === 'off' ? 'Voice isn\'t set up on this server yet.' : state === 'error' ? 'Couldn\'t connect. Tap to retry.' : 'Tap to join the hunter radio.';
+  const ptt = (
+    <button aria-label="Hold to talk" disabled={!canTalk}
+      onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture(e.pointerId); radio.press(true); }}
+      onPointerUp={() => radio.press(false)} onPointerCancel={() => radio.press(false)} onContextMenu={(e) => e.preventDefault()}
+      style={{ width: big ? 132 : 70, height: big ? 132 : 56, borderRadius: big ? '50%' : 10, display: 'grid', placeItems: 'center', background: talking ? 'var(--danger)' : 'var(--accent)', color: 'var(--accent-ink)',
+        transform: talking ? 'scale(1.06)' : 'none', transition: 'all .12s', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', opacity: canTalk ? 1 : 0.4,
+        boxShadow: talking ? '0 0 0 10px rgba(196,69,54,.25), 0 0 40px rgba(196,69,54,.5)' : speakers.length ? '0 0 0 8px rgba(201,162,39,.25)' : 'none' }}>
+      <div className="stack center" style={{ gap: 2 }}><IconMic s={big ? 44 : 26} />{big && <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.12em' }}>{talking ? 'ON AIR' : 'HOLD'}</span>}</div>
+    </button>
+  );
+  if (big) {
+    return (
+      <div className="card card-pad stack center" style={{ gap: 14, padding: 22 }}>
+        <div className="eyebrow">Hunter radio</div>
+        {state === 'ready' ? ptt : (
+          <button className="btn btn-hot btn-lg" disabled={state === 'connecting' || state === 'off'} onClick={radio.connect} style={{ minWidth: 220 }}>
+            {state === 'connecting' ? <span className="spinner" /> : state === 'off' ? 'Radio off' : state === 'error' ? 'Retry radio' : 'Join radio'}
+          </button>
+        )}
+        <div className="muted" style={{ fontSize: 13, textAlign: 'center' }}>{sub}</div>
+      </div>
+    );
+  }
   return (
     <div className="frame soft cut">
       <div className="inner cut row" style={{ padding: 12, gap: 12 }}>
-        <div ref={audioBox} style={{ display: 'none' }} />
         <div className="grow">
           <div className="display" style={{ fontSize: 17 }}>Radio</div>
-          <div className="muted" style={{ fontSize: 12 }}>
-            {state === 'ready' ? (speakers.length ? `${speakers.join(', ')} talking…` : canTalk ? 'Hold to talk. Hunters only.' : 'Listening only (you are out).')
-              : state === 'off' ? 'Voice isn\'t set up on this server yet.' : state === 'error' ? 'Couldn\'t connect. Tap to retry.' : 'Tap to join hunter radio.'}
-          </div>
+          <div className="muted" style={{ fontSize: 12 }}>{sub}</div>
         </div>
-        {state === 'ready' ? (
-          <button aria-label="Hold to talk" disabled={!canTalk}
-            onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture(e.pointerId); press(true); }}
-            onPointerUp={() => press(false)} onPointerCancel={() => press(false)} onContextMenu={(e) => e.preventDefault()}
-            className="cut" style={{ width: 70, height: 56, display: 'grid', placeItems: 'center', background: talking ? 'var(--danger)' : 'var(--accent)', color: 'var(--accent-ink)',
-              transform: talking ? 'scale(1.06)' : 'none', transition: 'all .12s', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', opacity: canTalk ? 1 : 0.4 }}>
-            <IconMic s={26} />
-          </button>
-        ) : (
-          <button className="btn btn-ghost btn-sm" disabled={state === 'connecting' || state === 'off'} onClick={connect}>
+        {state === 'ready' ? ptt : (
+          <button className="btn btn-ghost btn-sm" disabled={state === 'connecting' || state === 'off'} onClick={radio.connect}>
             <span className="btn-in" /><span className="btn-label">{state === 'connecting' ? <span className="spinner" /> : state === 'off' ? 'Off' : 'Join'}</span>
           </button>
         )}
