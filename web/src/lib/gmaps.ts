@@ -52,7 +52,7 @@ export function googleBlocked() {
   if (!GKEY) return true;
   try { const t = Number(sessionStorage.getItem(FAIL) || 0); return Date.now() - t < 10 * 60e3; } catch { return false; }
 }
-function markFail() { try { sessionStorage.setItem(FAIL, String(Date.now())); } catch { /* ignore */ } }
+export function markFail() { try { sessionStorage.setItem(FAIL, String(Date.now())); } catch { /* ignore */ } }
 
 /** A Map Tiles session is valid for ~2 weeks; reuse it across launches. */
 export async function gSession(kind: GKind, day: boolean): Promise<string> {

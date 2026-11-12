@@ -30,4 +30,11 @@ node tests/devices.cjs all              # small Android to large iPhone, every s
 MODE=night node tests/audit.cjs         # full-page screenshot of every screen into tests/audit/
 python3 tests/sheet.py out.png 0.8 1350 tests/audit/home.png tests/audit/signin.png   # contact sheet
 ```
+## Multiple maps (satellite sources and fallback)
+Start a dev server with stand-in keys, then run the check:
+```
+VITE_ARCGIS_KEY=x VITE_MAPTILER_KEY=y npx vite --port 5174
+node tests/maps.cjs
+```
+
 Screenshots land in `tests/shots/` and `tests/audit/` (ignored by git).

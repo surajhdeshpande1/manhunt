@@ -11,7 +11,7 @@ import { titleLabel } from '../lib/identity';
 import { haversine } from '../lib/geo';
 import type { GameEvent, Member, RoomState } from '../lib/types';
 import { MapView, type MapHandle, type Marker } from './MapView';
-import { GKEY } from '../lib/gmaps';
+import { hasSatellite } from '../lib/basemaps';
 import { Chat, PushToTalk, useRadio, type Radio } from './Comms';
 import { HunterLobby } from './HunterLobby';
 import { RunnerQR, Scanner } from './QR';
@@ -133,7 +133,7 @@ export function Match({ s, feed, geo, refresh, themeKey }: { s: RoomState; feed:
           {!isAdmin && alive && <SOSButton roomId={s.room.id} getFix={() => geo.latest.current} />}
           <MapBtn label="Fit play area" onClick={() => mapRef.current?.fit()}><IconMap s={20} /></MapBtn>
           {geo.fix && !isAdmin && <MapBtn label="Centre on me" onClick={() => mapRef.current?.flyTo(geo.fix!.lat, geo.fix!.lng, 18)}><IconTarget s={20} /></MapBtn>}
-          {GKEY && <MapBtn label="Switch map or satellite" onClick={() => { const m = mapRef.current; if (m) m.setBasemap(m.basemap() === 'satellite' ? 'street' : 'satellite'); }}>
+          {hasSatellite() && <MapBtn label="Switch map or satellite" onClick={() => { const m = mapRef.current; if (m) m.setBasemap(m.basemap() === 'satellite' ? 'street' : 'satellite'); }}>
             <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden><path d="M12 3 2 8l10 5 10-5-10-5zm-8.2 9.1L2 13l10 5 10-5-1.8-.9L12 16.2 3.8 12.1zm0 4L2 17l10 5 10-5-1.8-.9L12 20.2 3.8 16.1z" fill="currentColor" /></svg>
           </MapBtn>}
         </div>

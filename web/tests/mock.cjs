@@ -93,7 +93,7 @@ async function setup(ctx, scenario) {
     return r.fulfill({ contentType: 'application/json', body: '{}' });
   });
 }
-module.exports = { setup, state, OUT, devices, chromium };
+module.exports = { setup, state, png, OUT, devices, chromium };
 if (require.main === module) {
   (async () => {
     const b = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] });

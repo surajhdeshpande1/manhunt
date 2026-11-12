@@ -3,9 +3,10 @@ import maplibregl, { type GeoJSONSource, type Map as MLMap } from 'maplibre-gl';
 import { bboxOf, circlePolygon, closeRing, type LngLat, type Zone } from '../lib/geo';
 import { selfieUrl } from '../lib/supabase';
 import { cssVar } from '../lib/theme';
-import { GKEY, basemapPref, gCopyright, gSession, googleBlocked, googleStyle, saveBasemapPref, type GKind } from '../lib/gmaps';
+import { gCopyright, gSession, googleStyle, type GKind } from '../lib/gmaps';
+import { OFM_STYLE, OSM_MAP, markProviderFailed, pickMap, rememberMap, satelliteStyle, startMap, usableMaps, type MapOpt, type Provider } from '../lib/basemaps';
 
-const STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+const STYLE = OFM_STYLE;
 const OUT_RED = '#c44536';
 export type Marker = { id: string; lat: number; lng: number; selfie?: string | null; role?: 'runner' | 'hunter' | null; label?: string; title?: string; me?: boolean; stale?: boolean; alert?: boolean };
 export type MapHandle = { fit: (pts?: LngLat[]) => void; flyTo: (lat: number, lng: number, zoom?: number) => void; setBasemap: (k: GKind) => void; basemap: () => GKind; google: () => boolean };
@@ -127,52 +128,90 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
       if (b && map.current) map.current.fitBounds(b, { padding: pad(), duration: 600, maxZoom: 18 });
     },
     flyTo: (lat, lng, zoom = 17) => map.current?.flyTo({ center: [lng, lat], zoom, duration: 700 }),
-    setBasemap: (k) => { saveBasemapPref(k); if (sess.current || (GKEY && !googleBlocked())) applyGoogle(k); },
-    basemap: () => kindRef.current,
+    setBasemap: (k) => { const o = pickMap(k); rememberMap(o); apply(o); },
+    basemap: () => curRef.current.kind,
     google: () => !!sess.current,
   }));
 
   const [gOn, setGOn] = useState(false);
-  const [kind, setKind] = useState<GKind>(() => basemapPref(p.basemap ?? 'street'));
+  const [cur, setCur] = useState<MapOpt>(() => startMap(p.basemap ?? 'street'));
   const [credit, setCredit] = useState('');
   const sess = useRef<string | null>(null);
-  const kindRef = useRef(kind);
+  const curRef = useRef(cur);
+  const satErr = useRef<{ n: number; ok: boolean; prov: Provider | null }>({ n: 0, ok: false, prov: null });
+  const attr = useRef<maplibregl.AttributionControl | null>(null);
 
-  async function applyGoogle(k: GKind) {
+  /** free sources must show their credits; Google's are drawn by us (logo + live copyright line) */
+  function setAttribution(on: boolean) {
+    const m = map.current; if (!m) return;
+    if (on && !attr.current) { attr.current = new maplibregl.AttributionControl({ compact: true }); m.addControl(attr.current, 'bottom-right'); }
+    else if (!on && attr.current) { try { m.removeControl(attr.current); } catch { /* already gone */ } attr.current = null; }
+  }
+  /** a source that fails is skipped for a while and the next best one of the same kind takes over */
+  function fallFrom(o: MapOpt) {
+    markProviderFailed(o.provider);
+    const next = pickMap(o.kind);
+    if ((import.meta as any).env?.DEV) console.warn('[map] fallback', o.id, '->', next.provider === o.provider ? 'osm' : next.id);
+    apply(next.provider === o.provider ? OSM_MAP : next);
+  }
+  async function apply(o: MapOpt) {
+    const m = map.current; if (!m) return;
+    curRef.current = o; setCur(o);
+    if (o.provider === 'google') return applyGoogle(o);
+    sess.current = null; setGOn(false); setCredit(''); setAttribution(true);
+    if (o.provider === 'osm') { m.setStyle(STYLE, { diff: false }); return; }
+    satErr.current = { n: 0, ok: false, prov: o.provider };
+    try {
+      const st = await satelliteStyle(o.provider);
+      if (map.current !== m || curRef.current !== o) return;
+      m.setStyle(st as any, { diff: false });
+    } catch { if (map.current === m && curRef.current === o) fallFrom(o); }
+  }
+  async function applyGoogle(o: MapOpt) {
     const m = map.current; if (!m) return;
     try {
       const day = document.documentElement.dataset.day === '1';
-      const sid = await gSession(k, day);
-      if (map.current !== m) return;
-      sess.current = sid; kindRef.current = k;
-      m.setStyle(googleStyle(sid, k) as any, { diff: false });
-      setGOn(true); setKind(k);
+      const sid = await gSession(o.kind, day);
+      if (map.current !== m || curRef.current !== o) return;
+      sess.current = sid; setAttribution(false); satErr.current = { n: 0, ok: false, prov: 'google' };
+      m.setStyle(googleStyle(sid, o.kind) as any, { diff: false });
+      setGOn(true);
     } catch {
-      if (map.current !== m) return;
+      if (map.current !== m || curRef.current !== o) return;
       sess.current = null; setGOn(false);
-      m.setStyle(STYLE, { diff: false });
+      fallFrom(o);
     }
   }
 
   useEffect(() => {
-    const google = !!GKEY && !googleBlocked();
+    const first = curRef.current;
     const m = new maplibregl.Map({
-      container: box.current!, style: google ? (BLANK as any) : STYLE, center: [75.6905, 16.1805], zoom: 15, maxZoom: 20, attributionControl: google ? false : { compact: true },
+      container: box.current!, style: first.provider === 'osm' ? STYLE : (BLANK as any), center: [75.6905, 16.1805], zoom: 15, maxZoom: 20, attributionControl: false,
       interactive: p.interactive !== false, pitchWithRotate: false, dragRotate: false, maxPitch: 0,
     });
     m.touchZoomRotate.disableRotation();
     map.current = m;
-    if (google) applyGoogle(kindRef.current);
+    if (first.provider === 'osm') setAttribution(true); else apply(first);
     // if the base map can't load (offline, tile server down), fall back to a plain backdrop so every game layer still shows
     let styled = false;
     const fallback = () => { if (!styled && map.current === m) { styled = true; m.setStyle(BLANK as any, { diff: false }); } };
     const fbTimer = window.setTimeout(fallback, 7000);
-    m.on('error', (e: any) => { if (!styled && !m.isStyleLoaded() && /fetch|style|network|load/i.test(String(e?.error?.message ?? ''))) fallback(); });
+    m.on('error', (e: any) => {
+      if ((import.meta as any).env?.DEV) console.warn('[map]', e?.sourceId ?? '', String(e?.error?.message ?? e?.error ?? '').slice(0, 200));
+      if (e?.sourceId === 'sat' || e?.sourceId === 'g') {
+        const s = satErr.current, o = curRef.current;
+        if (!s.ok && s.prov && o.provider === s.prov && ++s.n >= 3) { s.prov = null; fallFrom(o); }
+        return;
+      }
+      if (!styled && !m.isStyleLoaded() && /fetch|style|network|load/i.test(String(e?.error?.message ?? ''))) fallback();
+    });
+    m.on('sourcedata', (e: any) => { if ((e?.sourceId === 'sat' || e?.sourceId === 'g') && e.tile) satErr.current.ok = true; });
     m.on('style.load', () => {
       styled = true; clearTimeout(fbTimer);
-      const isGoogle = !!(m.getStyle().sources as any)?.g;
-      const isBlank = !isGoogle && (m.getStyle().layers || []).length === 1;
-      if (!isGoogle && !isBlank) recolor(m);
+      const srcs = (m.getStyle().sources as any) || {};
+      const isGoogle = !!srcs.g, isSat = !!srcs.sat;
+      const isBlank = !isGoogle && !isSat && (m.getStyle().layers || []).length === 1;
+      if (!isGoogle && !isSat && !isBlank) recolor(m);
       const accent = cssVar('--accent');
       m.addSource('tag-mask', { type: 'geojson', data: empty });
       m.addSource('tag-mask-b', { type: 'geojson', data: empty });
@@ -183,8 +222,8 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
       m.addSource('tag-draft', { type: 'geojson', data: empty });
       m.addSource('tag-acc', { type: 'geojson', data: empty });
       // everything players must stay out of is tinted translucent red; the map stays readable underneath
-      m.addLayer({ id: 'tag-mask', type: 'fill', source: 'tag-mask', paint: { 'fill-color': OUT_RED, 'fill-opacity': isGoogle ? 0.22 : 0.16 } });
-      m.addLayer({ id: 'tag-mask-b', type: 'fill', source: 'tag-mask-b', paint: { 'fill-color': OUT_RED, 'fill-opacity': isGoogle ? 0.18 : 0.12 } });
+      m.addLayer({ id: 'tag-mask', type: 'fill', source: 'tag-mask', paint: { 'fill-color': OUT_RED, 'fill-opacity': isGoogle || isSat ? 0.22 : 0.16 } });
+      m.addLayer({ id: 'tag-mask-b', type: 'fill', source: 'tag-mask-b', paint: { 'fill-color': OUT_RED, 'fill-opacity': isGoogle || isSat ? 0.18 : 0.12 } });
       m.addLayer({ id: 'tag-boundary-line-casing', type: 'line', source: 'tag-boundary', paint: { 'line-color': '#0b0b0c', 'line-width': 5, 'line-opacity': 0.55 } });
       m.addLayer({ id: 'tag-boundary-line', type: 'line', source: 'tag-boundary', paint: { 'line-color': OUT_RED, 'line-width': 3 } });
       m.addLayer({ id: 'tag-nogo-fill', type: 'fill', source: 'tag-nogo', paint: { 'fill-color': OUT_RED, 'fill-opacity': 0.38 } });
@@ -214,7 +253,7 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
     });
     const ro = new ResizeObserver(() => m.resize());
     ro.observe(box.current!);
-    return () => { clearTimeout(ct); clearTimeout(fbTimer); ro.disconnect(); markers.current.forEach((mk) => mk.remove()); markers.current.clear(); m.remove(); map.current = null; ready.current = false; };
+    return () => { clearTimeout(ct); clearTimeout(fbTimer); ro.disconnect(); markers.current.forEach((mk) => mk.remove()); markers.current.clear(); m.remove(); map.current = null; ready.current = false; attr.current = null; };
   }, []);
 
   // ---------- freehand drawing ----------
@@ -319,10 +358,13 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
   }
   useEffect(sync);
 
+  const kind = cur.kind;
   const day = typeof document !== 'undefined' && document.documentElement.dataset.day === '1' && kind === 'street';
+  const opts = usableMaps();
+  const srcOpts = opts.filter((o) => o.kind === kind);
   const cb = p.chromeBottom ?? 0;
   return (
-    <div className={p.className} style={{ position: 'absolute', inset: 0, ...p.style }}>
+    <div className={`tag-map ${p.className ?? ''}`} style={{ position: 'absolute', inset: 0, ['--cb' as any]: `${cb}px`, ...p.style }}>
       <div ref={box} style={{ position: 'absolute', inset: 0 }} />
       {gOn && (
         <>
@@ -332,14 +374,26 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
             background: day ? 'rgba(239,233,223,.8)' : 'rgba(11,11,12,.6)', zIndex: 3, pointerEvents: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{credit}</div>}
         </>
       )}
-      {p.layerToggle && gOn && (
-        <div className="row" style={{ position: 'absolute', left: 10, top: 10, zIndex: 3, gap: 2, padding: 3, borderRadius: 9, background: 'rgba(11,11,12,.82)', boxShadow: '0 0 0 1px rgba(237,230,218,.14)' }}>
-          {(['street', 'satellite'] as GKind[]).map((k) => (
-            <button key={k} type="button" onClick={() => { saveBasemapPref(k); applyGoogle(k); }}
-              style={{ padding: '6px 10px', borderRadius: 6, fontSize: 11.5, fontWeight: 800, letterSpacing: '.05em', textTransform: 'uppercase', color: kind === k ? '#0b0b0c' : '#ede6da', background: kind === k ? '#ede6da' : 'transparent' }}>
-              {k === 'street' ? 'Map' : 'Satellite'}
-            </button>
-          ))}
+      {p.layerToggle && opts.length > 1 && (
+        <div style={{ position: 'absolute', left: 10, top: 10, zIndex: 3, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 5 }}>
+          <div className="row" style={{ gap: 2, padding: 3, borderRadius: 9, background: 'rgba(11,11,12,.82)', boxShadow: '0 0 0 1px rgba(237,230,218,.14)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
+            {(['street', 'satellite'] as GKind[]).filter((k) => opts.some((o) => o.kind === k)).map((k) => (
+              <button key={k} type="button" aria-pressed={kind === k} onClick={() => { const o = pickMap(k); rememberMap(o); apply(o); }}
+                style={{ padding: '6px 10px', borderRadius: 6, fontSize: 11.5, fontWeight: 800, letterSpacing: '.05em', textTransform: 'uppercase', color: kind === k ? '#0b0b0c' : '#ede6da', background: kind === k ? '#ede6da' : 'transparent', transition: 'background .2s, color .2s' }}>
+                {k === 'street' ? 'Map' : 'Satellite'}
+              </button>
+            ))}
+          </div>
+          {srcOpts.length > 1 && (
+            <div className="row" style={{ gap: 2, padding: 2, borderRadius: 8, background: 'rgba(11,11,12,.72)', boxShadow: '0 0 0 1px rgba(237,230,218,.12)' }}>
+              {srcOpts.map((o) => (
+                <button key={o.id} type="button" aria-pressed={cur.id === o.id} aria-label={`${kind === 'street' ? 'Map' : 'Satellite'} from ${o.source}`} onClick={() => { rememberMap(o); apply(o); }}
+                  style={{ padding: '4px 8px', borderRadius: 6, fontSize: 10.5, fontWeight: 750, color: cur.id === o.id ? '#0b0b0c' : '#cfc6b8', background: cur.id === o.id ? '#c9a227' : 'transparent' }}>
+                  {o.source}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -370,6 +424,10 @@ const css = `
 /* freehand drawing: one finger draws (no page scroll), two fingers move the map */
 .tag-drawing .maplibregl-canvas-container, .tag-drawing .maplibregl-canvas { touch-action: none !important; cursor: crosshair !important; }
 .tag-drawing .maplibregl-cooperative-gesture-screen { display: none !important; }
+/* map credits stay visible above any sheet covering the bottom of the map */
+.tag-map .maplibregl-ctrl-bottom-right { bottom: var(--cb, 0px); }
+.tag-map .maplibregl-ctrl-attrib { font-size: 10px; background: rgba(11,11,12,.66) !important; color: #d6cec0 !important; }
+.tag-map .maplibregl-ctrl-attrib a { color: #ede6da !important; }
 @media (prefers-reduced-motion: reduce) { .tag-marker .tm-pin, .tag-marker .tm-pin::before, .tag-marker .tm-pin::after { animation:none !important; } }
 `;
 if (typeof document !== 'undefined' && !document.getElementById('tag-marker-css')) {
