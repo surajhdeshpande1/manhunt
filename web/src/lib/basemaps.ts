@@ -1,9 +1,10 @@
 /**
- * Every base map TAG can draw under the game, all free:
- *  - Map: OpenStreetMap via OpenFreeMap (no key, no limits, always available)
- *  - Satellite: Esri World Imagery and MapTiler Satellite (free accounts; keys set in Vercel),
- *    drawn with OpenStreetMap roads and names on top so the photo still reads like a map
- *  - Google map and satellite, only if a Google key is set
+ * Every base map TAG can draw under the game:
+ *  - Map: Esri streets (commercial road data with street names and buildings, free account) when its key is set,
+ *    otherwise OpenStreetMap via OpenFreeMap (no key, no limits, always available)
+ *  - Satellite: Esri imagery with Esri's own street names and labels, or MapTiler Satellite with OpenStreetMap
+ *    roads and names on top (both free accounts; keys set in Vercel)
+ *  - Google map and satellite, only if a Google key is set (the most detailed in Indian towns, needs a card)
  * A provider that fails (bad key, quota used up, offline) is skipped for 10 minutes and the next one takes over.
  */
 import { GKEY, basemapPref, googleBlocked, markFail as markGoogleFail, saveBasemapPref, type GKind } from './gmaps';
@@ -18,6 +19,7 @@ export type MapOpt = { id: string; kind: GKind; provider: Provider; source: stri
 
 const ALL: MapOpt[] = [
   { id: 'osm', kind: 'street', provider: 'osm', source: 'OpenStreetMap' },
+  { id: 'esri-street', kind: 'street', provider: 'esri', source: 'Esri' },
   { id: 'g-street', kind: 'street', provider: 'google', source: 'Google' },
   { id: 'esri', kind: 'satellite', provider: 'esri', source: 'Esri' },
   { id: 'maptiler', kind: 'satellite', provider: 'maptiler', source: 'MapTiler' },
@@ -25,7 +27,7 @@ const ALL: MapOpt[] = [
 ];
 export const OSM_MAP = ALL[0];
 /** when nothing was chosen on this phone: the most detailed source that's set up */
-const PRIORITY: Record<GKind, Provider[]> = { street: ['google', 'osm'], satellite: ['google', 'esri', 'maptiler'] };
+const PRIORITY: Record<GKind, Provider[]> = { street: ['google', 'esri', 'osm'], satellite: ['google', 'esri', 'maptiler'] };
 
 const FAIL = 'tag-map-fail-';
 export function providerFailed(p: Provider) {
@@ -97,4 +99,21 @@ export async function satelliteStyle(p: 'esri' | 'maptiler') {
     sources: { ...(base ? base.sources : {}), sat },
     layers,
   };
+}
+
+/* ---------- Esri: its own styles, so street names come from Esri's road data, not OpenStreetMap ---------- */
+const ESRI_STYLES = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/';
+export async function esriStyle(kind: GKind, day: boolean) {
+  const name = kind === 'satellite' ? 'arcgis/imagery' : day ? 'arcgis/navigation' : 'arcgis/navigation-night';
+  const r = await fetch(`${ESRI_STYLES}${name}?token=${encodeURIComponent(ARCGIS_KEY ?? '')}`);
+  if (!r.ok) throw new Error('esri style ' + r.status);
+  const st = await r.json();
+  if (!st || !st.layers || st.error) throw new Error('esri style refused');
+  st.metadata = { ...(st.metadata || {}), 'tag:provider': 'esri' };
+  return st;
+}
+/** Esri's tiles, fonts and icons need the key too; add it to any Esri request that doesn't carry one */
+export function withEsriToken(url: string) {
+  if (!ARCGIS_KEY || !/^https:\/\/[^/]*arcgis(online)?\.com\//.test(url) || /[?&]token=/.test(url)) return { url };
+  return { url: url + (url.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(ARCGIS_KEY) };
 }

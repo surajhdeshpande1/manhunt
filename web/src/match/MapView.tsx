@@ -4,7 +4,7 @@ import { bboxOf, circlePolygon, closeRing, type LngLat, type Zone } from '../lib
 import { selfieUrl } from '../lib/supabase';
 import { cssVar } from '../lib/theme';
 import { gCopyright, gSession, googleStyle, type GKind } from '../lib/gmaps';
-import { OFM_STYLE, OSM_MAP, markProviderFailed, pickMap, rememberMap, satelliteStyle, startMap, usableMaps, type MapOpt, type Provider } from '../lib/basemaps';
+import { OFM_STYLE, OSM_MAP, esriStyle, markProviderFailed, pickMap, rememberMap, satelliteStyle, startMap, usableMaps, withEsriToken, type MapOpt, type Provider } from '../lib/basemaps';
 
 const STYLE = OFM_STYLE;
 const OUT_RED = '#c44536';
@@ -142,10 +142,11 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
   const attr = useRef<maplibregl.AttributionControl | null>(null);
 
   /** free sources must show their credits; Google's are drawn by us (logo + live copyright line) */
-  function setAttribution(on: boolean) {
+  const attrNote = useRef<string | undefined>(undefined);
+  function setAttribution(on: boolean, note?: string) {
     const m = map.current; if (!m) return;
-    if (on && !attr.current) { attr.current = new maplibregl.AttributionControl({ compact: true }); m.addControl(attr.current, 'bottom-right'); }
-    else if (!on && attr.current) { try { m.removeControl(attr.current); } catch { /* already gone */ } attr.current = null; }
+    if (attr.current && (!on || attrNote.current !== note)) { try { m.removeControl(attr.current); } catch { /* already gone */ } attr.current = null; }
+    if (on && !attr.current) { attr.current = new maplibregl.AttributionControl({ compact: true, customAttribution: note }); attrNote.current = note; m.addControl(attr.current, 'bottom-right'); }
   }
   /** a source that fails is skipped for a while and the next best one of the same kind takes over */
   function fallFrom(o: MapOpt) {
@@ -158,11 +159,12 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
     const m = map.current; if (!m) return;
     curRef.current = o; setCur(o);
     if (o.provider === 'google') return applyGoogle(o);
-    sess.current = null; setGOn(false); setCredit(''); setAttribution(true);
-    if (o.provider === 'osm') { m.setStyle(STYLE, { diff: false }); return; }
+    sess.current = null; setGOn(false); setCredit('');
+    setAttribution(true, o.provider === 'esri' ? 'Powered by <a href="https://www.esri.com/" target="_blank" rel="noopener">Esri</a>' : undefined);
+    if (o.provider === 'osm') { satErr.current = { n: 0, ok: false, prov: null }; m.setStyle(STYLE, { diff: false }); return; }
     satErr.current = { n: 0, ok: false, prov: o.provider };
     try {
-      const st = await satelliteStyle(o.provider);
+      const st = o.provider === 'esri' ? await esriStyle(o.kind, document.documentElement.dataset.day === '1') : await satelliteStyle(o.provider as 'maptiler');
       if (map.current !== m || curRef.current !== o) return;
       m.setStyle(st as any, { diff: false });
     } catch { if (map.current === m && curRef.current === o) fallFrom(o); }
@@ -187,6 +189,7 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
     const first = curRef.current;
     const m = new maplibregl.Map({
       container: box.current!, style: first.provider === 'osm' ? STYLE : (BLANK as any), center: [75.6905, 16.1805], zoom: 15, maxZoom: 20, attributionControl: false,
+      transformRequest: (url: string) => withEsriToken(url),
       interactive: p.interactive !== false, pitchWithRotate: false, dragRotate: false, maxPitch: 0,
     });
     m.touchZoomRotate.disableRotation();
@@ -198,19 +201,21 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
     const fbTimer = window.setTimeout(fallback, 7000);
     m.on('error', (e: any) => {
       if ((import.meta as any).env?.DEV) console.warn('[map]', e?.sourceId ?? '', String(e?.error?.message ?? e?.error ?? '').slice(0, 200));
-      if (e?.sourceId === 'sat' || e?.sourceId === 'g') {
+      if (e?.sourceId && !String(e.sourceId).startsWith('tag-') && satErr.current.prov) {
         const s = satErr.current, o = curRef.current;
-        if (!s.ok && s.prov && o.provider === s.prov && ++s.n >= 3) { s.prov = null; fallFrom(o); }
+        const url = String(e?.error?.url ?? '');
+        const mine = !url || ({ esri: /arcgis/, maptiler: /maptiler/, google: /googleapis/, osm: /openfreemap/ } as Record<Provider, RegExp>)[s.prov!].test(url);
+        if (mine && !s.ok && s.prov && o.provider === s.prov && ++s.n >= 3) { s.prov = null; fallFrom(o); }
         return;
       }
       if (!styled && !m.isStyleLoaded() && /fetch|style|network|load/i.test(String(e?.error?.message ?? ''))) fallback();
     });
-    m.on('sourcedata', (e: any) => { if ((e?.sourceId === 'sat' || e?.sourceId === 'g') && e.tile) satErr.current.ok = true; });
+    m.on('sourcedata', (e: any) => { if (e?.tile && e.sourceId && !String(e.sourceId).startsWith('tag-')) satErr.current.ok = true; });
     m.on('style.load', () => {
       styled = true; clearTimeout(fbTimer);
-      const srcs = (m.getStyle().sources as any) || {};
-      const isGoogle = !!srcs.g, isSat = !!srcs.sat;
-      const isBlank = !isGoogle && !isSat && (m.getStyle().layers || []).length === 1;
+      const st = m.getStyle() as any; const srcs = st.sources || {};
+      const isGoogle = !!srcs.g, isSat = !!srcs.sat || st.metadata?.['tag:provider'] === 'esri';
+      const isBlank = !isGoogle && !isSat && (st.layers || []).length === 1;
       if (!isGoogle && !isSat && !isBlank) recolor(m);
       const accent = cssVar('--accent');
       m.addSource('tag-mask', { type: 'geojson', data: empty });
