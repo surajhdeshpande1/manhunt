@@ -194,13 +194,17 @@ export function SignIn() {
     <Slash>
       <form className="screen" onSubmit={submit}>
         <Header title="Sign in" back="/" />
+        <motion.p className="muted" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }} style={{ margin: '-10px 0 26px', fontSize: 15.5, maxWidth: 320 }}>
+          Welcome back. The hunters have been <span style={{ color: 'var(--text)', fontWeight: 650 }}>busy</span> without you.
+        </motion.p>
         <div className="stack" style={{ gap: 16 }}>
-          <Field label="Email" type="email" autoComplete="email" autoCapitalize="none" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <Field label="Password" type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} />
+          <Field label="Email" type="email" placeholder="you@example.com" autoComplete="email" autoCapitalize="none" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Field label="Password" type="password" placeholder="Your password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} />
           <Link to="/forgot" style={{ alignSelf: 'flex-end', fontSize: 14 }}>Forgot password?</Link>
         </div>
         <div style={{ marginTop: 'auto', paddingTop: 28 }}>
           <Button kind="hot" size="lg" block arrow loading={busy} type="submit" disabled={!email || !pw}>Sign in</Button>
+          <p className="muted center" style={{ marginTop: 14, fontSize: 13 }}>New here? <Link to="/signup">Create an account</Link></p>
         </div>
       </form>
     </Slash>

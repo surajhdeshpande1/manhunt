@@ -7,7 +7,7 @@ import { FieldReport } from '../components/Diagrams';
 import { TapePiece } from '../components/Scenes';
 import { ArtPanel } from '../components/Brut';
 import { resolvedDay, useAppearance } from '../lib/theme';
-import { Avatar, Button, IconShare, Section, Slash, useToast } from '../components/ui';
+import { Avatar, Button, IconShare, Section, Slash, useToast, CountUp } from '../components/ui';
 import { fmtDist } from '../lib/clock';
 import { useSession } from '../lib/session';
 import { selfieUrl } from '../lib/supabase';
@@ -75,7 +75,7 @@ export function Result({ s }: { s: RoomState }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'var(--line)', borderRadius: 12, overflow: 'hidden' }}>
             {[['Role', meM.role === 'hunter' ? 'Hunter' : 'Runner'], [meM.role === 'hunter' ? 'Catches' : 'Tasks', meM.role === 'hunter' ? meM.catches : meM.tasks], ['Moved', fmtDist(meM.distance ?? 0)]].map(([k, val]) => (
               <div key={k as string} style={{ background: 'var(--surface)', padding: '14px 12px' }}>
-                <div className="display mono" style={{ fontSize: 26 }}>{val}</div>
+                <div className="display mono" style={{ fontSize: 26 }}>{typeof val === 'number' ? <CountUp to={val} delay={500} /> : val}</div>
                 <div className="eyebrow" style={{ fontSize: 10 }}>{k}</div>
               </div>
             ))}

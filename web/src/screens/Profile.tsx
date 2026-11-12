@@ -229,7 +229,7 @@ function Leaderboard() {
   return (
     <Section title="Leaderboard">
       <div className="row" style={{ gap: 8 }}>
-        {(['players', 'colleges'] as const).map((k) => <button key={k} className={`chip ${kind === k ? 'on' : ''}`} style={{ flex: 1 }} onClick={() => setKind(k)}>{k}</button>)}
+        {(['players', 'colleges'] as const).map((k) => <button key={k} className={`chip ${kind === k ? 'on' : ''}`} style={{ flex: 1 }} onClick={() => setKind(k)}>{k === 'players' ? 'Players' : 'Colleges'}</button>)}
       </div>
       <div className="row scroll-x" style={{ gap: 6 }}>
         {(['wins', 'catches', 'tasks', 'distance'] as const).map((m) => (
@@ -380,7 +380,10 @@ function Customise({ open, onClose }: { open: boolean; onClose: () => void }) {
               return (
                 <motion.button key={k} whileTap={can ? { scale: 0.96 } : undefined} disabled={!can} onClick={() => save({ style: k })}
                   style={{ position: 'relative', height: 92, borderRadius: 12, background: st.bg, color: st.ink, textAlign: 'left', padding: 12, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-                    boxShadow: on ? '0 0 0 1px var(--line2)' : '0 0 0 2px var(--line2)', opacity: can ? 1 : 0.5 }}>
+                    boxShadow: on ? `0 0 0 2.5px ${st.accent}, 0 12px 26px -14px ${st.accent}` : '0 0 0 1px var(--line2)', opacity: can ? 1 : 0.5, transition: 'box-shadow .3s var(--ease-out)' }}>
+                  <span aria-hidden style={{ position: 'absolute', top: 13, left: 12, width: 34, height: 6, borderRadius: 3, background: `linear-gradient(90deg, ${st.accent}, ${st.ring})` }} />
+                  {on && <motion.span aria-hidden initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 600, damping: 18 }}
+                    style={{ position: 'absolute', top: 9, right: 9, width: 22, height: 22, borderRadius: 11, background: st.accent, color: '#0b0b0c', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 900 }}>✓</motion.span>}
                   <span style={{ fontWeight: 700 }}>{st.label}</span>
                   <span style={{ fontSize: 11.5, opacity: 0.7 }}>{can ? (on ? 'In use' : 'Tap to use') : `Locked · ${st.how}`}</span>
                 </motion.button>
@@ -433,7 +436,7 @@ function DeveloperAccess() {
     <Section title="Developer access">
       <form onSubmit={save} className="card stack" style={{ padding: 16, gap: 12 }}>
         <div style={{ fontSize: 14 }}>
-          {st?.set ? <>Developer login is set for <b className="mono">{st.name}</b>. Use <b>Developer</b> on the first screen to open the DEMO section.</> : 'Set the NAME and PASSWORD for the Developer button on the first screen. It opens the DEMO section.'}
+          {st?.set ? <>Developer login is set for <b className="mono">{st.name}</b>. To open the DEMO, tap the <b>TAG logo 5 times</b> on the first screen.</> : 'Set the NAME and PASSWORD for the hidden developer login: tap the TAG logo 5 times on the first screen. It opens the DEMO section.'}
         </div>
         <Field label="NAME" autoCapitalize="none" autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} hint="At least 3 characters" />
         <Field label="PASSWORD" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} hint="At least 8 characters. Only a scrambled copy is stored." />

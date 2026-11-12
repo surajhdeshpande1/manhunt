@@ -55,7 +55,7 @@ export default function Training() {
       <header>
         <div className="row between" style={{ marginLeft: -10 }}>
           <button className="icon-btn" aria-label="Back" onClick={() => nav('/home')}><Back /></button>
-          <div className="row" style={{ gap: 6 }}>{heat >= 2 && <motion.span key={heat} initial={{ scale: 1.4 }} animate={{ scale: 1 }} className="tag" style={{ background: 'var(--accent)', color: '#0b0b0c', fontWeight: 800 }}>Heat ×{heat}</motion.span>}<span className="tag">{done}/20 learnt</span></div>
+          <div className="row" style={{ gap: 6 }}>{heat >= 2 && <motion.span key={heat} initial={{ scale: 1.4 }} animate={{ scale: 1 }} className="tag" style={{ background: 'var(--accent)', color: 'var(--accent-ink)', fontWeight: 800 }}>Heat ×{heat}</motion.span>}<span className="tag">{done}/20 learnt</span></div>
         </div>
         <h1 className="display" style={{ fontSize: 'clamp(40px, 12vw, 54px)', margin: '12px 0 8px' }}>Training</h1>
         <p className="muted" style={{ margin: 0, fontSize: 15, lineHeight: 1.45 }}>Every task has one rule that never changes. Learn the rule here. The puzzle is new every run, so practise the <b style={{ color: 'var(--text)' }}>method</b>, not the answer.</p>

@@ -260,7 +260,8 @@ export function AdminLobby({ s, refresh, themeKey }: { s: RoomState; refresh: ()
         <RoomHeader s={s} onLeave={close} leaveLabel="Close room" />
         <div style={{ margin: '4px 0 20px', position: 'sticky', top: 'calc(env(safe-area-inset-top) + 8px)', zIndex: 5, borderRadius: 12 }}>
           <Segmented value={tab} onChange={(v) => setTab(v)}
-            options={tabs.map((t) => ({ v: t.k, label: <>{t.t}{t.n > 0 && <span style={{ minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9, background: 'var(--danger)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'grid', placeItems: 'center' }}>{t.n}</span>}</> }))} />
+            options={tabs.map((t) => ({ v: t.k, label: <span style={{ position: 'relative' }}>{t.t}{t.n > 0 && <motion.span key={t.n} initial={{ scale: 0.4 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 600, damping: 18 }}
+              style={{ position: 'absolute', top: -11, right: -15, minWidth: 17, height: 17, padding: '0 4px', borderRadius: 9, background: 'var(--danger)', color: '#fff', fontSize: 10.5, fontWeight: 800, display: 'grid', placeItems: 'center', boxShadow: '0 0 0 2px var(--surface)' }}>{t.n}</motion.span>}</span> }))} />
         </div>
         {tab === 'players' && <Roster s={s} refresh={refresh} onInvite={() => setInv(true)} />}
         {tab === 'area' && <AreaEditor s={s} refresh={refresh} themeKey={themeKey} />}
@@ -333,8 +334,14 @@ function Roster({ s, refresh, onInvite }: { s: RoomState; refresh: () => void; o
               <div key={m.id} className="list-row">
                 <Avatar src={m.selfie} name={m.username} size={40} />
                 <div className="grow" style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 600 }}>@{m.username}{titleLabel(m.title) && <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gold)', marginLeft: 6 }}>{titleLabel(m.title)}</span>}{m.ready && <span className="tag ok" style={{ marginLeft: 6, fontSize: 10, padding: '1px 5px' }}>Ready</span>}</div>
-                  <div className="muted" style={{ fontSize: 12 }}>{m.branch} · {YEAR[m.year]}</div>
+                  <div className="row" style={{ gap: 6, minWidth: 0 }}>
+                    <span style={{ fontWeight: 650, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>@{m.username}</span>
+                    {m.ready && <span className="tag ok" style={{ fontSize: 10, padding: '1px 5px', flex: 'none' }}>Ready</span>}
+                  </div>
+                  <div className="muted" style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {titleLabel(m.title) && <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gold)' }}>{titleLabel(m.title)} · </span>}
+                    {m.branch} · {YEAR[m.year]}
+                  </div>
                 </div>
                 {m.phone && <a className="icon-btn muted" href={`tel:${m.phone}`} aria-label={`Call ${m.username}`} style={{ width: 34 }}><IconPhone s={18} /></a>}
                 <div className="row" style={{ gap: 4 }}>

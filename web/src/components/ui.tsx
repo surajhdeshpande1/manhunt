@@ -10,7 +10,7 @@ type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   kind?: 'primary' | 'hot' | 'ghost' | 'danger' | 'quiet'; size?: 'sm' | 'md' | 'lg'; block?: boolean; loading?: boolean; arrow?: boolean;
 };
 export function Button({ kind = 'primary', size = 'md', block, loading, arrow, className = '', children, onClick, disabled, ...rest }: BtnProps) {
-  const cls = ['btn', `btn-${kind}`, size !== 'md' && `btn-${size}`, block && 'btn-block', className].filter(Boolean).join(' ');
+  const cls = ['btn', `btn-${kind}`, size !== 'md' && `btn-${size}`, block && 'btn-block', loading && 'is-loading', className].filter(Boolean).join(' ');
   const content = (
     <>
       {loading ? <span className="spinner" /> : children}
@@ -18,7 +18,7 @@ export function Button({ kind = 'primary', size = 'md', block, loading, arrow, c
     </>
   );
   return (
-    <button className={cls} disabled={disabled || loading} onClick={(e) => { haptic.tap(); onClick?.(e); }} {...rest}>
+    <button className={cls} disabled={disabled || loading} aria-busy={loading || undefined} onClick={(e) => { haptic.tap(); onClick?.(e); }} {...rest}>
       {kind === 'ghost' ? (<><span className="btn-in" /><span className="btn-label">{content}</span></>) : content}
     </button>
   );
@@ -28,18 +28,32 @@ export function Button({ kind = 'primary', size = 'md', block, loading, arrow, c
 type FieldProps = InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string; hint?: string; prefix?: string };
 export function Field({ label, error, hint, prefix, id, ...rest }: FieldProps) {
   const fid = id || `f-${label.replace(/\W+/g, '-').toLowerCase()}`;
+  const secret = rest.type === 'password';
+  const [show, setShow] = useState(false);
+  const input = <input id={fid} className="input" {...rest} type={secret && show ? 'text' : rest.type} style={{ ...(prefix ? { paddingLeft: 8 } : null), ...(secret ? { paddingRight: 52 } : null), ...rest.style }} />;
   return (
     <div className="field">
       <label htmlFor={fid}>{label}</label>
-      <div className={`input-wrap cut ${error ? 'err' : ''}`} style={{ ['--c' as any]: '8px' }}>
+      <div className={`input-wrap cut ${error ? 'err' : ''}`} style={{ ['--c' as any]: '8px', position: 'relative' }}>
         {prefix ? (
           <div className="row" style={{ gap: 0, background: 'var(--surface)' }}>
             <span className="mono" style={{ padding: '0 0 0 14px', color: 'var(--muted)' }}>{prefix}</span>
-            <input id={fid} className="input" style={{ paddingLeft: 8 }} {...rest} />
+            {input}
           </div>
-        ) : <input id={fid} className="input" {...rest} />}
+        ) : input}
+        {secret && (
+          <button type="button" className="reveal" aria-label={show ? 'Hide password' : 'Show password'} aria-pressed={show} onClick={() => setShow((v) => !v)}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+              <path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12s-3.5 6.5-9.5 6.5S2.5 12 2.5 12Z" /><circle cx="12" cy="12" r="2.8" />
+              {!show && <path d="M4 20 20 4" />}
+            </svg>
+          </button>
+        )}
       </div>
-      {error ? <div className="field-err">{error}</div> : hint ? <div className="field-hint">{hint}</div> : null}
+      <AnimatePresence initial={false}>
+        {error ? <motion.div key="e" className="field-err" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{error}</motion.div>
+          : hint ? <div className="field-hint">{hint}</div> : null}
+      </AnimatePresence>
     </div>
   );
 }
@@ -220,6 +234,23 @@ export function Segmented<T extends string>({ value, onChange, options }: { valu
       })}
     </div>
   );
+}
+
+/* ---------- Numbers that count up when they first appear ---------- */
+export function CountUp({ to, ms = 900, delay = 0, fmt = (n: number) => String(Math.round(n)) }: { to: number; ms?: number; delay?: number; fmt?: (n: number) => string }) {
+  const [v, setV] = useState(() => (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? to : 0));
+  useEffect(() => {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { setV(to); return; }
+    let raf = 0; const t0 = performance.now() + delay;
+    const step = (now: number) => {
+      const t = Math.min(1, Math.max(0, (now - t0) / ms));
+      setV(to * (1 - (1 - t) ** 3));
+      if (t < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [to, ms, delay]);
+  return <>{fmt(v)}</>;
 }
 
 /* ---------- Small helpers ---------- */

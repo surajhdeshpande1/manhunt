@@ -679,3 +679,40 @@ button:active > .avatar, .avatar:active { transform: scale(.93); }
 ::-webkit-scrollbar { width: 0; height: 0; }
 html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .backdrop::after { animation: none; } }
+
+/* =========================================================
+   SCREEN PASS — states, fields, navigation
+   ========================================================= */
+/* the page itself follows the theme (the splash style in index.html paints it ink otherwise) */
+html[data-day], html[data-day] body { background: var(--bg); }
+
+/* "not yet" buttons: hatched and dashed instead of a muddy faded block, so they read as locked, not broken */
+.btn:disabled:not(.is-loading) {
+  opacity: 1 !important; color: var(--muted) !important; text-shadow: none !important;
+  background: transparent !important;
+  background-image: repeating-linear-gradient(-45deg, transparent 0 7px, color-mix(in srgb, var(--muted) 13%, transparent) 7px 8.5px) !important;
+  border-color: color-mix(in srgb, var(--muted) 42%, transparent) !important; border-style: dashed !important;
+  box-shadow: none !important; transform: translate(var(--sh, 0px), var(--sh, 0px)) !important; cursor: not-allowed;
+}
+.btn.is-loading { opacity: 1 !important; transform: none !important; cursor: progress; }
+.btn.is-loading .spinner { width: 20px; height: 20px; }
+
+/* a passing sheen on the one main action of a screen */
+.btn-primary.btn-block:not(:disabled)::after, .btn-hot.btn-block:not(:disabled)::after {
+  display: block !important; content: ''; position: absolute; top: 0; bottom: 0; left: -60%; width: 34%; z-index: 0; pointer-events: none;
+  transform: skewX(-18deg); background: linear-gradient(100deg, transparent, rgba(255, 250, 240, .42), transparent); animation: sheen 5.6s var(--ease-out) infinite; }
+[data-lite='1'] .btn-block::after { animation: none !important; display: none !important; }
+
+/* password reveal */
+.reveal { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; display: grid; place-items: center; color: var(--muted); border-radius: 10px; transition: color .2s, background .2s; }
+.reveal:hover { color: var(--text); background: var(--hi); }
+.reveal[aria-pressed='true'] { color: var(--accent); }
+
+/* errors nudge their field */
+.input-wrap.err { animation: nudge .32s var(--ease-out); }
+@keyframes nudge { 20% { transform: translateX(-5px); } 45% { transform: translateX(4px); } 70% { transform: translateX(-2px); } }
+
+/* screen titles rise out of a slot (clip only, so it never fights framer's own transforms) */
+h1.display { animation: title-slot .62s cubic-bezier(.2, .9, .25, 1) both; }
+@keyframes title-slot { from { clip-path: inset(-20% -12% 100% -12%); } to { clip-path: inset(-20% -12% -20% -12%); } }
+[data-lite='1'] h1.display { animation: none; }

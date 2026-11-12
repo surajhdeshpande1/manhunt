@@ -38,7 +38,8 @@ function TabBar() {
   return (
     <nav aria-label="Main" style={{ position: 'fixed', left: 0, right: 0, bottom: 'calc(env(safe-area-inset-bottom) + 12px)', zIndex: 100, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
       <div style={{ pointerEvents: 'auto', display: 'grid', gridTemplateColumns: 'repeat(3, 96px)', gap: 4, padding: 5, borderRadius: 12,
-        background: 'color-mix(in srgb, var(--surface) 96%, transparent)', boxShadow: '0 0 0 1px var(--line2), 0 20px 40px -18px rgba(0,0,0,.7)' }}>
+        background: 'color-mix(in srgb, var(--surface) 82%, transparent)', backdropFilter: 'blur(16px) saturate(1.2)', WebkitBackdropFilter: 'blur(16px) saturate(1.2)',
+        boxShadow: '0 0 0 1px var(--line2), inset 0 1px 0 var(--hi), 0 22px 44px -16px rgba(0,0,0,.75)' }}>
         {tabs.map((t) => (
           <NavLink key={t.to} to={t.to} end={t.end} onClick={() => haptic.tap()}
             style={({ isActive }) => ({ position: 'relative', height: 54, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
@@ -47,10 +48,10 @@ function TabBar() {
               <>
                 {isActive && <motion.span layoutId="tabbar" transition={{ type: 'spring', damping: 30, stiffness: 420 }}
                   style={{ position: 'absolute', inset: 0, borderRadius: 8, background: 'var(--text)' }} />}
-                <span style={{ position: 'relative' }}>
+                <motion.span style={{ position: 'relative', display: 'grid' }} animate={isActive ? { y: [0, -4, 0], scale: [1, 1.14, 1] } : { y: 0, scale: 1 }} transition={{ duration: 0.42, ease: [0.2, 0.9, 0.25, 1] }}>
                   {t.icon}
                   {t.badge > 0 && <span style={{ position: 'absolute', top: -5, right: -9, minWidth: 17, height: 17, padding: '0 5px', borderRadius: 4, background: 'var(--danger)', color: '#fff', fontSize: 10.5, fontWeight: 850, display: 'grid', placeItems: 'center', boxShadow: '0 0 0 2px #0b0b0c' }}>{t.badge}</span>}
-                </span>
+                </motion.span>
                 <span style={{ position: 'relative', fontSize: 11, fontWeight: 850, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t.label}</span>
               </>
             )}
@@ -152,7 +153,7 @@ function RoomsTab() {
       </motion.button>
 
       <motion.button whileTap={{ scale: 0.98 }} onClick={() => nav('/home/train')} className="card row" style={{ textAlign: 'left', padding: 16, gap: 14 }}>
-        <div style={{ width: 48, height: 48, display: 'grid', placeItems: 'center', background: 'var(--accent)', color: '#0b0b0c', borderRadius: 8, boxShadow: '0 0 0 2.5px #0b0b0c', rotate: '3deg', fontWeight: 900, fontSize: 20 }}>20</div>
+        <div style={{ width: 48, height: 48, display: 'grid', placeItems: 'center', background: 'var(--accent)', color: 'var(--accent-ink)', borderRadius: 8, boxShadow: '0 0 0 2.5px #0b0b0c', rotate: '3deg', fontWeight: 900, fontSize: 20 }}>20</div>
         <div className="grow">
           <div style={{ fontSize: 16.5, fontWeight: 650 }}>Training ground</div>
           <div className="muted" style={{ fontSize: 13.5 }}>Learn the 20 task rules before your next hunt.</div>
