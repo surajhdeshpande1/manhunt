@@ -1,23 +1,12 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Button, Field, Modal, useToast } from '../components/ui';
 import { realRpc } from '../lib/supabase';
 import { haptic } from '../lib/feel';
 import { devToken, enterDemo, forgetDev } from './mode';
 
-/**
- * Hidden developer entry: nothing is shown on screen. Tap the TAG logo 5 times quickly
- * (within about 2 seconds) and the developer login opens.
- */
-export function useDevGate() {
-  const [open, setOpen] = useState(false);
-  const taps = useRef<number[]>([]);
-  const tap = () => {
-    const t = Date.now();
-    taps.current = [...taps.current.filter((x) => t - x < 2000), t];
-    if (taps.current.length >= 5) { taps.current = []; haptic.ok(); setOpen(true); }
-  };
-  const modal = <Modal open={open} onClose={() => setOpen(false)} title="Developer login"><DevLogin onClose={() => setOpen(false)} /></Modal>;
-  return { tap, modal };
+/** The developer login, opened from Profile → Developer access. It only works for the signed-in Owner. */
+export function DevLoginModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return <Modal open={open} onClose={onClose} title="Developer login">{open && <DevLogin onClose={onClose} />}</Modal>;
 }
 
 function DevLogin({ onClose }: { onClose: () => void }) {
@@ -44,7 +33,7 @@ function DevLogin({ onClose }: { onClose: () => void }) {
   }
   return (
     <form onSubmit={go} className="stack" style={{ gap: 14 }}>
-      <p className="muted" style={{ margin: 0, fontSize: 14 }}>Opens the DEMO section: the full app in a simulated world with fake players. Nothing you do there touches real data.</p>
+      <p className="muted" style={{ margin: 0, fontSize: 14 }}>Opens the DEMO section: the full app in a simulated world with fake players. Nothing you do there touches real data. Works only on the owner's account.</p>
       {saved && <Button type="button" kind="hot" block loading={busy} onClick={resume}>Continue to DEMO</Button>}
       <Field label="NAME" autoComplete="username" autoCapitalize="none" value={name} onChange={(e) => setName(e.target.value)} />
       <Field label="PASSWORD" type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} error={err ?? undefined} />

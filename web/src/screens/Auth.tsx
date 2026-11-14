@@ -9,7 +9,6 @@ import { haptic } from '../lib/feel';
 import { ArtPanel } from '../components/Brut';
 import { resolvedDay, useAppearance } from '../lib/theme';
 import { HowItWorks } from '../components/Diagrams';
-import { useDevGate } from '../demo/DevLogin';
 import { DEMO } from '../demo/mode';
 
 /* ---------- Welcome ---------- */
@@ -33,13 +32,12 @@ export function Welcome() {
   const nav = useNavigate();
   const [how, setHow] = useState(false);
   const day = resolvedDay(useAppearance());
-  const dev = useDevGate();
   const rise = (i: number) => ({ initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.12 + i * 0.07, duration: 0.5, ease: [0.2, 0.9, 0.25, 1] as const } });
   return (
     <Slash>
       <div className="screen" style={{ gap: 26, minHeight: '100dvh' }}>
         <motion.div {...rise(0)} className="row between">
-          <span onClick={dev.tap} style={{ WebkitTapHighlightColor: 'transparent', userSelect: 'none' }}><Logo size={30} /></span>
+          <Logo size={30} />
           <button onClick={() => setHow(true)} className="tag" style={{ padding: '7px 10px' }}>How it works</button>
         </motion.div>
         <motion.div {...rise(1)}><ArtPanel height="clamp(170px, 30vh, 260px)" day={day} /></motion.div>
@@ -50,7 +48,6 @@ export function Welcome() {
             A real-world chase on foot. Runners clear tasks before time runs out. Hunters track them on a live map and scan their code to tag them.
           </motion.p>
         </div>
-        {dev.modal}
         <Modal open={how} onClose={() => setHow(false)} title="How TAG works"><HowItWorks onClose={() => setHow(false)} /></Modal>
         <motion.div {...rise(5)} className="stack" style={{ gap: 14, marginTop: 'auto' }}>
           <Button kind="hot" size="lg" block onClick={() => nav('/signup')}>Create account</Button>
@@ -99,7 +96,12 @@ export function SignUp() {
   const [f, setF] = useState<Form>({ full_name: '', username: '', email: '', phone: '', password: '', dob: '', college: '', branch: '', year: null });
   const [err, setErr] = useState<Partial<Record<keyof Form, string>>>({});
   const [busy, setBusy] = useState(false);
-  const set = (k: keyof Form, v: any) => { setF((x) => ({ ...x, [k]: v })); setErr((e) => ({ ...e, [k]: undefined })); };
+  // the owner's address must prove it's theirs: the server emails a code before creating that account
+  const [code, setCode] = useState<{ sent: boolean; value: string; err?: string }>({ sent: false, value: '' });
+  const set = (k: keyof Form, v: any) => {
+    setF((x) => ({ ...x, [k]: v })); setErr((e) => ({ ...e, [k]: undefined }));
+    if (k === 'email') setCode({ sent: false, value: '' });
+  };
 
   function validate() {
     const e: typeof err = {};
@@ -117,25 +119,34 @@ export function SignUp() {
     return Object.keys(e).length === 0;
   }
 
-  async function submit(ev: FormEvent) {
-    ev.preventDefault();
+  async function submit(ev: FormEvent | null, resend = false) {
+    ev?.preventDefault();
     if (!validate()) { haptic.warn(); return; }
+    if (code.sent && !resend && code.value.length !== 6) { setCode((c) => ({ ...c, err: 'Enter the 6-digit code from the email' })); haptic.warn(); return; }
     setBusy(true);
     try {
-      await callFunction('signup', { ...f, email: f.email.trim(), phone: '+91' + f.phone });
+      const r = await callFunction<{ ok?: boolean; need_code?: boolean }>('signup', {
+        ...f, email: f.email.trim(), phone: '+91' + f.phone, ...(code.sent && !resend ? { code: code.value } : {}),
+      });
+      if (r?.need_code) {
+        setCode({ sent: true, value: '' }); haptic.ok();
+        toast(resend ? 'A new code is on its way' : `We sent a 6-digit code to ${f.email.trim().toLowerCase()}`);
+        return;
+      }
       const { error } = await supabase.auth.signInWithPassword({ email: f.email.trim().toLowerCase(), password: f.password });
       if (error) throw error;
       haptic.ok();
       nav('/setup/permissions', { replace: true });
     } catch (e: any) {
-      if (e.fields) setErr(e.fields);
+      if (e.fields?.code) setCode((c) => ({ ...c, err: e.fields.code }));
+      else if (e.fields) setErr(e.fields);
       toast(cleanError(e.message), true);
     } finally { setBusy(false); }
   }
 
   return (
     <Slash>
-      <form className="screen" onSubmit={submit} noValidate>
+      <form className="screen" onSubmit={(e) => submit(e)} noValidate>
         <Header title="Create account" step={1} />
         <div className="stack" style={{ gap: 16 }}>
           <Field label="Full name" autoComplete="name" value={f.full_name} onChange={(e) => set('full_name', e.target.value)} error={err.full_name} placeholder="Suraj Deshpande" />
@@ -162,8 +173,17 @@ export function SignUp() {
             {err.year && <div className="field-err">{err.year}</div>}
           </div>
         </div>
+        {code.sent && (
+          <div className="card stack" style={{ padding: 16, gap: 10, marginTop: 22, boxShadow: '0 0 0 1.5px var(--accent)' }} role="group" aria-label="Email code">
+            <div style={{ fontWeight: 800 }}>Check your email</div>
+            <div className="muted" style={{ fontSize: 13.5 }}>This address runs TAG, so it has to prove it's yours. We sent a 6-digit code to <b>{f.email.trim().toLowerCase()}</b>. It expires in 15 minutes.</div>
+            <Field label="Code" inputMode="numeric" autoComplete="one-time-code" autoFocus value={code.value} error={code.err}
+              onChange={(e) => setCode({ sent: true, value: e.target.value.replace(/\D/g, '').slice(0, 6) })} placeholder="000000" />
+            <button type="button" className="link" style={{ alignSelf: 'flex-start', fontWeight: 700 }} disabled={busy} onClick={() => submit(null, true)}>Send a new code</button>
+          </div>
+        )}
         <div style={{ marginTop: 28 }}>
-          <Button kind="hot" size="lg" block arrow loading={busy} type="submit">Continue</Button>
+          <Button kind="hot" size="lg" block arrow loading={busy} type="submit">{code.sent ? 'Verify and create account' : 'Continue'}</Button>
           <p className="muted center" style={{ marginTop: 14, fontSize: 13 }}>Already playing? <Link to="/signin">Sign in</Link></p>
         </div>
       </form>

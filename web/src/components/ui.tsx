@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react';
 import { AnimatePresence, motion, useDragControls } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { selfieUrl } from '../lib/supabase';
@@ -27,7 +27,9 @@ export function Button({ kind = 'primary', size = 'md', block, loading, arrow, c
 /* ---------- Field ---------- */
 type FieldProps = InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string; hint?: string; prefix?: string };
 export function Field({ label, error, hint, prefix, id, ...rest }: FieldProps) {
-  const fid = id || `f-${label.replace(/\W+/g, '-').toLowerCase()}`;
+  // unique per field, so two fields with the same label on one screen (a form behind a sheet) never share an id
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const fid = id || `f-${label.replace(/\W+/g, '-').toLowerCase()}-${uid}`;
   const secret = rest.type === 'password';
   const [show, setShow] = useState(false);
   const input = <input id={fid} className="input" {...rest} type={secret && show ? 'text' : rest.type} style={{ ...(prefix ? { paddingLeft: 8 } : null), ...(secret ? { paddingRight: 52 } : null), ...rest.style }} />;
