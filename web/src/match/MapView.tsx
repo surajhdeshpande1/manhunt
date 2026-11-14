@@ -4,13 +4,16 @@ import { bboxOf, circlePolygon, closeRing, type LngLat, type Zone } from '../lib
 import { selfieUrl } from '../lib/supabase';
 import { cssVar } from '../lib/theme';
 import { gCopyright, gSession, googleStyle, type GKind } from '../lib/gmaps';
-import { addBuildings, addPlaces, type CityMode } from '../lib/cityLayers';
+import { addAreaLayers, addBuildings, addPlaces, setAreaData, type CityMode } from '../lib/cityLayers';
+import { packToGeoJSON, type AreaPack } from '../geo/areaPack';
 import { OFM_STYLE, OSM_MAP, esriStyle, markProviderFailed, pickMap, rememberMap, satelliteStyle, startMap, usableMaps, withEsriToken, type MapOpt, type Provider } from '../lib/basemaps';
 
 const STYLE = OFM_STYLE;
 const OUT_RED = '#c44536';
 export type Marker = { id: string; lat: number; lng: number; selfie?: string | null; role?: 'runner' | 'hunter' | null; label?: string; title?: string; me?: boolean; stale?: boolean; alert?: boolean };
-export type MapHandle = { fit: (pts?: LngLat[]) => void; flyTo: (lat: number, lng: number, zoom?: number) => void; setBasemap: (k: GKind) => void; basemap: () => GKind; google: () => boolean };
+export type MapHandle = { fit: (pts?: LngLat[]) => void; flyTo: (lat: number, lng: number, zoom?: number) => void; setBasemap: (k: GKind) => void; basemap: () => GKind; google: () => boolean;
+  /** what the map shows right now: [west, south, east, north] and zoom */
+  view: () => { box: [number, number, number, number]; zoom: number } | null };
 type Props = {
   themeKey: string; boundary?: LngLat[] | null; nogo?: LngLat[][]; zone?: Zone | null; zoneNext?: Zone | null;
   draft?: LngLat[] | null; draftKind?: 'boundary' | 'nogo'; markers?: Marker[]; me?: { lat: number; lng: number; acc: number } | null;
@@ -22,6 +25,8 @@ type Props = {
   layerToggle?: boolean;
   /** lift the Google logo and data credits above sheets that cover the bottom of the map */
   chromeBottom?: number;
+  /** buildings and named places for this area, built from open data (see geo/useAreaPack) */
+  areaPack?: AreaPack | null;
   /** freehand: one finger draws a shape, two fingers move the map */
   drawMode?: 'boundary' | 'nogo' | null;
   onStroke?: (pts: LngLat[]) => void;
@@ -131,6 +136,7 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
     flyTo: (lat, lng, zoom = 17) => map.current?.flyTo({ center: [lng, lat], zoom, duration: 700 }),
     setBasemap: (k) => { const o = pickMap(k); rememberMap(o); apply(o); },
     basemap: () => curRef.current.kind,
+    view: () => { const m = map.current; if (!m) return null; const b = m.getBounds(); return { box: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], zoom: m.getZoom() }; },
     google: () => !!sess.current,
   }));
 
@@ -139,6 +145,12 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
   const [credit, setCredit] = useState('');
   const sess = useRef<string | null>(null);
   const curRef = useRef(cur);
+  const areaGeo = useRef<ReturnType<typeof packToGeoJSON> | null>(null);
+  useEffect(() => {
+    areaGeo.current = p.areaPack ? packToGeoJSON(p.areaPack) : null;
+    const m = map.current;
+    if (m && m.getSource('tag-area-b')) setAreaData(m, areaGeo.current);
+  }, [p.areaPack]);
   const satErr = useRef<{ n: number; ok: boolean; prov: Provider | null }>({ n: 0, ok: false, prov: null });
   const attr = useRef<maplibregl.AttributionControl | null>(null);
 
@@ -242,7 +254,7 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
       if (!isGoogle) {
         // every building and named place in the play area, from open data shipped with TAG
         const mode: CityMode = curRef.current.kind === 'satellite' ? 'photo' : document.documentElement.dataset.day === '1' ? 'day' : 'night';
-        try { addBuildings(m, mode, 'tag-mask'); addPlaces(m, mode); } catch { /* a style without room for them: skip */ }
+        try { addBuildings(m, mode, 'tag-mask'); addPlaces(m, mode); addAreaLayers(m, mode, 'tag-mask'); setAreaData(m, areaGeo.current); } catch { /* a style without room for them: skip */ }
       }
       m.addLayer({ id: 'tag-draft-fill', type: 'fill', source: 'tag-draft', filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': accent, 'fill-opacity': 0.18 } });
       m.addLayer({ id: 'tag-draft-line', type: 'line', source: 'tag-draft', filter: ['!=', '$type', 'Point'], paint: { 'line-color': accent, 'line-width': 3.5, 'line-dasharray': [2, 1] } });

@@ -12,6 +12,10 @@ import { titleLabel } from '../lib/identity';
 import { polyAreaM2, type LngLat } from '../lib/geo';
 import { strokeToPolygon } from '../lib/freehand';
 import { fmtDist } from '../lib/clock';
+import { GpsChip } from './GpsHelp';
+import type { Fix, GeoStatus } from './useRoom';
+import { useAreaPack, useViewPack } from '../geo/useAreaPack';
+import { shippedCovers } from '../geo/areaPack';
 import { MapView, type MapHandle } from './MapView';
 import { TASKS } from '../tasks/core';
 import { Chat } from './Comms';
@@ -56,10 +60,11 @@ function RoomHeader({ s, onLeave, leaveLabel = 'Leave' }: { s: RoomState; onLeav
 }
 
 function MapPreview({ s, height = 220, themeKey }: { s: RoomState; height?: number; themeKey: string }) {
+  const lobbyPack = useAreaPack(s.room.id, s.room.boundary, !!s.is_admin);
   return (
     <div className="frame soft cut" style={{ height, position: 'relative' }}>
       <div className="inner cut" style={{ position: 'relative', overflow: 'hidden' }}>
-        <MapView themeKey={themeKey} boundary={s.room.boundary} nogo={s.room.nogo} interactive={false} />
+        <MapView themeKey={themeKey} boundary={s.room.boundary} nogo={s.room.nogo} interactive={false} areaPack={lobbyPack.pack} />
         {!s.room.boundary && (
           <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: 'var(--scrim)' }}>
             <div className="center"><IconMap /><div className="display" style={{ fontSize: 18, marginTop: 6 }}>Play area not drawn yet</div></div>
@@ -160,7 +165,7 @@ function InviteFriends({ roomId, open, onClose, members }: { roomId: string; ope
 }
 
 /* ---------- PLAYER LOBBY ---------- */
-export function PlayerLobby({ s, themeKey }: { s: RoomState; themeKey: string }) {
+export function PlayerLobby({ s, themeKey, geo }: { s: RoomState; themeKey: string; geo?: { fix: Fix | null; status: GeoStatus; rawAcc: number | null } }) {
   const nav = useNavigate();
   const toast = useToast();
   const { profile } = useSession();
@@ -202,6 +207,7 @@ export function PlayerLobby({ s, themeKey }: { s: RoomState; themeKey: string })
       </div>
       <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 50, background: 'color-mix(in srgb, var(--bg) 92%, transparent)', borderTop: '1px solid var(--line)', padding: '12px 20px calc(env(safe-area-inset-bottom) + 12px)' }}>
         <div style={{ maxWidth: 560, margin: '0 auto' }}>
+          {geo && <GpsChip status={geo.status} fix={geo.fix} rawAcc={geo.rawAcc} />}
           <motion.button whileTap={{ scale: 0.97 }} onClick={toggle} disabled={busy} className="btn btn-lg btn-block"
             style={{ background: ready ? 'var(--ok)' : 'var(--text)', color: '#0b0b0c', fontWeight: 900, letterSpacing: '.06em' }}>
             {ready ? '✓ Ready · tap to undo' : "I'm ready"}
@@ -375,6 +381,15 @@ function AreaEditor({ s, refresh, themeKey }: { s: RoomState; refresh: () => voi
   const [hist, setHist] = useState<{ b: LngLat[]; n: LngLat[][] }[]>([]);
   const [saving, setSaving] = useState(false);
   const [me, setMe] = useState<{ lat: number; lng: number; acc: number } | null>(null);
+  const saved = useAreaPack(s.room.id, s.room.boundary, true);
+  const view = useViewPack();
+  function showHere() {
+    const v = mapRef.current?.view();
+    if (!v) return;
+    if (v.zoom < 13.5) { toast('Zoom in closer first', true); return; }
+    if (shippedCovers(v.box)) { toast('Buildings and places are already shown here'); return; }
+    view.run(v.box);
+  }
   const dirty = JSON.stringify(boundary) !== JSON.stringify(s.room.boundary || []) || JSON.stringify(nogo) !== JSON.stringify(s.room.nogo || []);
 
   function locate(fly = true) {
@@ -433,7 +448,7 @@ function AreaEditor({ s, refresh, themeKey }: { s: RoomState; refresh: () => voi
         <div className="inner cut" style={{ position: 'relative', overflow: 'hidden' }}>
           <MapView ref={mapRef} themeKey={themeKey} boundary={boundary} nogo={nogo} draft={tool === 'points' ? (mode === 'boundary' ? boundary : draft) : null} draftKind={mode}
             onMapClick={tap} me={me} markers={me ? [{ id: 'me', lat: me.lat, lng: me.lng, me: true }] : []} showMask={false}
-            drawMode={tool === 'draw' ? mode : null} onStroke={stroke} basemap="satellite" layerToggle />
+            drawMode={tool === 'draw' ? mode : null} onStroke={stroke} basemap="satellite" layerToggle areaPack={saved.pack ?? view.pack} />
           <div className="stack" style={{ position: 'absolute', right: 10, top: 10, gap: 6, zIndex: 4 }}>
             <button style={btn} aria-label="My location" onClick={() => locate()}><IconMap s={20} /></button>
             <button style={btn} aria-label="Undo" onClick={undo}><IconUndo s={20} /></button>
@@ -441,6 +456,7 @@ function AreaEditor({ s, refresh, themeKey }: { s: RoomState; refresh: () => voi
           {me && <span className="mono" style={{ position: 'absolute', right: 10, top: 108, zIndex: 4, padding: '3px 7px', borderRadius: 6, fontSize: 11, fontWeight: 800, background: 'rgba(11,11,12,.86)', color: me.acc <= 15 ? '#7fd38f' : me.acc <= 35 ? '#f2c230' : '#ff8a7a' }}>GPS ±{Math.round(me.acc)} m</span>}
         </div>
       </div>
+      <AreaDetail saved={saved} view={view} onShow={showHere} hasBoundary={!!s.room.boundary} />
       <div className="row between">
         <div className="muted mono" style={{ fontSize: 13 }}>
           {mode === 'boundary' ? (boundary.length >= 3 ? `${area > 1e6 ? (area / 1e6).toFixed(2) + ' km²' : Math.round(area).toLocaleString() + ' m²'} · ${boundary.length} corners` : 'No boundary yet') : `${nogo.length} zone${nogo.length === 1 ? '' : 's'}${tool === 'points' ? ` · ${draft.length} points` : ''}`}
@@ -607,4 +623,16 @@ function TaskMix({ v, setV }: { v: Settings; setV: (f: (o: Settings) => Settings
       <p className="muted" style={{ fontSize: 12, margin: 0 }}>Runners get a random task from this mix, never the same one twice in a row. Players can practise all 20 in Training.</p>
     </Section>
   );
+}
+
+/** what the host sees about the building and place detail for their area */
+function AreaDetail({ saved, view, onShow, hasBoundary }: { saved: ReturnType<typeof useAreaPack>; view: ReturnType<typeof useViewPack>; onShow: () => void; hasBoundary: boolean }) {
+  const pk = saved.pack ?? view.pack;
+  const busy = saved.status === 'building' ? saved.progress : view.status === 'building' ? view.progress : null;
+  const line = (t: React.ReactNode) => <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.4 }}>{t}</div>;
+  if (busy !== null) return line(<>Adding every building and named place here from open map data… <b className="mono">{busy}%</b></>);
+  if (pk) return line(<><b>{pk.b.length.toLocaleString()}</b> buildings and <b>{pk.p.length.toLocaleString()}</b> named places shown from open map data{saved.pack ? ', saved for every player.' : '. Save the area to share them with players.'}</>);
+  if (saved.status === 'error' || view.status === 'error') return line(<>Couldn't fetch building data just now. <button className="link" onClick={onShow} style={{ fontWeight: 700 }}>Try again</button></>);
+  if (hasBoundary && saved.status === 'loading') return line('Loading buildings and places…');
+  return line(<><button className="link" onClick={onShow} style={{ fontWeight: 700 }}>Show buildings and places here</button> · works anywhere in the world (first time in a new area downloads about 10–20 MB).</>);
 }

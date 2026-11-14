@@ -1,3 +1,4 @@
+import { useAreaPack } from '../geo/useAreaPack';
 import { type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { Avatar, Section } from '../components/ui';
@@ -13,7 +14,8 @@ import type { RoomState } from '../lib/types';
  * Where hunters wait while runners hide. Hunters are already revealed to everyone; here they
  * see their squad, talk on the radio, plan on the area map, and count down to the hunt.
  */
-export function HunterLobby({ s, radio, meId, onMenu, sos, themeKey }: { s: RoomState; radio: Radio; meId: string; onMenu: () => void; sos: ReactNode; themeKey: string }) {
+export function HunterLobby({ s, radio, meId, onMenu, sos, themeKey, gps }: { s: RoomState; radio: Radio; meId: string; onMenu: () => void; sos: ReactNode; themeKey: string; gps?: ReactNode }) {
+  const area = useAreaPack(s.room.id, s.room.boundary, false);
   const left = msUntil(s.room.hide_ends_at);
   const paused = s.room.status === 'paused';
   const squad = s.members.filter((m) => m.role === 'hunter');
@@ -48,6 +50,8 @@ export function HunterLobby({ s, radio, meId, onMenu, sos, themeKey }: { s: Room
           </div>
         </div>
 
+        {gps}
+
         <Section title={`Your squad · ${squad.length}`}>
           <div className="row scroll-x" style={{ gap: 14, paddingBottom: 4 }}>
             {squad.map((h, i) => (
@@ -67,7 +71,7 @@ export function HunterLobby({ s, radio, meId, onMenu, sos, themeKey }: { s: Room
         <Section title="The play area">
           <div className="frame soft cut" style={{ height: 210, position: 'relative' }}>
             <div className="inner cut" style={{ position: 'relative', overflow: 'hidden' }}>
-              <MapView themeKey={themeKey} boundary={s.room.boundary} nogo={s.room.nogo} zone={s.room.zone} interactive={false} />
+              <MapView themeKey={themeKey} areaPack={area.pack} boundary={s.room.boundary} nogo={s.room.nogo} zone={s.room.zone} interactive={false} />
             </div>
           </div>
           <div className="muted" style={{ fontSize: 12.5 }}>Plan your sweep. Runners appear on your map during reveal windows once the hunt starts.</div>

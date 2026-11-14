@@ -1,5 +1,5 @@
 // Click-through tests for every flow. Reports page errors, console errors and missing expected UI.
-const { setup, chromium, devices } = require('./mock.cjs');
+const { setup, chromium, devices, diffStats } = require('./mock.cjs');
 const BASE = 'http://localhost:4173';
 const FLOWS = [
   { name: 'intro→welcome', path: '/?intro', room: 'intro', steps: [['wait', 11000], ['see', 'Create account']] },
@@ -51,6 +51,7 @@ const FLOWS = [
     problems += errs.length ? 1 : 0;
     await ctx.close();
   }
+  if (process.env.DIFF) console.log(`lighter ticks: ${diffStats.calls} ticks, room left out ${diffStats.roomSkipped}×, members left out ${diffStats.membersSkipped}×`);
   console.log(problems ? `${problems} flow(s) with problems` : 'ALL FLOWS OK');
   await b.close();
 })();

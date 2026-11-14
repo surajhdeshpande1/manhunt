@@ -376,6 +376,30 @@ export function genSum(seed: number, L: number, twist: string | null) {
 }
 
 /* 17 · NEXT NUMBER */
+const nd = (a: number[]) => a.slice(1).map((v, i) => v - a[i]);
+const flat = (a: number[]) => a.every((v) => v === a[0]);
+const isInt = Number.isInteger;
+/** does a run of numbers follow a rule a player could reasonably spot? Wrong options must never pass this. */
+export function fitsSimpleRule(f: number[]): boolean {
+  if (flat(nd(f)) || flat(nd(nd(f))) || flat(nd(nd(nd(f))))) return true;                       // +k, growing gaps, growing growth
+  if (f.every((v) => v !== 0)) {                                                                   // ×k or ÷k
+    if (flat(f.slice(1).map((v, i) => v / f[i])) && isInt(f[1] / f[0])) return true;
+    if (flat(f.slice(1).map((v, i) => f[i] / v)) && isInt(f[0] / f[1])) return true;
+  }
+  if (f.slice(2).every((v, i) => v === f[i] + f[i + 1])) return true;                              // adds the two before
+  const den = f[1] - f[0];
+  if (den !== 0) { const a = (f[2] - f[1]) / den; if (isInt(a) && f.slice(1).every((v, i) => v === a * f[i] + (f[1] - a * f[0]))) return true; } // ×a + b
+  if (flat(nd([f[0], f[2], f[4]])) && flat(nd([f[1], f[3], f[5]]))) return true;                  // two interleaved runs
+  const d = nd(f);
+  if ([d[0], d[2], d[4]].every((v) => v === d[0]) && [d[1], d[3]].every((v) => v === d[1])) return true; // alternating steps
+  for (const st of [0, 1]) {                                                                       // alternating + and ×
+    const add = st === 0 ? f[1] - f[0] : f[2] - f[1], mi = st === 0 ? 1 : 0;
+    if (f[mi] === 0) continue; const mul = f[mi + 1] / f[mi];
+    if (isInt(mul) && mul !== 1 && f.slice(1).every((v, i) => ((i + st) % 2 === 0 ? v === f[i] + add : v === f[i] * mul))) return true;
+  }
+  const pi = PRIMES.indexOf(f[0]);
+  return pi >= 0 && f.every((v, k) => PRIMES[pi + k] === v);
+}
 type Seq = (r: Rnd) => number[];
 const arith: Seq = (r) => { const a = ri(r, 1, 30), d = pickOne(r, [2, 3, 4, 5, 6, 7, 9, 11]); return Array.from({ length: 7 }, (_, i) => a + d * i); };
 const down: Seq = (r) => { const d = ri(r, 3, 9), a = ri(r, 60, 99); return Array.from({ length: 7 }, (_, i) => a - d * i); };
@@ -384,7 +408,7 @@ const squares: Seq = (r) => { const s = ri(r, 1, 6); return Array.from({ length:
 const growDiff: Seq = (r) => { const a = ri(r, 1, 10), s = ri(r, 1, 3); const o = [a]; for (let i = 1; i < 7; i++) o.push(o[i - 1] + s * i); return o; };
 const alt: Seq = (r) => { const a = ri(r, 10, 40), p = ri(r, 4, 9), m = ri(r, 1, p - 1); const o = [a]; for (let i = 1; i < 7; i++) o.push(o[i - 1] + (i % 2 ? p : -m)); return o; };
 const fib: Seq = (r) => { const o = [ri(r, 1, 5), ri(r, 2, 7)]; while (o.length < 7) o.push(o[o.length - 1] + o[o.length - 2]); return o; };
-const dbl1: Seq = (r) => { const o = [ri(r, 1, 4)]; const c = pickOne(r, [1, -1, 2]); while (o.length < 7) o.push(o[o.length - 1] * 2 + c); return o; };
+const dbl1: Seq = (r) => { const c = pickOne(r, [1, -1, 2]); const o = [ri(r, c === -1 ? 2 : 1, 4)]; while (o.length < 7) o.push(o[o.length - 1] * 2 + c); return o; };
 const cubes: Seq = (r) => { const s = ri(r, 1, 3); return Array.from({ length: 7 }, (_, i) => (s + i) ** 3); };
 const pron: Seq = (r) => { const s = ri(r, 1, 5); return Array.from({ length: 7 }, (_, i) => (s + i) * (s + i + 1)); };
 const inter: Seq = (r) => { const a = ri(r, 1, 9), da = ri(r, 2, 5), b = ri(r, 20, 40), db = ri(r, 1, 4); return Array.from({ length: 7 }, (_, i) => (i % 2 ? b - db * Math.floor(i / 2) : a + da * (i / 2))); };
@@ -403,8 +427,12 @@ export function genNext(seed: number, L: number, twist: string | null) {
     else { shown = seq.slice(0, 5); answer = seq[5]; }
     const last = twist === 'back' ? seq[1] : seq[4];
     const step = Math.abs(seq[5] - seq[4]) || 2;
-    const cands = shuf([answer + 1, answer - 1, answer + step, answer - step, answer + 2, last + (last - (twist === 'back' ? seq[2] : seq[3])), answer * 2, answer + 10], r)
-      .filter((v, i, a) => v !== answer && a.indexOf(v) === i && (answer < 0 || v >= 0));
+    // the run in the order its rule goes, with x in the answer's place
+    const blank = shown.indexOf(null);
+    const run = (x: number) => { const f = (blank >= 0 ? shown.map((v) => (v === null ? x : v)) : [...shown, x]) as number[]; return twist === 'back' ? f.reverse() : f; };
+    const fair = (v: number, i: number, a: number[]) => v !== answer && a.indexOf(v) === i && (answer < 0 || v >= 0) && !fitsSimpleRule(run(v));
+    let cands = shuf([answer + 1, answer - 1, answer + step, answer - step, answer + 2, last + (last - (twist === 'back' ? seq[2] : seq[3])), answer * 2, answer + 10], r).filter(fair);
+    for (let k = 3; cands.length < 3 && k < 60; k++) for (const v of [answer + k, answer - k]) if (cands.length < 3 && fair(v, 0, [v]) && !cands.includes(v)) cands.push(v);
     return { shown, answer, options: shuf([answer, ...cands.slice(0, 3)], r) };
   });
   return { rounds };
@@ -416,7 +444,13 @@ export function genScramble(seed: number, L: number, twist: string | null) {
   const [mn, mx] = L5(L, [[4, 5], [5, 6], [6, 7], [7, 8], [8, 10]]);
   const pick = pickOne(r, wordsBetween(mn, mx));
   const letters = pick.w.split('');
-  if (twist === 'extra') letters.push(pickOne(r, 'ABDEGHIKLMNOPRSTUY'.split('')));
+  if (twist === 'extra') {
+    // the decoy letter must not let the tiles spell a different real word of the same length (CUTROH → TORCH vs COURT)
+    const fits = (word: string, tiles: string[]) => { const left = [...tiles]; for (const c of word) { const i = left.indexOf(c); if (i < 0) return false; left.splice(i, 1); } return true; };
+    const rivals = ALL_WORDS.filter((x) => x.w.length === pick.w.length && sortL(x.w) !== sortL(pick.w)).map((x) => x.w);
+    const decoy = shuf('ABDEGHIKLMNOPRSTUY'.split(''), r).find((c) => !rivals.some((w) => fits(w, [...letters, c])));
+    if (decoy) letters.push(decoy);
+  }
   let tiles = shuf(letters, r);
   for (let t = 0; t < 20 && tiles.join('') === pick.w; t++) tiles = shuf(letters, r);
   return { word: pick.w, cat: pick.cat, tiles, backwards: twist === 'back', hint: twist !== 'nohint', tries: 3 };

@@ -37,4 +37,32 @@ VITE_ARCGIS_KEY=x VITE_MAPTILER_KEY=y npx vite --port 5174
 node tests/maps.cjs
 ```
 
+## Lighter ticks (server leaves out what the phone already has)
+Same flows, with the mock answering like the live server: fingerprints in every reply, unchanged room details and member list left out.
+```
+DIFF=1 node tests/flows.cjs
+```
+
+## GPS accuracy (fast, no browser)
+Simulated runners under realistic phone GPS error (drift, jitter, wild fixes, dropouts, phones with a broken speed sensor):
+raw GPS vs the old smoother vs the tracking filter in `src/lib/geoFilter.ts`.
+```
+npx esbuild tests/geo/filter.test.ts --bundle --platform=node --outfile=tests/.out/filter.cjs && node tests/.out/filter.cjs
+```
+
+## Area packs (buildings and places anywhere on Earth)
+Pipeline only, in Node, and the real thing in the browser against the production preview. Both read Overture's GeoParquet
+from local stand-ins (a sparse copy holding the footer and the row groups around Bagalkot; `web/tools/geo/README.md` shows how to fetch them).
+```
+npx esbuild tests/geo/pack.test.ts --bundle --platform=node --format=esm --outfile=tests/.out/pack.mjs && node tests/.out/pack.mjs <buildings.parquet> <places.parquet>
+node tests/geo/area.browser.cjs <buildings.parquet> <places.parquet>
+```
+
+## Puzzle accuracy
+Every Next Number and Scramble round has exactly one right answer; every shape in the shape tasks is told apart from the others.
+```
+npx esbuild tests/puzzles/audit.ts --bundle --platform=node --outfile=tests/.out/audit.cjs && node tests/.out/audit.cjs
+node tests/puzzles/glyphs.cjs
+```
+
 Screenshots land in `tests/shots/` and `tests/audit/` (ignored by git).

@@ -1,3 +1,4 @@
+import { useAreaPack } from '../geo/useAreaPack';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useAnimationControls, type PanInfo } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -14,12 +15,30 @@ import { MapView, type MapHandle, type Marker } from './MapView';
 import { hasSatellite } from '../lib/basemaps';
 import { Chat, PushToTalk, useRadio, type Radio } from './Comms';
 import { HunterLobby } from './HunterLobby';
+import { GpsChip, GpsHelp, gpsLine } from './GpsHelp';
 import { RunnerQR, Scanner } from './QR';
 import { TaskDeck } from './Tasks';
 import type { Fix, GeoStatus } from './useRoom';
 import { Heartbeat, HunterAmbience, RadarGlyph, RunnerAmbience } from '../components/Ambience';
 
-type Geo = { fix: Fix | null; status: GeoStatus; latest: React.MutableRefObject<Fix | null> };
+type Geo = { fix: Fix | null; status: GeoStatus; latest: React.MutableRefObject<Fix | null>; rawAcc: number | null };
+
+/** Tells a player when their location isn't good enough to count, and how to fix it. */
+function GpsBanner({ geo }: { geo: Geo }) {
+  const [help, setHelp] = useState(false);
+  const l = gpsLine(geo.status, geo.fix, geo.rawAcc);
+  const fixable = geo.status !== 'waiting' && geo.status !== 'unsupported';
+  const bad = l.tone === 'bad';
+  return (
+    <>
+      <div className="cut cut-sm row" role="status" style={{ pointerEvents: 'auto', marginTop: 6, padding: '8px 12px', gap: 10, background: bad ? 'var(--danger)' : 'var(--surface2)', color: bad ? '#fff' : 'var(--text)', fontSize: 13, fontWeight: 600 }}>
+        <span className="grow">{l.text}</span>
+        {fixable && <button type="button" onClick={() => setHelp(true)} style={{ flex: 'none', background: 'none', border: 0, color: 'inherit', font: 'inherit', fontWeight: 800, textDecoration: 'underline', padding: '4px 0', cursor: 'pointer' }}>How to fix</button>}
+      </div>
+      <GpsHelp open={help} onClose={() => setHelp(false)} status={geo.status} />
+    </>
+  );
+}
 const REASON: Record<string, string> = {
   caught: 'was caught', boundary: 'left the boundary', zone: 'was outside the zone', nogo: 'entered a no-go zone',
   spoof: 'was removed for GPS spoofing', left: 'left the match', removed: 'was removed by the admin',
@@ -61,6 +80,7 @@ export function Match({ s, feed, geo, refresh, themeKey }: { s: RoomState; feed:
   const byId = useMemo(() => new Map(s.members.map((m) => [m.id, m])), [s.members]);
   const hunters = s.members.filter((m) => m.role === 'hunter');
   const radio = useRadio(s.room.id);
+  const area = useAreaPack(s.room.id, s.room.boundary, !!s.is_admin);
   const runners = s.members.filter((m) => m.role === 'runner');
   const st = s.room.settings;
 
@@ -116,6 +136,7 @@ export function Match({ s, feed, geo, refresh, themeKey }: { s: RoomState; feed:
     return (
       <>
         <HunterLobby s={s} radio={radio} meId={profile!.id} onMenu={() => setMenu(true)} themeKey={themeKey}
+          gps={<GpsChip status={geo.status} fix={geo.fix} rawAcc={geo.rawAcc} />}
           sos={<SOSButton roomId={s.room.id} getFix={() => geo.latest.current} />} />
         <MatchMenu open={menu} onClose={() => setMenu(false)} s={s} />
       </>
@@ -125,7 +146,7 @@ export function Match({ s, feed, geo, refresh, themeKey }: { s: RoomState; feed:
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'var(--bg)' }}>
       <div style={{ position: 'absolute', inset: 0, right: wide ? 420 : 0 }}>
-        <MapView ref={mapRef} themeKey={themeKey} boundary={s.room.boundary} nogo={s.room.nogo} zone={s.room.zone} zoneNext={s.room.status === 'hunt' ? s.room.zone_next : null}
+        <MapView ref={mapRef} themeKey={themeKey} areaPack={area.pack} boundary={s.room.boundary} nogo={s.room.nogo} zone={s.room.zone} zoneNext={s.room.status === 'hunt' ? s.room.zone_next : null}
           markers={markers} me={!isAdmin && alive && geo.fix ? geo.fix : null} chromeBottom={wide ? 0 : peek}
           fitPad={wide ? { top: 150, bottom: 40, left: 40, right: 70 } : { top: 150, bottom: 210, left: 30, right: 70 }} />
         <Hud s={s} geo={geo} isAdmin={isAdmin} alive={alive} role={role} onMenu={() => setMenu(true)} />
@@ -230,13 +251,7 @@ function Hud({ s, geo, isAdmin, alive, role, onMenu }: { s: RoomState; geo: Geo;
         </motion.div>}
         </AnimatePresence>
       </motion.div>
-      {!isAdmin && alive && geo.status !== 'ok' && (
-        <div className="cut cut-sm" style={{ pointerEvents: 'auto', marginTop: 6, padding: '8px 12px', background: geo.status === 'denied' ? 'var(--danger)' : 'var(--surface2)', color: geo.status === 'denied' ? '#fff' : 'var(--text)', fontSize: 13, fontWeight: 600 }}>
-          {geo.status === 'denied' ? 'Location is blocked. Allow it in your browser settings to stay in the game.'
-            : geo.status === 'weak' ? `Weak GPS${geo.fix ? ` (±${Math.round(geo.fix.acc)} m)` : ''}. Readings are ignored until it improves. Step into the open.`
-            : geo.status === 'unsupported' ? 'This browser has no location support.' : 'Finding your GPS…'}
-        </div>
-      )}
+      {!isAdmin && alive && geo.status !== 'ok' && geo.status !== 'off' && <GpsBanner geo={geo} />}
     </div>
   );
 }

@@ -83,7 +83,7 @@ export default function RoomScreen() {
   let body;
   if (s.me?.status === 'pending' && st === 'lobby') body = <Waiting s={s} />;
   else if (!inRoom && !(st === 'ended' && s.me?.role)) body = <NotIn s={s} />;
-  else if (st === 'lobby') body = s.is_admin ? <AdminLobby s={s} refresh={refresh} themeKey={theme} /> : <PlayerLobby s={s} themeKey={theme} />;
+  else if (st === 'lobby') body = s.is_admin ? <AdminLobby s={s} refresh={refresh} themeKey={theme} /> : <PlayerLobby s={s} themeKey={theme} geo={geo} />;
   else if (st === 'ended') body = <Result s={s} />;
   else body = <Match s={s} feed={feed} geo={geo} refresh={refresh} themeKey={theme} />;
 

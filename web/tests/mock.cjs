@@ -74,6 +74,8 @@ function png(w, h, rgb) {
 const COLS = [[140, 110, 90], [170, 120, 100], [120, 100, 85], [160, 130, 110], [110, 90, 80], [150, 115, 95], [130, 105, 90]];
 const style = { version: 8, glyphs: 'https://x/{fontstack}/{range}.pbf', sources: {}, layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#111' } }] };
 
+const diffCache = {};
+const diffStats = { calls: 0, roomSkipped: 0, membersSkipped: 0 };
 async function setup(ctx, scenario) {
   await ctx.addInitScript(([ref, anon, intro]) => {
     if (!intro) sessionStorage.setItem('tag-intro', '1');
@@ -88,12 +90,25 @@ async function setup(ctx, scenario) {
     const u = r.request().url();
     if (u.includes('/storage/v1/object/public/selfies/')) { const k = u.split('/').pop(); const i = k === 'me.jpg' ? 6 : k === 'admin.jpg' ? 5 : +k.replace(/\D/g, '') || 0; return r.fulfill({ contentType: 'image/png', body: png(96, 96, COLS[i % COLS.length]) }); }
     const m = /\/rpc\/(\w+)/.exec(u);
-    if (m) { const fn = m[1]; const body = fn === 'room_state' ? state(scenario.room) : fixtures[fn] ?? null; return r.fulfill({ contentType: 'application/json', body: JSON.stringify(body) }); }
+    if (m) {
+      const fn = m[1];
+      let body = fn === 'room_state' ? state(scenario.room) : fixtures[fn] ?? null;
+      // DIFF=1 answers like the live server since 'lighter ticks': fingerprints out, unchanged parts left out
+      if (fn === 'room_state' && process.env.DIFF && body) {
+        body = (diffCache[scenario.room] ??= body);
+        const md5 = (o) => require('crypto').createHash('md5').update(JSON.stringify(o)).digest('hex');
+        const hashes = { r: md5(body.room), m: md5(body.members) };
+        const have = (JSON.parse(r.request().postData() || '{}').p_have) || {};
+        diffStats.calls++; if (have.r === hashes.r) diffStats.roomSkipped++; if (have.m === hashes.m) diffStats.membersSkipped++;
+        body = { ...body, room: have.r === hashes.r ? null : body.room, members: have.m === hashes.m ? null : body.members, hashes };
+      }
+      return r.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
+    }
     if (u.includes('/rest/v1/messages')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify([{ id: 1, user_id: '00000001-0000-4000-8000-000000000001', body: 'Anyone near the canteen?', at: iso(-90000) }, { id: 2, user_id: ME, body: 'Heading to the library side', at: iso(-30000) }]) });
     return r.fulfill({ contentType: 'application/json', body: '{}' });
   });
 }
-module.exports = { setup, state, png, OUT, devices, chromium };
+module.exports = { setup, state, png, OUT, devices, chromium, diffStats };
 if (require.main === module) {
   (async () => {
     const b = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] });
