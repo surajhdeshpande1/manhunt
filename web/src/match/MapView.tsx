@@ -4,6 +4,7 @@ import { bboxOf, circlePolygon, closeRing, type LngLat, type Zone } from '../lib
 import { selfieUrl } from '../lib/supabase';
 import { cssVar } from '../lib/theme';
 import { gCopyright, gSession, googleStyle, type GKind } from '../lib/gmaps';
+import { addBuildings, addPlaces, type CityMode } from '../lib/cityLayers';
 import { OFM_STYLE, OSM_MAP, esriStyle, markProviderFailed, pickMap, rememberMap, satelliteStyle, startMap, usableMaps, withEsriToken, type MapOpt, type Provider } from '../lib/basemaps';
 
 const STYLE = OFM_STYLE;
@@ -238,6 +239,11 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
       m.addLayer({ id: 'tag-zone-next-line', type: 'line', source: 'tag-zone-next', paint: { 'line-color': '#0f172a', 'line-width': 2, 'line-dasharray': [2.5, 2], 'line-opacity': 0.85 } });
       m.addLayer({ id: 'tag-acc', type: 'fill', source: 'tag-acc', paint: { 'fill-color': '#2563eb', 'fill-opacity': 0.16 } });
       m.addLayer({ id: 'tag-acc-line', type: 'line', source: 'tag-acc', paint: { 'line-color': '#3b82f6', 'line-width': 1.5, 'line-opacity': 0.7 } });
+      if (!isGoogle) {
+        // every building and named place in the play area, from open data shipped with TAG
+        const mode: CityMode = curRef.current.kind === 'satellite' ? 'photo' : document.documentElement.dataset.day === '1' ? 'day' : 'night';
+        try { addBuildings(m, mode, 'tag-mask'); addPlaces(m, mode); } catch { /* a style without room for them: skip */ }
+      }
       m.addLayer({ id: 'tag-draft-fill', type: 'fill', source: 'tag-draft', filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': accent, 'fill-opacity': 0.18 } });
       m.addLayer({ id: 'tag-draft-line', type: 'line', source: 'tag-draft', filter: ['!=', '$type', 'Point'], paint: { 'line-color': accent, 'line-width': 3.5, 'line-dasharray': [2, 1] } });
       m.addLayer({ id: 'tag-draft-pts', type: 'circle', source: 'tag-draft', filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 7, 'circle-color': '#ffffff', 'circle-stroke-color': accent, 'circle-stroke-width': 3 } });
