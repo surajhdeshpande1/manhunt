@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PhaseTimeline } from '../components/Diagrams';
 import { NightCampus } from '../components/Scenes';
-import { Segmented, Avatar, Back, Button, IconCopy, IconMap, IconPhone, IconPlus, IconShare, IconUndo, Modal, Section, Slash, useToast } from '../components/ui';
+import { Segmented, Avatar, Back, Button, IconCopy, IconMap, IconPhone, IconPlus, IconShare, IconTarget, IconUndo, Modal, Section, Slash, useToast } from '../components/ui';
 import { rpc } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { haptic } from '../lib/feel';
@@ -17,6 +17,8 @@ import type { Fix, GeoStatus } from './useRoom';
 import { useAreaPack, useViewPack } from '../geo/useAreaPack';
 import { shippedCovers } from '../geo/areaPack';
 import { MapView, type MapHandle } from './MapView';
+import { PlaceSearch } from './PlaceSearch';
+import type { Place } from '../lib/placeSearch';
 import { TASKS } from '../tasks/core';
 import { Chat } from './Comms';
 import type { Member, RoomState, Settings } from '../lib/types';
@@ -186,14 +188,9 @@ export function PlayerLobby({ s, themeKey, geo }: { s: RoomState; themeKey: stri
     <Slash>
       <div className="screen" style={{ gap: 24, paddingBottom: 'calc(env(safe-area-inset-bottom) + 130px)' }}>
         <RoomHeader s={s} onLeave={leave} />
-        <div className="frame cut" style={{ background: 'var(--accent)' }}>
-          <div className="inner cut row" style={{ padding: 14, gap: 12 }}>
-            <Avatar src={s.room.admin.selfie} name={s.room.admin.username} size={44} />
-            <div className="grow">
-              <div className="display" style={{ fontSize: 19 }}>Match lobby</div>
-              <div className="muted" style={{ fontSize: 13 }}>Everyone waits here together. @{s.room.admin.username} starts the match, then roles go out and the hunters are revealed.</div>
-            </div>
-          </div>
+        <div className="row muted" style={{ gap: 10, fontSize: 13.5, marginTop: -8 }}>
+          <Avatar src={s.room.admin.selfie} name={s.room.admin.username} size={28} />
+          <span>@{s.room.admin.username} starts the match and hands out roles.</span>
         </div>
         <Section title={`Squad · ${players.length}/${s.room.max_players}`} right={<div className="row" style={{ gap: 6 }}>
           <span className={`tag ${readyCount === players.length && players.length ? 'ok' : ''}`}>{readyCount}/{players.length} ready</span>
@@ -381,8 +378,15 @@ function AreaEditor({ s, refresh, themeKey }: { s: RoomState; refresh: () => voi
   const [hist, setHist] = useState<{ b: LngLat[]; n: LngLat[][] }[]>([]);
   const [saving, setSaving] = useState(false);
   const [me, setMe] = useState<{ lat: number; lng: number; acc: number } | null>(null);
+  const [found, setFound] = useState<Place | null>(null);
   const saved = useAreaPack(s.room.id, s.room.boundary, true);
   const view = useViewPack();
+  const mapCentre = () => { const v = mapRef.current?.view(); return v ? { lng: (v.box[0] + v.box[2]) / 2, lat: (v.box[1] + v.box[3]) / 2 } : me; };
+  function goTo(pl: Place) {
+    setFound(pl); haptic.tap();
+    if (pl.box) mapRef.current?.fit([[pl.box[0], pl.box[1]], [pl.box[2], pl.box[3]]]);
+    else mapRef.current?.flyTo(pl.lat, pl.lng, 18);
+  }
   function showHere() {
     const v = mapRef.current?.view();
     if (!v) return;
@@ -437,6 +441,7 @@ function AreaEditor({ s, refresh, themeKey }: { s: RoomState; refresh: () => voi
   const btn = { width: 42, height: 42, display: 'grid', placeItems: 'center', background: 'rgba(11,11,12,.86)', borderRadius: 9, boxShadow: '0 0 0 1px rgba(237,230,218,.16)', color: '#ede6da' } as const;
   return (
     <div className="stack" style={{ gap: 12 }}>
+      <PlaceSearch near={mapCentre} packs={[saved.pack, view.pack]} onPick={goTo} onClear={() => setFound(null)} />
       <div className="row" style={{ gap: 8 }}>
         <button className={`chip ${mode === 'boundary' ? 'on' : ''}`} style={{ flex: 1 }} onClick={() => { setMode('boundary'); setDraft([]); }}>Boundary</button>
         <button className={`chip ${mode === 'nogo' ? 'on' : ''}`} style={{ flex: 1, ...(mode === 'nogo' ? { background: 'var(--danger)', color: '#fff' } : {}) }} onClick={() => setMode('nogo')}>No-go zone</button>
@@ -447,10 +452,10 @@ function AreaEditor({ s, refresh, themeKey }: { s: RoomState; refresh: () => voi
       <div className="frame cut" style={{ height: '58vh', minHeight: 360, position: 'relative' }}>
         <div className="inner cut" style={{ position: 'relative', overflow: 'hidden' }}>
           <MapView ref={mapRef} themeKey={themeKey} boundary={boundary} nogo={nogo} draft={tool === 'points' ? (mode === 'boundary' ? boundary : draft) : null} draftKind={mode}
-            onMapClick={tap} me={me} markers={me ? [{ id: 'me', lat: me.lat, lng: me.lng, me: true }] : []} showMask={false}
-            drawMode={tool === 'draw' ? mode : null} onStroke={stroke} basemap="satellite" layerToggle areaPack={saved.pack ?? view.pack} />
+            onMapClick={tap} me={me} markers={found ? [{ id: 'found', lat: found.lat, lng: found.lng, label: found.name, place: true }] : []} showMask={false}
+            drawMode={tool === 'draw' ? mode : null} onStroke={stroke} basemap="satellite" layerToggle plain areaPack={saved.pack ?? view.pack} />
           <div className="stack" style={{ position: 'absolute', right: 10, top: 10, gap: 6, zIndex: 4 }}>
-            <button style={btn} aria-label="My location" onClick={() => locate()}><IconMap s={20} /></button>
+            <button style={btn} aria-label="Go to my location" onClick={() => locate()}><IconTarget s={20} /></button>
             <button style={btn} aria-label="Undo" onClick={undo}><IconUndo s={20} /></button>
           </div>
           {me && <span className="mono" style={{ position: 'absolute', right: 10, top: 108, zIndex: 4, padding: '3px 7px', borderRadius: 6, fontSize: 11, fontWeight: 800, background: 'rgba(11,11,12,.86)', color: me.acc <= 15 ? '#7fd38f' : me.acc <= 35 ? '#f2c230' : '#ff8a7a' }}>GPS ±{Math.round(me.acc)} m</span>}

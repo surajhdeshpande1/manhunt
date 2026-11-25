@@ -8,8 +8,8 @@ import { DEMO } from '../demo/mode';
 
 type Msg = { id: number; user_id: string; body: string; at: string };
 
-/** Realtime text chat for a room channel ('lobby' or 'hunters'). */
-export function Chat({ roomId, channel, members, meId, height = 280, compact }: { roomId: string; channel: 'lobby' | 'hunters'; members: Member[]; meId: string; height?: number | string; compact?: boolean }) {
+/** Realtime text chat for a room channel: 'lobby' (everyone), 'hunters', or 'runners' (only runners still in the game). */
+export function Chat({ roomId, channel, members, meId, height = 280, compact }: { roomId: string; channel: 'lobby' | 'hunters' | 'runners'; members: Member[]; meId: string; height?: number | string; compact?: boolean }) {
   const toast = useToast();
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState('');
@@ -55,11 +55,12 @@ export function Chat({ roomId, channel, members, meId, height = 280, compact }: 
     try { await rpc('send_message', { p_room: roomId, p_channel: channel, p_body: body }); setText(''); }
     catch (e: any) { toast(e.message, true); } finally { setSending(false); }
   }
-  const quick = channel === 'hunters' ? ['On my way', 'Spotted one', 'North side', 'Need backup', 'Cover the exit'] : [];
+  const quick = channel === 'hunters' ? ['On my way', 'Spotted one', 'North side', 'Need backup', 'Cover the exit']
+    : channel === 'runners' ? ['Hunter near me', 'Safe here', 'Doing a task', 'Moving north', 'Need a distraction'] : [];
   return (
     <div className="stack" style={{ gap: 8 }}>
       <div ref={list} style={{ height, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4 }}>
-        {msgs.length === 0 && <div className="muted center" style={{ margin: 'auto', fontSize: 14 }}>{channel === 'hunters' ? 'Hunters-only channel. Runners can\'t see this.' : 'Say hi to the squad.'}</div>}
+        {msgs.length === 0 && <div className="muted center" style={{ margin: 'auto', fontSize: 14 }}>{channel === 'hunters' ? 'Hunters-only channel. Runners can\'t see this.' : channel === 'runners' ? 'Runners-only channel. Hunters can\'t see this, and it closes for anyone caught.' : 'Say hi to the squad.'}</div>}
         {msgs.map((m) => {
           const u = byId.get(m.user_id); const mine = m.user_id === meId;
           return (
@@ -126,8 +127,8 @@ export function useRadio(roomId: string): Radio {
   return { state, canTalk, talking, speakers, connect, press };
 }
 
-/** Push-to-talk control. `big` is the hunter-lobby version. */
-export function PushToTalk({ radio, big }: { radio: Radio; big?: boolean }) {
+/** Push-to-talk control. `big` is the hunter-lobby version; `square` sits beside the scan button in a match. */
+export function PushToTalk({ radio, big, square }: { radio: Radio; big?: boolean; square?: boolean }) {
   const { state, canTalk, talking, speakers } = radio;
   const sub = state === 'ready' ? (speakers.length ? `${speakers.join(', ')} talking…` : canTalk ? 'Hold to talk. Hunters only.' : 'Listening only.')
     : state === 'off' ? 'Voice isn\'t set up on this server yet.' : state === 'error' ? 'Couldn\'t connect. Tap to retry.' : 'Tap to join the hunter radio.';
@@ -141,6 +142,21 @@ export function PushToTalk({ radio, big }: { radio: Radio; big?: boolean }) {
       <div className="stack center" style={{ gap: 2 }}><IconMic s={big ? 44 : 26} />{big && <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.12em' }}>{talking ? 'ON AIR' : 'HOLD'}</span>}</div>
     </button>
   );
+  if (square) {
+    const live = state === 'ready';
+    return (
+      <button type="button" aria-label={live ? (canTalk ? 'Hold to talk on the hunter radio' : 'Hunter radio, listening') : 'Join the hunter radio'} disabled={state === 'connecting' || state === 'off' || (live && !canTalk)}
+        onClick={live ? undefined : radio.connect}
+        onPointerDown={live ? (e) => { (e.target as HTMLElement).setPointerCapture(e.pointerId); radio.press(true); } : undefined}
+        onPointerUp={live ? () => radio.press(false) : undefined} onPointerCancel={live ? () => radio.press(false) : undefined} onContextMenu={(e) => e.preventDefault()}
+        style={{ flex: 'none', width: 76, borderRadius: 10, display: 'grid', placeItems: 'center', alignContent: 'center', gap: 3, touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none',
+          background: talking ? 'var(--danger)' : live ? 'var(--accent)' : 'var(--surface2)', color: talking || live ? 'var(--accent-ink)' : 'var(--text)',
+          boxShadow: talking ? '0 0 0 6px rgba(196,69,54,.25)' : speakers.length ? '0 0 0 5px rgba(201,162,39,.3)' : '0 0 0 1px var(--line2)', transition: 'background .12s, box-shadow .12s' }}>
+        {state === 'connecting' ? <span className="spinner" /> : <IconMic s={24} />}
+        <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.08em' }}>{talking ? 'ON AIR' : live ? (speakers.length ? 'LIVE' : 'HOLD') : state === 'off' ? 'OFF' : 'RADIO'}</span>
+      </button>
+    );
+  }
   if (big) {
     return (
       <div className="card card-pad stack center" style={{ gap: 14, padding: 22 }}>

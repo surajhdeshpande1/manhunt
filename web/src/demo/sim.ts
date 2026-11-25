@@ -129,6 +129,7 @@ const NAMES: [string, string, string][] = [
 const COLLEGES = ['Basaveshwar Engineering College, Bagalkot', 'Basaveshwar Engineering College, Bagalkot', 'BLDEA College of Engineering, Vijayapura', 'KLE Technological University, Hubballi', 'SDM College of Engineering, Dharwad'];
 const TITLES = ['rookie', 'ghost', 'bloodhound', 'phantom', 'veteran', 'legend', 'shadow', 'marathoner'];
 const LOBBY_LINES = ['Ready when you are', 'Who is hunting?', 'Let\'s gooo', 'I\'m near the library', 'Bring water guys', 'First time playing 👀', 'Hunters better be fast'];
+const RUNNER_LINES = ['Hunter near the library', 'Safe here', 'Doing a task', 'Moving north', 'Two hunters by the gate', 'Anyone near the canteen?', 'Need a distraction'];
 const HUNTER_LINES = ['On my way', 'Spotted one', 'North side', 'Need backup', 'Cover the exit', 'Lost them near the canteen', 'Going east', 'Two runners by the gate'];
 
 /* ---------- world ---------- */
@@ -351,6 +352,7 @@ function botTick(r: Room, dt: number) {
     let moved = 0;
     if (b.hold && now() < b.hold) { p.at = now(); continue; }
     if (m.role === 'runner') {
+      if (m.alive && r.status === 'hunt' && (b.chatAt == null || now() > b.chatAt)) { b.chatAt = now() + rnd(35, 90) * 1000; if (Math.random() < 0.45) say(r, 'runners', m.user_id, pick(RUNNER_LINES)); }
       const threat = hunters.map((h) => ({ h, q: posOf(h.user_id) })).filter((x) => x.q).map((x) => ({ ...x, d: hav(p.lat, p.lng, x.q!.lat, x.q!.lng) })).sort((a, c) => a.d - c.d)[0];
       if (r.status === 'hunt' && threat && threat.d < 65) {
         const away = off(p.lat, p.lng, (p.lng - threat.q!.lng) * 1e5, (p.lat - threat.q!.lat) * 1e5);
@@ -651,26 +653,30 @@ const H: Record<string, (a: any) => any> = {
     return { seed: m!.task_seed, kind: m!.task_kind, index: m!.tasks_done + 1, of: per, started_at: iso(m!.task_started_at), level };
   },
   complete_task: (a) => {
-    const r = W.rooms[a.p_room] ?? fail('Room not found'); advance(r); if (r.status !== 'hunt') fail('The hunt is not on right now');
-    const m = mem(r.id, ME); if (!m || m.status !== 'accepted' || m.role !== 'runner' || !m.alive) fail('You cannot do tasks right now');
-    if (m!.task_seed == null || m!.task_seed !== a.p_seed) fail('That task has expired. Start a new one.');
+    const r = W.rooms[a.p_room] ?? fail('Room not found'); advance(r);
+    const m = mem(r.id, ME); if (!m || m.status !== 'accepted' || m.role !== 'runner') fail('Only runners do tasks');
+    if ((m as any).last_done_seed === a.p_seed) return progress(r); // sent again after a lost reply: already counted
+    if (r.status !== 'hunt') fail('The hunt is not on right now');
+    if (!m!.alive) fail('You cannot do tasks right now');
+    if (m!.task_seed == null || m!.task_seed !== a.p_seed) fail('That task is no longer open. Start a new one.');
     if (m!.oob_since) fail('Tasks are locked while you are outside the zone');
     if (now() < m!.task_started_at! + 4000) fail('Too fast');
     const pr = W.profiles[ME]; const k = String(m!.task_kind ?? 0);
     pr.task_mastery = { ...(pr.task_mastery ?? {}), [k]: ((pr.task_mastery ?? {})[k] ?? 0) + 1 };
-    Object.assign(m!, { tasks_done: m!.tasks_done + 1, task_streak: (m!.task_streak ?? 0) + 1, last_task_at: now(), last_task_kind: m!.task_kind, task_seed: null, task_kind: null, task_started_at: null });
+    Object.assign(m!, { tasks_done: m!.tasks_done + 1, task_streak: (m!.task_streak ?? 0) + 1, last_task_at: now(), last_task_kind: m!.task_kind, last_done_seed: a.p_seed, task_seed: null, task_kind: null, task_started_at: null });
     ev(r.id, 'task', 'admin', ME, null, { n: m!.tasks_done }); advance(r); return progress(r);
   },
   fail_task: (a) => { const r = W.rooms[a.p_room]; const m = r && mem(r.id, ME); if (m && m.task_seed != null) Object.assign(m, { task_streak: 0, last_task_kind: m.task_kind, task_seed: null, task_kind: null, task_started_at: null, last_task_at: now() - set(r!, 'cooldown_secs') * 1000 + 10000 }); },
   send_sos: (a) => { const m = mem(a.p_room, ME); if (!m || m.status !== 'accepted') fail('Not in this room'); const p = W.profiles[ME]; ev(a.p_room, 'sos', 'admin', ME, null, { lat: a.p_lat, lng: a.p_lng, username: p.username, phone: p.phone }); },
   send_message: (a) => {
     const r = W.rooms[a.p_room] ?? fail('Room not found'); const m = mem(r.id, ME);
-    const ok = r.admin_id === ME || (m?.status === 'accepted' && (a.p_channel === 'lobby' || (a.p_channel === 'hunters' && m.role === 'hunter' && r.status !== 'lobby')));
+    const ok = r.admin_id === ME || (m?.status === 'accepted' && (a.p_channel === 'lobby' || (a.p_channel === 'hunters' && m.role === 'hunter' && r.status !== 'lobby')
+      || (a.p_channel === 'runners' && m.role === 'runner' && m.alive && ['hiding', 'hunt', 'paused'].includes(r.status))));
     if (!ok) fail('You cannot post in this channel');
     const body = String(a.p_body ?? '').trim(); if (body.length < 1 || body.length > 300) fail('Messages are 1 to 300 characters');
     say(r, a.p_channel, ME, body);
     // someone usually answers
-    if (Math.random() < 0.5) setTimeout(() => { const ids = roomMembers(r.id).filter((x) => x.status === 'accepted' && x.user_id !== ME && (a.p_channel === 'lobby' || x.role === 'hunter')); if (ids.length) { say(r, a.p_channel, pick(ids).user_id, pick(a.p_channel === 'hunters' ? HUNTER_LINES : LOBBY_LINES)); touch(); } }, rnd(1500, 4000));
+    if (Math.random() < 0.5) setTimeout(() => { const ids = roomMembers(r.id).filter((x) => x.status === 'accepted' && x.user_id !== ME && (a.p_channel === 'lobby' || (a.p_channel === 'hunters' ? x.role === 'hunter' : x.role === 'runner' && x.alive))); if (ids.length) { say(r, a.p_channel, pick(ids).user_id, pick(a.p_channel === 'hunters' ? HUNTER_LINES : a.p_channel === 'runners' ? RUNNER_LINES : LOBBY_LINES)); touch(); } }, rnd(1500, 4000));
   },
   set_ready: (a) => {
     const r = W.rooms[a.p_room] ?? fail('Room not found'); if (r.status !== 'lobby') fail('The match has already started');

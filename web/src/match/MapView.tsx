@@ -10,19 +10,27 @@ import { OFM_STYLE, OSM_MAP, esriStyle, markProviderFailed, pickMap, rememberMap
 
 const STYLE = OFM_STYLE;
 const OUT_RED = '#c44536';
-export type Marker = { id: string; lat: number; lng: number; selfie?: string | null; role?: 'runner' | 'hunter' | null; label?: string; title?: string; me?: boolean; stale?: boolean; alert?: boolean };
+export type Marker = { id: string; lat: number; lng: number; selfie?: string | null; role?: 'runner' | 'hunter' | null; label?: string; title?: string; me?: boolean; stale?: boolean; alert?: boolean;
+  /** a searched place, not a player: a plain pin with its name */
+  place?: boolean };
 export type MapHandle = { fit: (pts?: LngLat[]) => void; flyTo: (lat: number, lng: number, zoom?: number) => void; setBasemap: (k: GKind) => void; basemap: () => GKind; google: () => boolean;
   /** what the map shows right now: [west, south, east, north] and zoom */
   view: () => { box: [number, number, number, number]; zoom: number } | null };
 type Props = {
   themeKey: string; boundary?: LngLat[] | null; nogo?: LngLat[][]; zone?: Zone | null; zoneNext?: Zone | null;
   draft?: LngLat[] | null; draftKind?: 'boundary' | 'nogo'; markers?: Marker[]; me?: { lat: number; lng: number; acc: number } | null;
+  /** which way you're heading or facing, degrees from north; draws the cone on your dot */
+  meHeading?: number | null;
+  /** keep the map centred on you as you move; any drag turns it off (reported through onFollowChange) */
+  follow?: boolean; onFollowChange?: (on: boolean) => void;
   onMapClick?: (p: LngLat) => void; interactive?: boolean; showMask?: boolean; className?: string; style?: React.CSSProperties;
   fitPad?: { top: number; bottom: number; left: number; right: number };
   /** starting basemap when Google is available (remembered per device once switched) */
   basemap?: GKind;
   /** show the built-in Map / Satellite switch */
   layerToggle?: boolean;
+  /** the street map in its own familiar colours (names, icons, landmarks), not TAG's game look: for finding places */
+  plain?: boolean;
   /** lift the Google logo and data credits above sheets that cover the bottom of the map */
   chromeBottom?: number;
   /** buildings and named places for this area, built from open data (see geo/useAreaPack) */
@@ -84,12 +92,12 @@ function recolor(map: MLMap) {
 }
 
 /** Pins slide to their new spot instead of teleporting between position updates. */
-function glide(inst: maplibregl.Marker, lng: number, lat: number) {
+function glide(inst: maplibregl.Marker, lng: number, lat: number, dur = 900) {
   const from = inst.getLngLat(); const run = ((inst as any)._glide = ((inst as any)._glide ?? 0) + 1);
   const dLng = lng - from.lng, dLat = lat - from.lat; const far = Math.hypot(dLng, dLat);
   if (far < 1e-7) return;
   if (far > 0.004 || document.hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) { inst.setLngLat([lng, lat]); return; }
-  const t0 = performance.now(), dur = 900;
+  const t0 = performance.now();
   const step = (now: number) => {
     if ((inst as any)._glide !== run) return;
     const t = Math.min(1, (now - t0) / dur), e = 1 - (1 - t) ** 3;
@@ -98,18 +106,26 @@ function glide(inst: maplibregl.Marker, lng: number, lat: number) {
   };
   requestAnimationFrame(step);
 }
+/** A player's pin: name above, photo, and a pointer whose tip sits exactly on their position. */
 function markerEl(m: Marker) {
   const el = document.createElement('div');
   el.className = 'tag-marker';
-  el.innerHTML = `<div class="tm-pin"><div class="tm-img"></div></div><div class="tm-label"></div><div class="tm-title"></div>`;
+  el.innerHTML = `<div class="tm-title"></div><div class="tm-label"></div><div class="tm-pin"><div class="tm-img"></div></div><div class="tm-tip"></div>`;
+  return el;
+}
+/** You: a dot exactly where you are, with a cone showing the way you're heading. */
+function meEl() {
+  const el = document.createElement('div');
+  el.className = 'tag-me';
+  el.innerHTML = `<div class="tm-cone"></div><div class="tm-dot"></div>`;
   return el;
 }
 function updateMarkerEl(el: HTMLElement, m: Marker) {
-  el.dataset.role = m.role || ''; el.dataset.me = m.me ? '1' : ''; el.dataset.stale = m.stale ? '1' : ''; el.dataset.alert = m.alert ? '1' : '';
+  el.dataset.role = m.role || ''; el.dataset.me = m.me ? '1' : ''; el.dataset.stale = m.stale ? '1' : ''; el.dataset.alert = m.alert ? '1' : ''; el.dataset.place = m.place ? '1' : '';
   const img = el.querySelector('.tm-img') as HTMLElement;
   const url = selfieUrl(m.selfie);
   const bg = url ? `url("${url}")` : '';
-  if (img.dataset.bg !== bg) { img.style.backgroundImage = bg; img.dataset.bg = bg; img.textContent = url ? '' : (m.label || '?').slice(0, 2).toUpperCase(); }
+  if (img.dataset.bg !== bg) { img.style.backgroundImage = bg; img.dataset.bg = bg; img.textContent = url || m.place ? '' : (m.label || '?').slice(0, 2).toUpperCase(); }
   (el.querySelector('.tm-label') as HTMLElement).textContent = m.me ? 'YOU' : m.label || '';
   const t = el.querySelector('.tm-title') as HTMLElement; t.textContent = m.title || ''; t.style.display = m.title ? '' : 'none';
 }
@@ -119,6 +135,7 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
   const map = useRef<MLMap | null>(null);
   const ready = useRef(false);
   const markers = useRef(new Map<string, maplibregl.Marker>());
+  const meMarker = useRef<maplibregl.Marker | null>(null);
   const fitted = useRef(false);
   const props = useRef(p);
   props.current = p;
@@ -159,7 +176,12 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
   function setAttribution(on: boolean, note?: string) {
     const m = map.current; if (!m) return;
     if (attr.current && (!on || attrNote.current !== note)) { try { m.removeControl(attr.current); } catch { /* already gone */ } attr.current = null; }
-    if (on && !attr.current) { attr.current = new maplibregl.AttributionControl({ compact: true, customAttribution: note }); attrNote.current = note; m.addControl(attr.current, 'bottom-right'); }
+    if (on && !attr.current) {
+      attr.current = new maplibregl.AttributionControl({ compact: true, customAttribution: note }); attrNote.current = note; m.addControl(attr.current, 'bottom-right');
+      // credits stay one tap away behind the (i), instead of two lines across the bottom of the map
+      const fold = () => m.getContainer().querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
+      fold(); m.once('idle', fold);
+    }
   }
   /** a source that fails is skipped for a while and the next best one of the same kind takes over */
   function fallFrom(o: MapOpt) {
@@ -177,7 +199,7 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
     if (o.provider === 'osm') { satErr.current = { n: 0, ok: false, prov: null }; m.setStyle(STYLE, { diff: false }); return; }
     satErr.current = { n: 0, ok: false, prov: o.provider };
     try {
-      const st = o.provider === 'esri' ? await esriStyle(o.kind, document.documentElement.dataset.day === '1') : await satelliteStyle(o.provider as 'maptiler');
+      const st = o.provider === 'esri' ? await esriStyle(o.kind, document.documentElement.dataset.day === '1' || !!props.current.plain) : await satelliteStyle(o.provider as 'maptiler');
       if (map.current !== m || curRef.current !== o) return;
       m.setStyle(st as any, { diff: false });
     } catch { if (map.current === m && curRef.current === o) fallFrom(o); }
@@ -185,7 +207,7 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
   async function applyGoogle(o: MapOpt) {
     const m = map.current; if (!m) return;
     try {
-      const day = document.documentElement.dataset.day === '1';
+      const day = document.documentElement.dataset.day === '1' || !!props.current.plain;
       const sid = await gSession(o.kind, day);
       if (map.current !== m || curRef.current !== o) return;
       sess.current = sid; setAttribution(false); satErr.current = { n: 0, ok: false, prov: 'google' };
@@ -201,7 +223,7 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
   useEffect(() => {
     const first = curRef.current;
     const m = new maplibregl.Map({
-      container: box.current!, style: first.provider === 'osm' ? STYLE : (BLANK as any), center: [75.6905, 16.1805], zoom: 15, maxZoom: 20, attributionControl: false,
+      container: box.current!, style: first.provider === 'osm' ? STYLE : (BLANK as any), center: [75.6905, 16.1805], zoom: 15, maxZoom: 21, attributionControl: false,
       transformRequest: (url: string) => withEsriToken(url),
       interactive: p.interactive !== false, pitchWithRotate: false, dragRotate: false, maxPitch: 0,
     });
@@ -229,7 +251,7 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
       const st = m.getStyle() as any; const srcs = st.sources || {};
       const isGoogle = !!srcs.g, isSat = !!srcs.sat || st.metadata?.['tag:provider'] === 'esri';
       const isBlank = !isGoogle && !isSat && (st.layers || []).length === 1;
-      if (!isGoogle && !isSat && !isBlank) recolor(m);
+      if (!isGoogle && !isSat && !isBlank && !props.current.plain) recolor(m);
       const accent = cssVar('--accent');
       m.addSource('tag-mask', { type: 'geojson', data: empty });
       m.addSource('tag-mask-b', { type: 'geojson', data: empty });
@@ -253,7 +275,7 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
       m.addLayer({ id: 'tag-acc-line', type: 'line', source: 'tag-acc', paint: { 'line-color': '#3b82f6', 'line-width': 1.5, 'line-opacity': 0.7 } });
       if (!isGoogle) {
         // every building and named place in the play area, from open data shipped with TAG
-        const mode: CityMode = curRef.current.kind === 'satellite' ? 'photo' : document.documentElement.dataset.day === '1' ? 'day' : 'night';
+        const mode: CityMode = isSat ? 'photo' : props.current.plain || document.documentElement.dataset.day === '1' ? 'day' : 'night';
         try { addBuildings(m, mode, 'tag-mask'); addPlaces(m, mode); addAreaLayers(m, mode, 'tag-mask'); setAreaData(m, areaGeo.current); } catch { /* a style without room for them: skip */ }
       }
       m.addLayer({ id: 'tag-draft-fill', type: 'fill', source: 'tag-draft', filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': accent, 'fill-opacity': 0.18 } });
@@ -263,6 +285,8 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
       sync();
     });
     m.on('click', (e) => { if (!props.current.drawMode) props.current.onMapClick?.([e.lngLat.lng, e.lngLat.lat]); });
+    // moving the map yourself stops it following you
+    m.on('dragstart', () => { if (props.current.follow) props.current.onFollowChange?.(false); });
     // Google asks for its data credits to match what's on screen
     let ct = 0, lastC = 0;
     m.on('moveend', () => {
@@ -276,7 +300,7 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
     });
     const ro = new ResizeObserver(() => m.resize());
     ro.observe(box.current!);
-    return () => { clearTimeout(ct); clearTimeout(fbTimer); ro.disconnect(); markers.current.forEach((mk) => mk.remove()); markers.current.clear(); m.remove(); map.current = null; ready.current = false; attr.current = null; };
+    return () => { clearTimeout(ct); clearTimeout(fbTimer); ro.disconnect(); markers.current.forEach((mk) => mk.remove()); markers.current.clear(); meMarker.current?.remove(); meMarker.current = null; m.remove(); map.current = null; ready.current = false; attr.current = null; };
   }, []);
 
   // ---------- freehand drawing ----------
@@ -375,6 +399,17 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
     }
     for (const [id, inst] of markers.current) if (!want.has(id)) { inst.remove(); markers.current.delete(id); }
 
+    // you
+    if (me) {
+      let inst = meMarker.current;
+      if (!inst) { inst = new maplibregl.Marker({ element: meEl(), anchor: 'center' }).setLngLat([me.lng, me.lat]).addTo(m); meMarker.current = inst; }
+      else glide(inst, me.lng, me.lat, 800);
+      const el = inst.getElement(); const h = props.current.meHeading;
+      el.dataset.hdg = h != null ? '1' : '';
+      if (h != null) el.style.setProperty('--hdg', `${h - m.getBearing()}deg`);
+      if (props.current.follow) m.easeTo({ center: [me.lng, me.lat], zoom: Math.max(m.getZoom(), 17.5), duration: 800, easing: (t) => 1 - (1 - t) ** 2 });
+    } else if (meMarker.current) { meMarker.current.remove(); meMarker.current = null; }
+
     if (!fitted.current && boundary && boundary.length >= 3) {
       const b = bboxOf(boundary); if (b) { m.fitBounds(b, { padding: pad(), duration: 0, maxZoom: 18 }); fitted.current = true; }
     } else if (!fitted.current && me) { m.jumpTo({ center: [me.lng, me.lat], zoom: 16.5 }); fitted.current = true; }
@@ -382,7 +417,7 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
   useEffect(sync);
 
   const kind = cur.kind;
-  const day = typeof document !== 'undefined' && document.documentElement.dataset.day === '1' && kind === 'street';
+  const day = typeof document !== 'undefined' && (document.documentElement.dataset.day === '1' || !!p.plain) && kind === 'street';
   const opts = usableMaps();
   const srcOpts = opts.filter((o) => o.kind === kind);
   const cb = p.chromeBottom ?? 0;
@@ -425,25 +460,35 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView(p, ref) {
 
 // marker styles (injected once)
 const css = `
-.tag-marker { display:flex; flex-direction:column; align-items:center; pointer-events:none; transition: transform .25s; }
-.tag-marker .tm-pin { position:relative; width:42px; height:42px; border-radius:9px; background:var(--accent); padding:3px; box-shadow:0 0 0 2px #0b0b0c, 0 8px 18px -6px rgba(0,0,0,.6); }
+.tag-marker { display:flex; flex-direction:column; align-items:center; pointer-events:none; }
+.tag-marker .tm-pin { position:relative; width:38px; height:38px; border-radius:9px; background:var(--accent); padding:3px; box-shadow:0 0 0 2px #0b0b0c, 0 8px 18px -6px rgba(0,0,0,.6); }
 .tag-marker .tm-pin::after { content:''; position:absolute; inset:-3px; border-radius:10px; border:2px solid currentColor; opacity:0; color:inherit; }
+.tag-marker .tm-tip { width:0; height:0; margin-top:-1px; border-left:7px solid transparent; border-right:7px solid transparent; border-top:10px solid var(--accent); filter:drop-shadow(0 2px 0 #0b0b0c); }
 .tag-marker[data-role="runner"] .tm-pin { background:#d9541e; color:#d9541e; }
+.tag-marker[data-role="runner"] .tm-tip { border-top-color:#d9541e; }
 .tag-marker[data-role="hunter"] .tm-pin { background:#c9a227; color:#c9a227; }
+.tag-marker[data-role="hunter"] .tm-tip { border-top-color:#c9a227; }
 .tag-marker .tm-img { width:100%; height:100%; background:#222 center/cover; border-radius:6px; display:grid; place-items:center; font:800 12px 'Inter Variable', system-ui; color:#fff; }
-.tag-marker .tm-label { margin-top:7px; padding:2px 7px; border-radius:4px; background:rgba(11,11,12,.88); color:#ede6da; font:700 11px/1.35 'Inter Variable', system-ui; white-space:nowrap; box-shadow:0 0 0 1px rgba(237,230,218,.18); }
-.tag-marker .tm-title { margin-top:3px; padding:1px 6px; border-radius:3px; box-shadow:0 0 0 1.5px #0b0b0c; font:800 9px/1.3 'Archivo Variable', system-ui; font-stretch:80%; letter-spacing:.08em; text-transform:uppercase; color:#000; background:#c9a227; }
+.tag-marker .tm-label { margin-bottom:4px; padding:1px 6px; border-radius:4px; background:rgba(11,11,12,.86); color:#ede6da; font:700 10.5px/1.35 'Inter Variable', system-ui; white-space:nowrap; box-shadow:0 0 0 1px rgba(237,230,218,.18); }
+.tag-marker .tm-title { margin-bottom:2px; padding:1px 5px; border-radius:3px; box-shadow:0 0 0 1.5px #0b0b0c; font:800 8.5px/1.3 'Archivo Variable', system-ui; font-stretch:80%; letter-spacing:.08em; text-transform:uppercase; color:#000; background:#c9a227; }
 .tag-marker[data-role="runner"] .tm-title { background:#d9541e; color:#0b0b0c; }
-.tag-marker[data-me="1"] .tm-pin::after { animation: tmRing 2s cubic-bezier(.22,1,.36,1) infinite; }
 .tag-marker[data-stale="1"] { opacity:.45; }
+.tag-marker[data-place="1"] .tm-pin { width:30px; height:30px; padding:8px; border-radius:50%; background:#ffffff; box-shadow:0 0 0 2px #0b0b0c, 0 8px 18px -6px rgba(0,0,0,.6); }
+.tag-marker[data-place="1"] .tm-img { background:#d9541e; border-radius:50%; }
+.tag-marker[data-place="1"] .tm-tip { border-top-color:#ffffff; }
+.tag-marker[data-place="1"] .tm-label { font-size:12px; padding:2px 8px; max-width:220px; overflow:hidden; text-overflow:ellipsis; }
 .tag-marker[data-alert="1"] .tm-pin { background:var(--danger); color:var(--danger); }
+.tag-marker[data-alert="1"] .tm-tip { border-top-color:var(--danger); }
 .tag-marker[data-alert="1"] .tm-pin::after { animation: tmRing .9s cubic-bezier(.22,1,.36,1) infinite; }
 @keyframes tmRing { 0% { transform:scale(1); opacity:.9; } 100% { transform:scale(2.1); opacity:0; } }
-/* role life: runners glow like embers, hunters send sonar pings */
-.tag-marker[data-role="runner"] .tm-pin { animation: tmEmber 1.6s ease-in-out infinite; }
-.tag-marker[data-role="hunter"] .tm-pin::before { content:''; position:absolute; inset:-3px; border-radius:10px; border:2px solid #c9a227; animation: tmSonar 2.4s cubic-bezier(.2,.8,.3,1) infinite; }
-@keyframes tmEmber { 0%,100% { transform:scale(1); } 50% { transform:scale(1.06); } }
-@keyframes tmSonar { 0% { transform:scale(1); opacity:.95; } 100% { transform:scale(2.8); opacity:0; } }
+/* you: a precise dot, a soft pulse, and a cone for the way you're heading */
+.tag-me { position:relative; width:20px; height:20px; pointer-events:none; }
+.tag-me .tm-dot { position:absolute; inset:0; border-radius:50%; background:#2f7df6; box-shadow:0 0 0 3px #fff, 0 2px 10px rgba(0,0,0,.5); }
+.tag-me .tm-dot::after { content:''; position:absolute; inset:-3px; border-radius:50%; border:3px solid #2f7df6; animation: tmRing 2.2s cubic-bezier(.22,1,.36,1) infinite; }
+.tag-me .tm-cone { position:absolute; left:50%; top:50%; width:120px; height:120px; margin:-60px 0 0 -60px; border-radius:50%; display:none; transform:rotate(var(--hdg, 0deg)); transition:transform .35s ease-out;
+  background:conic-gradient(from -28deg, rgba(47,125,246,.55) 0deg 56deg, transparent 56deg);
+  -webkit-mask:radial-gradient(circle, #000 0 22%, rgba(0,0,0,.6) 40%, transparent 70%); mask:radial-gradient(circle, #000 0 22%, rgba(0,0,0,.6) 40%, transparent 70%); }
+.tag-me[data-hdg="1"] .tm-cone { display:block; }
 /* freehand drawing: one finger draws (no page scroll), two fingers move the map */
 .tag-drawing .maplibregl-canvas-container, .tag-drawing .maplibregl-canvas { touch-action: none !important; cursor: crosshair !important; }
 .tag-drawing .maplibregl-cooperative-gesture-screen { display: none !important; }
@@ -451,7 +496,7 @@ const css = `
 .tag-map .maplibregl-ctrl-bottom-right { bottom: var(--cb, 0px); }
 .tag-map .maplibregl-ctrl-attrib { font-size: 10px; background: rgba(11,11,12,.66) !important; color: #d6cec0 !important; }
 .tag-map .maplibregl-ctrl-attrib a { color: #ede6da !important; }
-@media (prefers-reduced-motion: reduce) { .tag-marker .tm-pin, .tag-marker .tm-pin::before, .tag-marker .tm-pin::after { animation:none !important; } }
+@media (prefers-reduced-motion: reduce) { .tag-marker .tm-pin::after, .tag-me .tm-dot::after { animation:none !important; } .tag-me .tm-cone { transition:none; } }
 `;
 if (typeof document !== 'undefined' && !document.getElementById('tag-marker-css')) {
   const s = document.createElement('style'); s.id = 'tag-marker-css'; s.textContent = css; document.head.appendChild(s);

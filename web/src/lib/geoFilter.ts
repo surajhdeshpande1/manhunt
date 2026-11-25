@@ -10,9 +10,11 @@
  * once it has been checked against how far the phone actually moved over the last ~20 seconds.
  * Pure maths, no browser APIs, so it can be tested on its own (tests/geo/filter.test.ts).
  */
-export type Fix = { lat: number; lng: number; acc: number; at: number };
+export type Fix = { lat: number; lng: number; acc: number; at: number;
+  /** how fast and which way the phone is moving (m/s, degrees clockwise from north), when it is moving */
+  speed?: number; course?: number };
 /** a raw reading: `at` is our clock (ms); `t` the fix's own timestamp if trustworthy; speed m/s, heading degrees from north */
-export type Reading = Fix & { t?: number; speed?: number | null; heading?: number | null };
+export type Reading = Omit<Fix, 'speed' | 'course'> & { t?: number; speed?: number | null; heading?: number | null };
 
 const M_LAT = 111320;
 export const FILTER = {
@@ -77,7 +79,7 @@ export function makeGeoFilter(opts: Partial<typeof FILTER> & { useSpeed?: boolea
   let A: Track, B: Track;
   let last = 0, rejects = 0;
   let score = 0, useB = false; // log-likelihood ratio of B over A, with memory of ~1/(1-P.forget) fixes
-  const toXY = (r: Fix): [number, number] => [(r.lng - o!.lng) * o!.mx, (r.lat - o!.lat) * M_LAT];
+  const toXY = (r: { lat: number; lng: number }): [number, number] => [(r.lng - o!.lng) * o!.mx, (r.lat - o!.lat) * M_LAT];
   const start = (r: Reading, acc: number, t: number) => {
     o = { lat: r.lat, lng: r.lng, mx: M_LAT * Math.cos((r.lat * Math.PI) / 180) };
     A = { x: 0, y: 0, vx: 0, vy: 0, p00: (acc * P.rScale) ** 2, p01: 0, p11: 4 }; // up to ~2 m/s either way
@@ -88,7 +90,10 @@ export function makeGeoFilter(opts: Partial<typeof FILTER> & { useSpeed?: boolea
   };
   const out = (acc: number, at: number): Fix => {
     const k = useB ? B : A;
-    return { lat: o!.lat + k.y / M_LAT, lng: o!.lng + k.x / o!.mx, acc: Math.max(P.ring * Math.sqrt(k.p00), acc * P.floor), at };
+    const speed = Math.hypot(k.vx, k.vy);
+    const f: Fix = { lat: o!.lat + k.y / M_LAT, lng: o!.lng + k.x / o!.mx, acc: Math.max(P.ring * Math.sqrt(k.p00), acc * P.floor), at, speed };
+    if (speed >= 0.8) f.course = ((Math.atan2(k.vx, k.vy) * 180) / Math.PI + 360) % 360; // walking pace and up: a direction worth showing
+    return f;
   };
   /** log-likelihood of a fix under a track's prediction (2-D, isotropic) */
   const ll = (k: Track, zx: number, zy: number, R: number) => {

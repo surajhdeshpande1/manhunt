@@ -716,3 +716,12 @@ html[data-day], html[data-day] body { background: var(--bg); }
 h1.display { animation: title-slot .62s cubic-bezier(.2, .9, .25, 1) both; }
 @keyframes title-slot { from { clip-path: inset(-20% -12% 100% -12%); } to { clip-path: inset(-20% -12% -20% -12%); } }
 [data-lite='1'] h1.display { animation: none; }
+
+/* small inline spinner for "saving…" lines */
+.spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; display: inline-block; flex: none; animation: spin .8s linear infinite; opacity: .75; }
+@media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.4s; } }
+
+/* a runner is visible to hunters right now: a calm pulsing red edge, nothing over the map itself */
+.reveal-edge { position: fixed; inset: 0; z-index: 19; pointer-events: none; box-shadow: inset 0 0 0 4px var(--danger), inset 0 0 60px rgba(196,69,54,.45); animation: revealEdge 1.4s ease-in-out infinite; }
+@keyframes revealEdge { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .reveal-edge { animation: none; } }

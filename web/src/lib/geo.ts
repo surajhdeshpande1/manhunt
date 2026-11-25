@@ -35,3 +35,46 @@ export function polyAreaM2(p: LngLat[]) {
   }
   return Math.abs(a / 2);
 }
+
+/* ---------- how much room you have before the edge (mirrors the server's tag_violation) ---------- */
+const M_LAT = 111320;
+/** inside a ring? (lng/lat treated as flat: fine at play-area scale) */
+export function inRing(lat: number, lng: number, ring: LngLat[]) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i], [xj, yj] = ring[j];
+    if ((yi > lat) !== (yj > lat) && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+/** metres from a point to the nearest edge of a ring */
+export function ringEdgeDist(lat: number, lng: number, ring: LngLat[]) {
+  const mx = M_LAT * Math.cos((lat * Math.PI) / 180);
+  let best = Infinity;
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i], b = ring[(i + 1) % ring.length];
+    const ax = (a[0] - lng) * mx, ay = (a[1] - lat) * M_LAT, bx = (b[0] - lng) * mx, by = (b[1] - lat) * M_LAT;
+    const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+    const t = L ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L)) : 0;
+    best = Math.min(best, Math.hypot(ax + t * dx, ay + t * dy));
+  }
+  return best;
+}
+/**
+ * Metres you can still go before the server starts the out-of-bounds countdown: the boundary, the safe zone (during
+ * the hunt) or a no-go area, each with the room's buffer. Negative means already past it. Null when there's nothing to check.
+ */
+export function roomLeft(lat: number, lng: number, o: { boundary?: LngLat[] | null; zone?: Zone | null; nogo?: LngLat[][] | null; buffer: number; hunt: boolean }) {
+  let left = Infinity;
+  if (o.boundary && o.boundary.length >= 3) {
+    const d = ringEdgeDist(lat, lng, o.boundary);
+    left = Math.min(left, inRing(lat, lng, o.boundary) ? d + o.buffer : o.buffer - d);
+  }
+  if (o.hunt && o.zone) left = Math.min(left, o.zone.r + o.buffer - haversine(lat, lng, o.zone.lat, o.zone.lng));
+  for (const ring of o.nogo ?? []) {
+    if (ring.length < 3) continue;
+    const d = ringEdgeDist(lat, lng, ring);
+    left = Math.min(left, inRing(lat, lng, ring) ? o.buffer - d : d + o.buffer);
+  }
+  return Number.isFinite(left) ? left : null;
+}

@@ -9,7 +9,8 @@ import { fmtClock, fmtDist, msUntil, serverNow, timeAgo } from '../lib/clock';
 import { haptic, keepAwake } from '../lib/feel';
 import { useViewportH } from '../lib/viewport';
 import { titleLabel } from '../lib/identity';
-import { haversine } from '../lib/geo';
+import { haversine, roomLeft } from '../lib/geo';
+import { askCompass, useCompass } from '../lib/compass';
 import type { GameEvent, Member, RoomState } from '../lib/types';
 import { MapView, type MapHandle, type Marker } from './MapView';
 import { hasSatellite } from '../lib/basemaps';
@@ -19,7 +20,6 @@ import { GpsChip, GpsHelp, gpsLine } from './GpsHelp';
 import { RunnerQR, Scanner } from './QR';
 import { TaskDeck } from './Tasks';
 import type { Fix, GeoStatus } from './useRoom';
-import { Heartbeat, HunterAmbience, RadarGlyph, RunnerAmbience } from '../components/Ambience';
 
 type Geo = { fix: Fix | null; status: GeoStatus; latest: React.MutableRefObject<Fix | null>; rawAcc: number | null };
 
@@ -71,6 +71,7 @@ export function Match({ s, feed, geo, refresh, themeKey }: { s: RoomState; feed:
   const [qr, setQr] = useState(false);
   const [scan, setScan] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [follow, setFollow] = useState(false);
   const wide = useWide();
   const isAdmin = s.is_admin;
   const me = s.me;
@@ -83,6 +84,11 @@ export function Match({ s, feed, geo, refresh, themeKey }: { s: RoomState; feed:
   const area = useAreaPack(s.room.id, s.room.boundary, !!s.is_admin);
   const runners = s.members.filter((m) => m.role === 'runner');
   const st = s.room.settings;
+  const playing = !isAdmin && alive;
+  // the way you're heading: your direction of travel while moving (GPS), the compass while standing still
+  const compass = useCompass(playing);
+  const fix = geo.fix;
+  const heading = fix?.course != null && (fix.speed ?? 0) >= 1.2 ? fix.course : compass;
 
   useEffect(() => { keepAwake(true); return () => { keepAwake(false); }; }, []);
 
@@ -109,10 +115,8 @@ export function Match({ s, feed, geo, refresh, themeKey }: { s: RoomState; feed:
       const m = byId.get(p.id);
       return { id: p.id, lat: p.lat, lng: p.lng, selfie: m?.selfie, role: p.role, label: m?.username, title: titleLabel(m?.title), stale: serverNow() - new Date(p.at).getTime() > 20000, alert: sosIds.has(p.id) || (isAdmin && !!m?.oob) };
     });
-    const f = geo.fix;
-    if (f && !isAdmin && alive) out.push({ id: 'me', lat: f.lat, lng: f.lng, selfie: profile?.selfie_path, role, me: true });
     return out;
-  }, [s.positions, geo.fix, byId, sosIds, isAdmin, alive, role, profile]);
+  }, [s.positions, byId, sosIds, isAdmin, profile]);
 
   // OOB grace countdown
   const oobLeft = me?.oob_since ? st.grace_secs * 1000 - (serverNow() - new Date(me.oob_since).getTime()) : null;
@@ -123,8 +127,14 @@ export function Match({ s, feed, geo, refresh, themeKey }: { s: RoomState; feed:
       {isAdmin ? <AdminPanel s={s} refresh={refresh} feed={feed} byId={byId} mapRef={mapRef} />
         : !alive ? <SpectatorBanner me={me!} byId={byId} />
         : role === 'runner' ? <RunnerPanel s={s} onQR={() => setQr(true)} refresh={refresh} />
-        : <HunterPanel s={s} onScan={() => setScan(true)} myFix={geo.fix} byId={byId} radio={radio} />}
-      {!isAdmin && role === 'hunter' && <Section title="Hunter channel"><Chat roomId={s.room.id} channel="hunters" members={s.members} meId={profile!.id} height={200} compact /></Section>}
+        : <HunterPanel s={s} onScan={() => setScan(true)} myFix={geo.fix} radio={radio} />}
+      {!isAdmin && role === 'hunter' && <Section title="Hunter chat"><Chat roomId={s.room.id} channel="hunters" members={s.members} meId={profile!.id} height={200} compact /></Section>}
+      {!isAdmin && role === 'runner' && (
+        <Section title="Runner chat">
+          {alive ? <Chat roomId={s.room.id} channel="runners" members={s.members} meId={profile!.id} height={200} compact />
+            : <div className="muted" style={{ fontSize: 13.5 }}>Closed. Runner chat is only for runners still in the game.</div>}
+        </Section>
+      )}
       <Rosters hunters={hunters} runners={runners} myFix={geo.fix} positions={s.positions} />
       <Feed feed={feed} byId={byId} isAdmin={isAdmin} />
     </div>
@@ -147,13 +157,18 @@ export function Match({ s, feed, geo, refresh, themeKey }: { s: RoomState; feed:
     <div style={{ position: 'fixed', inset: 0, background: 'var(--bg)' }}>
       <div style={{ position: 'absolute', inset: 0, right: wide ? 420 : 0 }}>
         <MapView ref={mapRef} themeKey={themeKey} areaPack={area.pack} boundary={s.room.boundary} nogo={s.room.nogo} zone={s.room.zone} zoneNext={s.room.status === 'hunt' ? s.room.zone_next : null}
-          markers={markers} me={!isAdmin && alive && geo.fix ? geo.fix : null} chromeBottom={wide ? 0 : peek}
+          markers={markers} me={playing && fix ? fix : null} meHeading={playing ? heading : null} follow={follow && playing} onFollowChange={setFollow} chromeBottom={wide ? 0 : peek}
           fitPad={wide ? { top: 150, bottom: 40, left: 40, right: 70 } : { top: 150, bottom: 210, left: 30, right: 70 }} />
         <Hud s={s} geo={geo} isAdmin={isAdmin} alive={alive} role={role} onMenu={() => setMenu(true)} />
         <div className="stack" style={{ position: 'absolute', right: 12, top: 'calc(env(safe-area-inset-top) + 132px)', gap: 8, zIndex: 20 }}>
           {!isAdmin && alive && <SOSButton roomId={s.room.id} getFix={() => geo.latest.current} />}
           <MapBtn label="Fit play area" onClick={() => mapRef.current?.fit()}><IconMap s={20} /></MapBtn>
-          {geo.fix && !isAdmin && <MapBtn label="Centre on me" onClick={() => mapRef.current?.flyTo(geo.fix!.lat, geo.fix!.lng, 18)}><IconTarget s={20} /></MapBtn>}
+          {fix && playing && (
+            <MapBtn label={follow ? 'Stop following me' : 'Follow me on the map'} active={follow} sub={`±${Math.max(1, Math.round(fix.acc))} m`}
+              onClick={() => { askCompass(); if (follow) setFollow(false); else { setFollow(true); mapRef.current?.flyTo(fix.lat, fix.lng, 18.5); } }}>
+              <IconTarget s={20} />
+            </MapBtn>
+          )}
           {hasSatellite() && <MapBtn label="Switch map or satellite" onClick={() => { const m = mapRef.current; if (m) m.setBasemap(m.basemap() === 'satellite' ? 'street' : 'satellite'); }}>
             <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden><path d="M12 3 2 8l10 5 10-5-10-5zm-8.2 9.1L2 13l10 5 10-5-1.8-.9L12 16.2 3.8 12.1zm0 4L2 17l10 5 10-5-1.8-.9L12 20.2 3.8 16.1z" fill="currentColor" /></svg>
           </MapBtn>}
@@ -166,8 +181,7 @@ export function Match({ s, feed, geo, refresh, themeKey }: { s: RoomState; feed:
         <Sheet peek={peek}>{panel}</Sheet>
       )}
 
-      {!isAdmin && alive && role === 'runner' && <RunnerAmbience exposed={s.room.status === 'hunt' && s.reveal.active} intensity={s.room.status === 'paused' ? 0.4 : 0.85} />}
-      {!isAdmin && alive && role === 'hunter' && <HunterAmbience hunting={s.room.status === 'hunt'} intensity={s.room.status === 'paused' ? 0.4 : 0.8} />}
+      {playing && role === 'runner' && s.room.status === 'hunt' && s.reveal.active && <div className="reveal-edge" aria-hidden />}
       <AnimatePresence>{oobLeft !== null && alive && <OobOverlay left={oobLeft} reason={me!.oob_reason} />}</AnimatePresence>
       <AnimatePresence>
         {qr && me?.qr && <RunnerQR key="qr" roomId={s.room.id} token={me.qr} username={profile!.username} selfie={profile!.selfie_path} onClose={() => setQr(false)} />}
@@ -184,8 +198,14 @@ function useWide() {
   useEffect(() => { const m = matchMedia(q); const h = () => setW(m.matches); m.addEventListener('change', h); return () => m.removeEventListener('change', h); }, []);
   return w;
 }
-function MapBtn({ children, onClick, label }: { children: React.ReactNode; onClick: () => void; label: string }) {
-  return <button aria-label={label} onClick={() => { haptic.tap(); onClick(); }} className="cut cut-sm" style={{ width: 44, height: 44, display: 'grid', placeItems: 'center', background: 'var(--bg)', border: '1px solid var(--line2)' }}>{children}</button>;
+function MapBtn({ children, onClick, label, active, sub }: { children: React.ReactNode; onClick: () => void; label: string; active?: boolean; sub?: string }) {
+  return (
+    <button aria-label={label} aria-pressed={active} onClick={() => { haptic.tap(); onClick(); }} className="cut cut-sm"
+      style={{ width: 44, minHeight: 44, padding: sub ? '6px 0 4px' : 0, display: 'grid', placeItems: 'center', gap: 1, background: active ? '#2f7df6' : 'var(--bg)', color: active ? '#fff' : undefined, border: '1px solid var(--line2)' }}>
+      {children}
+      {sub && <span className="mono" style={{ fontSize: 9.5, fontWeight: 800, lineHeight: 1 }}>{sub}</span>}
+    </button>
+  );
 }
 
 /* ---------- rolling digits: each changed character slides in ---------- */
@@ -224,8 +244,6 @@ function Hud({ s, geo, isAdmin, alive, role, onMenu }: { s: RoomState; geo: Geo;
             <RollingText text={phase.v} style={{ fontSize: 'clamp(23px, 7.4vw, 30px)', fontWeight: 800, letterSpacing: '-0.04em', flex: 'none' }} />
           </div>
           <div className="row" style={{ gap: 6, minWidth: 0 }}>
-            {!isAdmin && alive && role === 'runner' && <span className="hide-xs" title="Your pulse"><Heartbeat exposed={status === 'hunt' && rev.active} width={42} /></span>}
-            {!isAdmin && alive && role === 'hunter' && <RadarGlyph size={22} />}
             {status === 'hunt' && (
               <span className="tag" style={rev.active ? { background: 'var(--danger)', color: '#fff' } : undefined}>
                 {rev.active ? <><span className="dot pulse" /> <span className="hide-xs">Revealed </span>{fmtClock(revealMs)}</> : <><span className="hide-xs">Reveal </span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="show-xs"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>{fmtClock(revealMs)}</>}
@@ -252,6 +270,7 @@ function Hud({ s, geo, isAdmin, alive, role, onMenu }: { s: RoomState; geo: Geo;
         </AnimatePresence>
       </motion.div>
       {!isAdmin && alive && geo.status !== 'ok' && geo.status !== 'off' && <GpsBanner geo={geo} />}
+      {!isAdmin && alive && geo.status === 'ok' && !s.me?.oob_since && <EdgeWarning s={s} geo={geo} />}
     </div>
   );
 }
@@ -305,38 +324,38 @@ function Sheet({ children, peek }: { children: React.ReactNode; peek: number }) 
 
 /* ---------- Panels ---------- */
 function RunnerPanel({ s, onQR, refresh }: { s: RoomState; onQR: () => void; refresh: () => void }) {
+  return <TaskDeck s={s} refresh={refresh} side={<QRButton onClick={onQR} />} />;
+}
+/** Always next to the task button: one tap and the catch code fills the screen for the hunter to scan. */
+function QRButton({ onClick }: { onClick: () => void }) {
   return (
-    <div className="stack" style={{ gap: 12 }}>
-      <TaskDeck s={s} refresh={refresh} />
-      <motion.button whileTap={{ scale: 0.97 }} onClick={onQR} className="card row" style={{ textAlign: 'left', padding: '12px 14px', gap: 14 }}>
-        <span style={{ width: 48, height: 48, borderRadius: 8, display: 'grid', placeItems: 'center', background: '#ede6da', color: '#0b0b0c', rotate: '-4deg', boxShadow: '0 0 0 2.5px #0b0b0c' }}><IconQR s={26} /></span>
-        <div className="grow"><div style={{ fontSize: 17, fontWeight: 850 }}>My catch code</div><div className="muted" style={{ fontSize: 12.5 }}>Show it to the hunter who tags you.</div></div>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: 'var(--faint)' }}><path d="M9 5l7 7-7 7" /></svg>
-      </motion.button>
-    </div>
+    <motion.button type="button" whileTap={{ scale: 0.94 }} onClick={() => { haptic.tap(); onClick(); }} aria-label="Show my QR code"
+      style={{ flex: 'none', width: 72, borderRadius: 10, display: 'grid', placeItems: 'center', alignContent: 'center', gap: 2, background: '#ede6da', color: '#0b0b0c', boxShadow: '0 0 0 2px #0b0b0c' }}>
+      <IconQR s={26} /><span style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em' }}>MY QR</span>
+    </motion.button>
   );
 }
 
-function HunterPanel({ s, onScan, myFix, byId, radio }: { s: RoomState; onScan: () => void; myFix: Fix | null; byId: Map<string, Member>; radio: Radio }) {
+function HunterPanel({ s, onScan, myFix, radio }: { s: RoomState; onScan: () => void; myFix: Fix | null; radio: Radio }) {
   const hunt = s.room.status === 'hunt';
   const visible = s.positions.filter((p) => p.role === 'runner');
   const nearest = myFix && visible.length ? Math.min(...visible.map((p) => haversine(myFix.lat, myFix.lng, p.lat, p.lng))) : null;
   return (
-    <div className="stack" style={{ gap: 12 }}>
-      <motion.button whileTap={hunt ? { scale: 0.96 } : undefined} onClick={() => { haptic.tap(); onScan(); }} disabled={!hunt}
-        className="btn" style={{ position: 'relative', overflow: 'hidden', minHeight: 88, width: 'calc(100% - 5px)', borderRadius: 10, background: hunt ? 'var(--police)' : 'var(--surface2)', color: hunt ? '#000' : 'var(--muted)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, ['--sh' as any]: '5px' }}>
-        {hunt && <span aria-hidden className="tape" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 8, opacity: 0.9 }} />}
-        
-        <IconScan s={32} />
-        <span className="display" style={{ fontSize: 32 }}>{hunt ? 'Scan to tag' : s.room.status === 'paused' ? 'Paused' : 'Hold position'}</span>
-      </motion.button>
+    <div className="stack" style={{ gap: 10 }}>
+      <div className="row" style={{ gap: 8, alignItems: 'stretch' }}>
+        <motion.button whileTap={hunt ? { scale: 0.96 } : undefined} onClick={() => { haptic.tap(); onScan(); }} disabled={!hunt} aria-label="Scan a runner's QR to catch them"
+          className="btn grow" style={{ position: 'relative', overflow: 'hidden', minHeight: 76, borderRadius: 10, background: hunt ? 'var(--police)' : 'var(--surface2)', color: hunt ? '#000' : 'var(--muted)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <IconScan s={30} />
+          <span className="display" style={{ fontSize: 28 }}>{hunt ? 'Scan QR' : s.room.status === 'paused' ? 'Paused' : 'Hold position'}</span>
+        </motion.button>
+        <PushToTalk radio={radio} square />
+      </div>
       <div className="muted" style={{ fontSize: 13 }}>
         {!hunt ? 'Runners are hiding. The admin opens the hunt when the timer ends.'
           : s.reveal.active ? `${visible.length} runner${visible.length === 1 ? '' : 's'} visible now${nearest != null ? ` · nearest ≈ ${fmtDist(nearest)}` : ''}.`
           : `Runners are hidden. Next reveal in ${fmtClock(msUntil(s.reveal.next_at))}.`}
       </div>
-      <PushToTalk radio={radio} />
     </div>
   );
 }
@@ -467,6 +486,24 @@ function AdminPanel({ s, refresh, feed, byId, mapRef }: { s: RoomState; refresh:
           })}
         </div>
       </Section>
+    </div>
+  );
+}
+
+/* ---------- heads-up before the edge ---------- */
+/** Warns a player before they step past the boundary, the safe zone or into a no-go area (beta: most "outs" were this). */
+function EdgeWarning({ s, geo }: { s: RoomState; geo: Geo }) {
+  const f = geo.fix; if (!f) return null;
+  const r = s.room;
+  const left = roomLeft(f.lat, f.lng, { boundary: r.boundary, zone: r.zone, nogo: r.nogo, buffer: r.settings.buffer_m ?? 10, hunt: r.status === 'hunt' });
+  if (left == null) return null;
+  const warnAt = Math.max(25, f.acc + 15);
+  if (left > warnAt) return null;
+  const close = left <= Math.max(10, f.acc + 5);
+  return (
+    <div className="cut cut-sm row" role="alert" style={{ pointerEvents: 'none', marginTop: 6, padding: '7px 12px', gap: 8, background: close ? 'var(--danger)' : '#e0a526', color: close ? '#fff' : '#0b0b0c', fontSize: 13, fontWeight: 800 }}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden><path d="M12 3 2 21h20L12 3z" /><path d="M12 10v5M12 18h.01" /></svg>
+      <span>{left <= 1 ? 'At the edge. Step back in now.' : `Near the edge: ${Math.round(left)} m before you're out. Head back in.`}</span>
     </div>
   );
 }
