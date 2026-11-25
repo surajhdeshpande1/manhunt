@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, useAnimationControls } from 'framer-motion';
 import { useTheme } from '../lib/theme';
 import { haptic } from '../lib/feel';
-import { scoreSurround, tryAutoplay, whenUnlocked } from '../lib/sound';
+import { scoreSurround, stopMusic, tryAutoplay, whenUnlocked } from '../lib/sound';
 
 /**
  * Opening film — "Surrounded", 10 seconds, every launch. Overhead, spacious, then all adrenaline.
@@ -146,6 +146,13 @@ export default function Landing({ onDone }: { onDone: () => void }) {
   const [now, setNow] = useState(0);
   const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const finish = () => { if (!done.current) { done.current = true; onDone(); } };
+  /** straight to the app: the film and its music stop at once */
+  const skip = () => { if (done.current) return; haptic.tap(); stopMusic(); finish(); };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') skip(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   useEffect(() => {
     const t0 = performance.now();
@@ -272,6 +279,15 @@ export default function Landing({ onDone }: { onDone: () => void }) {
       <div style={{ position: 'absolute', left: 28, right: 28, bottom: 'calc(env(safe-area-inset-bottom) + 24px)', height: 3, borderRadius: 2, background: 'rgba(237,230,218,.12)', overflow: 'hidden' }}>
         <motion.div style={{ height: '100%', background: EMBER, transformOrigin: 'left' }} initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: reduce ? 1.2 : T, ease: 'linear' }} />
       </div>
+
+      {/* skip: straight into the app */}
+      <motion.button type="button" onClick={skip} aria-label="Skip intro"
+        initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25, duration: 0.35 }} whileTap={{ scale: 0.94 }}
+        style={{ position: 'absolute', zIndex: 5, top: 'calc(env(safe-area-inset-top) + 12px)', right: 14, minHeight: 40, padding: '0 14px 0 16px', borderRadius: 999,
+          display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(237,230,218,.10)', color: BONE, border: '1px solid rgba(237,230,218,.3)',
+          fontSize: 12.5, fontWeight: 800, letterSpacing: '.16em', textTransform: 'uppercase', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', cursor: 'pointer' }}>
+        Skip <span aria-hidden style={{ fontSize: 17, lineHeight: 1, marginTop: -2 }}>›</span>
+      </motion.button>
     </motion.div>
   );
 }

@@ -66,15 +66,26 @@ function noise(dur: number, opts: { gain?: number; at?: number; freq?: number; q
    score(from) plays everything from second `from` onward, so a late start (iPhone needs a tap first)
    joins in sync instead of starting over. */
 let wet: ConvolverNode | null = null;
+/** the music has its own channel (with its room reverb), so a score can be cut short without touching other sounds */
+let music: GainNode | null = null;
 function bus(): AudioNode | null {
   const c = ctx; if (!c || !master) return null;
+  if (!music) { music = c.createGain(); music.gain.value = 1; music.connect(master); wet = null; }
   if (!wet) {
     // small synthetic room for warmth
     const len = Math.floor(c.sampleRate * 1.4), ir = c.createBuffer(2, len, c.sampleRate);
     for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
-    wet = c.createConvolver(); wet.buffer = ir; const wg = c.createGain(); wg.gain.value = 0.22; wet.connect(wg); wg.connect(master);
+    wet = c.createConvolver(); wet.buffer = ir; const wg = c.createGain(); wg.gain.value = 0.22; wet.connect(wg); wg.connect(music);
   }
-  return master;
+  return music;
+}
+/** Cut the music short (skipping the opening film): a quick fade, and the notes already scheduled play into nothing. */
+export function stopMusic(fade = 0.25) {
+  const c = ctx, m = music; if (!c || !m) return;
+  const t = c.currentTime;
+  m.gain.cancelScheduledValues(t); m.gain.setValueAtTime(m.gain.value, t); m.gain.linearRampToValueAtTime(0, t + fade);
+  music = null; wet = null; // the next score builds a fresh channel
+  setTimeout(() => { try { m.disconnect(); } catch { /* already gone */ } }, fade * 1000 + 120);
 }
 type V = { at: number; dur: number; gain: number };
 function voice(t0: number, build: (c: AudioContext, out: GainNode, t: number) => void, v: V, wetSend = 0.3) {
