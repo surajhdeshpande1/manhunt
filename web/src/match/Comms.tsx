@@ -3,6 +3,7 @@ import { Room, RoomEvent, Track } from 'livekit-client';
 import { rpc, supabase, callFunction } from '../lib/supabase';
 import { Avatar, IconMic, useToast } from '../components/ui';
 import { haptic } from '../lib/feel';
+import { sfx, soundOn } from '../lib/sound';
 import type { Member } from '../lib/types';
 import { DEMO } from '../demo/mode';
 
@@ -89,7 +90,25 @@ export function Chat({ roomId, channel, members, meId, height = 280, compact }: 
   );
 }
 
-/** Hunter radio over LiveKit. Lives at match level so the line stays open from the hunter lobby into the hunt. */
+/** iPhones only let a page speak after a tap: say nothing, quietly, during the tap that joins the radio */
+function primeSpeech() {
+  try { if (soundOn() && typeof speechSynthesis !== 'undefined') { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } } catch { /* no speech here */ }
+}
+/** DEMO radio voice: the phone reads a bot's line aloud; false if it can't (sound off, no speech on this phone) */
+function speakLine(line: string, done: () => void): boolean {
+  try {
+    if (!soundOn() || typeof speechSynthesis === 'undefined') return false;
+    const u = new SpeechSynthesisUtterance(line);
+    u.rate = 1.05; u.pitch = 0.8; u.volume = 0.9;
+    let fired = false; const end = () => { if (!fired) { fired = true; done(); } };
+    u.onend = end; u.onerror = end; setTimeout(end, 7000);
+    speechSynthesis.speak(u);
+    return true;
+  } catch { return false; }
+}
+
+/** Hunter radio over LiveKit. Lives at match level so the line stays open from the hunter lobby into the hunt.
+ *  In DEMO it joins a simulated channel with the same rules, where hunter bots key the radio now and then. */
 export type Radio = { state: 'idle' | 'connecting' | 'ready' | 'off' | 'error'; canTalk: boolean; talking: boolean; speakers: string[]; connect: () => void; press: (on: boolean) => void };
 export function useRadio(roomId: string): Radio {
   const [state, setState] = useState<Radio['state']>('idle');
@@ -98,13 +117,40 @@ export function useRadio(roomId: string): Radio {
   const [speakers, setSpeakers] = useState<string[]>([]);
   const room = useRef<Room | null>(null);
   const box = useRef<HTMLDivElement | null>(null);
+  const demoLoop = useRef(0);
   useEffect(() => {
     const d = document.createElement('div'); d.style.display = 'none'; document.body.appendChild(d); box.current = d;
-    return () => { room.current?.disconnect(); room.current = null; d.remove(); };
+    return () => {
+      room.current?.disconnect(); room.current = null; d.remove();
+      clearTimeout(demoLoop.current); if (DEMO && typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
+    };
   }, []);
   async function connect() {
     if (state === 'connecting' || state === 'ready') return;
     setState('connecting');
+    if (DEMO) {
+      primeSpeech();
+      try {
+        const sim = await import('../demo/sim');
+        await new Promise((r) => setTimeout(r, 600));
+        setCanTalk(sim.radioAccess(roomId).canTalk); setState('ready'); haptic.ok(); sfx.radio();
+        const next = () => {
+          demoLoop.current = window.setTimeout(() => {
+            const c = sim.radioChatter(roomId);
+            if (c) {
+              // the name stays lit at least as long as the line takes to say, even if this phone can't speak it
+              sfx.radio(); setSpeakers([c.name]);
+              const t0 = Date.now(), minMs = 1800 + c.line.length * 55;
+              const done = () => window.setTimeout(() => { setSpeakers([]); sfx.radio(); }, Math.max(0, minMs - (Date.now() - t0)));
+              if (!speakLine(c.line, done)) done();
+            }
+            next();
+          }, 12000 + Math.random() * 16000);
+        };
+        next();
+      } catch { setState('error'); }
+      return;
+    }
     try {
       const r = await callFunction<{ url: string; token: string; can_talk: boolean }>('voice-token', { room_id: roomId });
       const lk = new Room({ adaptiveStream: true, dynacast: true, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
@@ -120,6 +166,7 @@ export function useRadio(roomId: string): Radio {
     }
   }
   async function press(on: boolean) {
+    if (DEMO) { if (state !== 'ready' || !canTalk) return; setTalking(on); haptic.tap(); sfx.radio(); return; }
     const lk = room.current; if (!lk || !canTalk) return;
     setTalking(on); haptic.tap();
     try { await lk.localParticipant.setMicrophoneEnabled(on); } catch { setTalking(false); }

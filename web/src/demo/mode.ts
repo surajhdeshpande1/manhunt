@@ -6,6 +6,8 @@
 const KEY = 'tag-demo';
 const TOK = 'tag-dev-token';
 const SKIP = 'tag-skip-intro';
+const ME_KEY = 'tag-demo-me';
+type Me = { username?: string; full_name?: string; college?: string; branch?: string; year?: number; selfie_path?: string | null };
 
 function ss(k: string) { try { return sessionStorage.getItem(k); } catch { return null; } }
 
@@ -19,12 +21,17 @@ export function takeSkipIntro() {
   return v;
 }
 export function devToken(): string | null { try { return localStorage.getItem(TOK); } catch { return null; } }
-export function enterDemo(token: string) {
-  try { localStorage.setItem(TOK, token); sessionStorage.setItem(KEY, '1'); sessionStorage.setItem(SKIP, '1'); } catch { /* ignore */ }
+/** `me`: your real profile, so in the demo you play as yourself */
+export function enterDemo(token: string, me?: Me | null) {
+  try {
+    localStorage.setItem(TOK, token); sessionStorage.setItem(KEY, '1'); sessionStorage.setItem(SKIP, '1');
+    if (me) localStorage.setItem(ME_KEY, JSON.stringify({ username: me.username, full_name: me.full_name, college: me.college, branch: me.branch, year: me.year, selfie_path: me.selfie_path }));
+  } catch { /* ignore */ }
   location.replace('/home');
 }
 export function exitDemo() {
   try { sessionStorage.removeItem(KEY); sessionStorage.setItem(SKIP, '1'); } catch { /* ignore */ }
   location.replace('/');
 }
+export function demoMe(): Me | null { try { return JSON.parse(localStorage.getItem(ME_KEY) || 'null'); } catch { return null; } }
 export function forgetDev() { try { localStorage.removeItem(TOK); } catch { /* ignore */ } }

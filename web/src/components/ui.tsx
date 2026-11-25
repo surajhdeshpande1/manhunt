@@ -1,8 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type CSSProperties, type InputHTMLAttributes, type ReactNode } from 'react';
 import { AnimatePresence, motion, useDragControls } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { selfieUrl } from '../lib/supabase';
 import { haptic } from '../lib/feel';
+import { DEMO } from '../demo/mode';
 import { NightCampus } from './Scenes';
 
 /* ---------- Button ---------- */
@@ -213,6 +214,12 @@ export const IconPlus = (p: { s?: number }) => <I s={p.s} d="M12 4v16M4 12h16" /
 export const IconCheck = (p: { s?: number }) => <I s={p.s} d="M4 12l5 5L20 6" />;
 export const IconMap = (p: { s?: number }) => <I s={p.s} d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15" />;
 export const IconUndo = (p: { s?: number }) => <I s={p.s} d="M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3" />;
+/** A tap-to-call link. In the DEMO it never dials: bots' numbers are made up, so it says what would happen instead. */
+export function CallLink({ phone, name, label, className, style, children }: { phone: string; name: string; label?: string; className?: string; style?: CSSProperties; children: ReactNode }) {
+  const toast = useToast();
+  if (DEMO) return <button type="button" className={className} style={style} aria-label={label} onClick={() => toast(`Demo: this would ring @${name}. Bots' numbers aren't real, so nothing is dialled.`)}>{children}</button>;
+  return <a className={className} style={style} href={`tel:${phone}`} aria-label={label}>{children}</a>;
+}
 export const IconSearch = (p: { s?: number }) => <I s={p.s} d="M11 19a8 8 0 100-16 8 8 0 000 16zM21 21l-4.35-4.35" />;
 export const IconTarget = (p: { s?: number }) => <I s={p.s} d="M12 21a9 9 0 100-18 9 9 0 000 18zM12 16a4 4 0 100-8 4 4 0 000 8zM12 2v4M12 18v4M2 12h4M18 12h4" />;
 export const IconSOS = (p: { s?: number }) => <I s={p.s} d="M12 3l9 16H3zM12 10v4M12 17v.5" />;

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PhaseTimeline } from '../components/Diagrams';
 import { NightCampus } from '../components/Scenes';
-import { Segmented, Avatar, Back, Button, IconCopy, IconMap, IconPhone, IconPlus, IconShare, IconTarget, IconUndo, Modal, Section, Slash, useToast } from '../components/ui';
+import { Segmented, Avatar, Back, Button, CallLink, IconCopy, IconMap, IconPhone, IconPlus, IconShare, IconTarget, IconUndo, Modal, Section, Slash, useToast } from '../components/ui';
 import { rpc } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { haptic } from '../lib/feel';
@@ -346,7 +346,7 @@ function Roster({ s, refresh, onInvite }: { s: RoomState; refresh: () => void; o
                     {m.branch} · {YEAR[m.year]}
                   </div>
                 </div>
-                {m.phone && <a className="icon-btn muted" href={`tel:${m.phone}`} aria-label={`Call ${m.username}`} style={{ width: 34 }}><IconPhone s={18} /></a>}
+                {m.phone && <CallLink phone={m.phone} name={m.username} className="icon-btn muted" label={`Call ${m.username}`} style={{ width: 34 }}><IconPhone s={18} /></CallLink>}
                 <div className="row" style={{ gap: 4 }}>
                   {(['runner', 'hunter'] as const).map((r) => (
                     <button key={r} className={`chip`} onClick={() => call('set_role', { p_user: m.id, p_role: m.role === r ? null : r })}

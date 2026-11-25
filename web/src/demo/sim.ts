@@ -5,7 +5,7 @@
  * move, hide, chase, do tasks and chat. Your own GPS is real.
  * Nothing here touches the real database.
  */
-import { DEMO_ME as ME } from './mode';
+import { DEMO_ME as ME, demoMe } from './mode';
 
 type Pt = [number, number]; // [lng, lat]
 type Zone = { lat: number; lng: number; r: number };
@@ -38,7 +38,7 @@ type World = {
   brains: Record<string, Brain>; home: { lat: number; lng: number }; ctl: { bots: number; speed: number };
 };
 
-const VERSION = 4;
+const VERSION = 5;
 const STORE = 'tag-demo-world';
 const now = () => Date.now();
 const iso = (t: number | null | undefined) => (t == null ? null : new Date(t).toISOString());
@@ -141,14 +141,15 @@ let dirty = false;
 function seedWorld(home = { lat: 16.1802, lng: 75.6902 }): World {
   const w: World = { v: VERSION, seq: 100, profiles: {}, rooms: {}, members: [], pos: {}, events: [], msgs: [], friends: [], invites: [], apps: [], badges: {}, brains: {}, home, ctl: { bots: 10, speed: 1 } };
   w.profiles[ME] = {
-    id: ME, username: 'dev', full_name: 'Developer', phone: '+919999999999', dob: '2005-01-01', college: COLLEGES[0], branch: 'ISE', year: 3,
+    id: ME, username: 'dev', full_name: 'Developer', phone: '+910000000000', dob: '2005-01-01', college: COLLEGES[0], branch: 'ISE', year: 3,
     selfie_path: face(99), is_organiser: true, is_owner: true, email: 'dev@demo.tag', matches: 12, wins: 7, catches: 9, tasks_done: 41, times_caught: 3,
     distance_m: 18350, title: 'ghost', card_style: 'ember',
   };
   w.badges[ME] = ['first_blood', 'ghost', 'first_win', 'veteran', 'marathon'].map((code, i) => ({ code, at: now() - (10 - i) * 864e5 }));
+  // bots' phone numbers start +91 0…, which no real Indian number does, so nothing can ever ring a stranger
   NAMES.forEach(([u, n, b], i) => {
     const id = uid(); const m = 3 + ((i * 7) % 20);
-    w.profiles[id] = { id, username: u, full_name: n, phone: '+9198' + String(76543210 + i * 1117).slice(0, 8), dob: '2004-06-0' + (1 + (i % 9)), college: COLLEGES[i % COLLEGES.length], branch: b, year: 1 + (i % 4),
+    w.profiles[id] = { id, username: u, full_name: n, phone: '+910000' + String(100001 + i * 1117).slice(-6), dob: '2004-06-0' + (1 + (i % 9)), college: COLLEGES[i % COLLEGES.length], branch: b, year: 1 + (i % 4),
       selfie_path: face(i), is_organiser: i < 4, is_owner: false, email: `${u}@demo.tag`, matches: m, wins: Math.floor(m * ((i % 5) / 6)), catches: (i * 3) % 17, tasks_done: (i * 11) % 60, times_caught: i % 6, distance_m: 2000 + i * 913,
       title: TITLES[i % TITLES.length], card_style: ['ember', 'police', 'midnight', 'gold'][i % 4], bot: true };
   });
@@ -180,10 +181,22 @@ function botIds() { return Object.values(W.profiles).filter((p) => p.bot).map((p
 function load() {
   try {
     const raw = localStorage.getItem(STORE);
-    if (raw) { const w = JSON.parse(raw) as World; if (w.v === VERSION) { W = w; return; } }
+    if (raw) { const w = JSON.parse(raw) as World; if (w.v === VERSION) { W = w; beMe(); return; } }
   } catch { /* fall through */ }
   W = seedWorld();
+  beMe();
   dirty = true;
+}
+/** In the demo you play as yourself: your username, name, college and selfie from your real profile. */
+function beMe() {
+  const me = demoMe(); const p = W.profiles[ME]; if (!me || !p) return;
+  const clash = Object.values(W.profiles).some((x) => x.id !== ME && x.username === me.username);
+  if (me.username && !clash) p.username = me.username;
+  if (me.full_name) p.full_name = me.full_name;
+  if (me.college) p.college = me.college;
+  if (me.branch) p.branch = me.branch;
+  if (me.year) p.year = me.year;
+  if (me.selfie_path) p.selfie_path = me.selfie_path;
 }
 function save() { if (!dirty) return; dirty = false; try { localStorage.setItem(STORE, JSON.stringify(W)); } catch { /* full */ } }
 const touch = () => { dirty = true; listeners.forEach((f) => f()); };
@@ -627,11 +640,16 @@ const H: Record<string, (a: any) => any> = {
     if (r.status !== 'hunt') fail('The hunt is not on right now');
     const h = mem(r.id, ME); if (!h || h.status !== 'accepted' || h.role !== 'hunter') fail('Only hunters can catch runners'); if (!h!.alive) fail('You are out of this match');
     const t = roomMembers(r.id).find((m) => m.qr_token === a.p_token && m.status === 'accepted'); if (!t || t.role !== 'runner') fail('That QR does not belong to a runner in this match'); if (!t!.alive) fail('That runner is already out');
-    const tp = W.pos[pk(r.id, t!.user_id)]; if (!tp || tp.at < now() - 30000) fail('The runner\'s GPS has not updated in the last 30 s. Ask the admin to confirm this catch.');
+    const tp = W.pos[pk(r.id, t!.user_id)]; if (!tp || tp.at < now() - 300000) fail('The runner\'s GPS hasn\'t been seen for over 5 minutes. Ask the admin to confirm this catch.');
+    // a fix older than 10 s: allow for walking pace (2 m/s) since then
+    let slack = 2 * Math.max(0, (now() - tp.at) / 1000 - 10);
     let d: number;
     if (a.p_lat != null && a.p_lng != null && a.p_acc != null && a.p_acc <= set(r, 'max_acc_m') * 2) d = hav(a.p_lat, a.p_lng, tp.lat, tp.lng);
-    else { const hp = W.pos[pk(r.id, ME)]; if (!hp || hp.at < now() - 30000) fail('Your GPS signal is too weak to confirm a catch. Step into the open and try again.'); d = hav(hp!.lat, hp!.lng, tp.lat, tp.lng); }
-    const rad = set(r, 'catch_radius_m'); if (d > rad) fail(`Too far: GPS puts you ${Math.round(d)} m apart. Get within ${Math.round(rad)} m.`);
+    else {
+      const hp = W.pos[pk(r.id, ME)]; if (!hp || hp.at < now() - 300000) fail('Your GPS signal is too weak to confirm a catch. Step into the open and try again.');
+      slack += 2 * Math.max(0, (now() - hp!.at) / 1000 - 10); d = hav(hp!.lat, hp!.lng, tp.lat, tp.lng);
+    }
+    const rad = set(r, 'catch_radius_m'); if (d > rad + slack) fail(`Too far: GPS puts you ${Math.round(d)} m apart. Get within ${Math.round(rad + slack)} m.`);
     eliminate(r, t!.user_id, 'caught', ME); advance(r);
     return { caught: t!.user_id, username: W.profiles[t!.user_id].username, distance: Math.round(d) };
   },
@@ -710,6 +728,34 @@ export async function callFn(name: string, body: any) {
 export function messages(room: string, channel: string) { start(); return W.msgs.filter((m) => m.room_id === room && m.channel === channel).slice(-60).map((m) => ({ id: m.id, user_id: m.user_id, body: m.body, at: iso(m.at) })); }
 export function onMessage(f: (m: any) => void) { start(); const g = (m: Msg) => f({ ...m, at: iso(m.at) }); msgSubs.add(g); return () => { msgSubs.delete(g); }; }
 export function subscribe(f: () => void) { start(); listeners.add(f); return () => { listeners.delete(f); }; }
+
+/* ---------- hunter radio (the live app uses LiveKit; here bots talk on it) ---------- */
+/** the same rule as the live voice server: open during a match, hunters (and the admin) only; caught hunters listen */
+export function radioAccess(roomId: string): { canTalk: boolean } {
+  start();
+  const r = W.rooms[roomId] ?? fail('Room not found');
+  if (!['hiding', 'hunt', 'paused'].includes(r.status)) fail('Voice is only open during a match');
+  if (r.admin_id === ME) return { canTalk: false };
+  const m = mem(r.id, ME); if (!m || m.status !== 'accepted' || m.role !== 'hunter') fail('Hunters only');
+  return { canTalk: !!m!.alive };
+}
+/** now and then a hunter bot keys the radio: who, and what they say */
+export function radioChatter(roomId: string): { name: string; line: string } | null {
+  start();
+  const r = W.rooms[roomId]; if (!r || !['hiding', 'hunt'].includes(r.status)) return null;
+  const hs = roomMembers(r.id).filter((m) => m.status === 'accepted' && m.alive && m.role === 'hunter' && W.profiles[m.user_id]?.bot);
+  if (!hs.length) return null;
+  return { name: W.profiles[pick(hs).user_id].username, line: pick(r.status === 'hiding' ? ['Radio check', 'Hunters, ready up', 'Waiting at the start', 'Who takes the north side?'] : HUNTER_LINES) };
+}
+/** bots have no phone to hold up a QR: the demo scanner lists the nearest runners to "scan" instead */
+export function scanTargets(roomId: string): { username: string; token: string; d: number }[] {
+  start();
+  const r = W.rooms[roomId]; if (!r || r.status !== 'hunt') return [];
+  const me = W.pos[pk(r.id, ME)] ?? { ...W.home, acc: 10, at: now() };
+  return roomMembers(r.id).filter((m) => m.status === 'accepted' && m.alive && m.role === 'runner' && m.qr_token && m.user_id !== ME)
+    .map((m) => { const p = W.pos[pk(r.id, m.user_id)]; return { username: W.profiles[m.user_id].username, token: m.qr_token!, d: p ? Math.round(hav(me.lat, me.lng, p.lat, p.lng)) : 99999 }; })
+    .sort((a, b) => a.d - b.d).slice(0, 3);
+}
 
 /* ---------- developer controls ---------- */
 function myPos(): Promise<{ lat: number; lng: number }> {

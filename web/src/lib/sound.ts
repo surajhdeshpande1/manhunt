@@ -395,5 +395,7 @@ export const sfx = {
   task() { [523.3, 659.3, 784, 1046.5].forEach((f, i) => tone(f, 0.25, { type: 'triangle', gain: 0.08, at: i * 0.06 })); },
   fail() { tone(196, 0.35, { type: 'sawtooth', gain: 0.07, to: 98 }); },
   win() { [261.6, 329.6, 392, 523.3].forEach((f, i) => tone(f, 1.8, { type: 'triangle', gain: 0.09, at: i * 0.12, attack: 0.03 })); noise(1.2, { gain: 0.08, freq: 6000, at: 0.4 }); },
+  /** radio squelch: the click and hiss of someone keying or releasing the radio */
+  radio() { noise(0.14, { gain: 0.09, freq: 2600, sweepTo: 900 }); tone(1400, 0.035, { type: 'square', gain: 0.025 }); },
   lose() { [220, 207.7, 196].forEach((f, i) => tone(f, 0.9, { type: 'sawtooth', gain: 0.05, at: i * 0.35 })); },
 };

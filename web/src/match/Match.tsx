@@ -2,7 +2,7 @@ import { useAreaPack } from '../geo/useAreaPack';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useAnimationControls, type PanInfo } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Avatar, Button, IconMap, IconMenu, IconPhone, IconQR, IconScan, IconTarget, Modal, Section, useTick, useToast } from '../components/ui';
+import { Avatar, Button, CallLink, IconMap, IconMenu, IconPhone, IconQR, IconScan, IconTarget, Modal, Section, useTick, useToast } from '../components/ui';
 import { rpc } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { fmtClock, fmtDist, msUntil, serverNow, timeAgo } from '../lib/clock';
@@ -435,7 +435,7 @@ function AdminPanel({ s, refresh, feed, byId, mapRef }: { s: RoomState; refresh:
             <div key={e.id} className="cut row" style={{ background: 'var(--danger)', color: '#fff', padding: '10px 12px', gap: 10 }}>
               <div className="grow"><div className="display" style={{ fontSize: 18 }}>SOS · @{e.data.username}</div><div style={{ fontSize: 12, opacity: 0.85 }}>{timeAgo(e.at)} ago</div></div>
               {e.data.lat != null && <button className="tag" style={{ background: '#fff', color: '#8e2e22', padding: '6px 10px' }} onClick={() => mapRef.current?.flyTo(e.data.lat, e.data.lng, 18)}>Locate</button>}
-              {e.data.phone && <a className="tag" style={{ background: '#fff', color: '#8e2e22', padding: '6px 10px', textDecoration: 'none' }} href={`tel:${e.data.phone}`}>Call</a>}
+              {e.data.phone && <CallLink phone={e.data.phone} name={e.data.username ?? 'player'} className="tag" style={{ background: '#fff', color: '#8e2e22', padding: '6px 10px', textDecoration: 'none', border: 0 }}>Call</CallLink>}
             </div>
           ))}
         </div>
@@ -478,7 +478,7 @@ function AdminPanel({ s, refresh, feed, byId, mapRef }: { s: RoomState; refresh:
                     {m.alive && (stale ? ' · no GPS 30s+' : '')}
                   </div>
                 </div>
-                {m.phone && <a className="icon-btn muted" style={{ width: 32, height: 32 }} href={`tel:${m.phone}`} aria-label={`Call ${m.username}`}><IconPhone s={17} /></a>}
+                {m.phone && <CallLink phone={m.phone} name={m.username} className="icon-btn muted" style={{ width: 32, height: 32 }} label={`Call ${m.username}`}><IconPhone s={17} /></CallLink>}
                 {m.alive && m.role === 'runner' && r.status !== 'hiding' && <button className="tag" style={{ padding: '5px 8px' }} onClick={() => confirm(`Confirm @${m.username} as caught?`) && act('admin_mark_caught', { p_user: m.id })}>Caught</button>}
                 {m.alive && <button className="muted" aria-label={`Disqualify ${m.username}`} onClick={() => confirm(`Disqualify @${m.username}? They'll be removed from the match.`) && act('remove_member', { p_user: m.id })}>✕</button>}
               </div>

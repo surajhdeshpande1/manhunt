@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Button, Field, Modal, useToast } from '../components/ui';
 import { realRpc } from '../lib/supabase';
+import { useSession } from '../lib/session';
 import { haptic } from '../lib/feel';
 import { devToken, enterDemo, forgetDev } from './mode';
 
@@ -11,6 +12,7 @@ export function DevLoginModal({ open, onClose }: { open: boolean; onClose: () =>
 
 function DevLogin({ onClose }: { onClose: () => void }) {
   const toast = useToast();
+  const { profile } = useSession();
   const [name, setName] = useState('');
   const [pw, setPw] = useState('');
   const [busy, setBusy] = useState(false);
@@ -21,14 +23,14 @@ function DevLogin({ onClose }: { onClose: () => void }) {
     e.preventDefault(); setErr(null); setBusy(true);
     try {
       const tok = await realRpc<string>('dev_login', { p_name: name, p_password: pw });
-      haptic.ok(); enterDemo(tok);
+      haptic.ok(); enterDemo(tok, profile);
     } catch (e: any) { setErr(e.message); haptic.warn(); } finally { setBusy(false); }
   }
   async function resume() {
     setBusy(true);
     try {
       const ok = await realRpc<boolean>('dev_check', { p_token: saved });
-      if (ok) enterDemo(saved!); else { forgetDev(); toast('Developer session expired. Log in again.', true); onClose(); }
+      if (ok) enterDemo(saved!, profile); else { forgetDev(); toast('Developer session expired. Log in again.', true); onClose(); }
     } catch (e: any) { toast(e.message, true); } finally { setBusy(false); }
   }
   return (

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import QrScanner from 'qr-scanner';
+import { DEMO } from '../demo/mode';
 import { motion } from 'framer-motion';
 import { Avatar, Button, X } from '../components/ui';
 import { haptic } from '../lib/feel';
@@ -46,6 +47,15 @@ export function Scanner({ roomId, getFix, onClose, onCaught }: {
   const busy = useRef(false);
   const [st, setSt] = useState<ScanState>({ k: 'scan' });
   const [camErr, setCamErr] = useState<string | null>(null);
+  // DEMO: bots have no phone to hold up a QR, so the nearest runners are listed to "scan" instead
+  const [targets, setTargets] = useState<{ username: string; token: string; d: number }[]>([]);
+  useEffect(() => {
+    if (!DEMO) return;
+    let alive = true;
+    const load = () => import('../demo/sim').then((sim) => { if (alive) setTargets(sim.scanTargets(roomId)); });
+    load(); const t = setInterval(load, 2000);
+    return () => { alive = false; clearInterval(t); };
+  }, [roomId]);
 
   useEffect(() => {
     const s = new QrScanner(video.current!, (r) => handle(r.data), { preferredCamera: 'environment', highlightScanRegion: false, highlightCodeOutline: false, maxScansPerSecond: 8 });
@@ -59,10 +69,13 @@ export function Scanner({ roomId, getFix, onClose, onCaught }: {
     const m = /^TAG1:([0-9a-f-]{36}):([0-9a-f]{24})$/.exec(data.trim());
     if (!m) { return; }
     if (m[1] !== roomId) { busy.current = true; haptic.warn(); setSt({ k: 'err', msg: 'That QR is from a different room.' }); return; }
+    await tryCatch(m[2]);
+  }
+  async function tryCatch(token: string) {
     busy.current = true; haptic.tap(); setSt({ k: 'check' }); scanner.current?.pause();
     const f = getFix();
     try {
-      const r = await rpc<{ username: string; distance: number }>('catch_runner', { p_room: roomId, p_token: m[2], p_lat: f?.lat ?? null, p_lng: f?.lng ?? null, p_acc: f?.acc ?? null });
+      const r = await rpc<{ username: string; distance: number }>('catch_runner', { p_room: roomId, p_token: token, p_lat: f?.lat ?? null, p_lng: f?.lng ?? null, p_acc: f?.acc ?? null });
       haptic.big(); setSt({ k: 'ok', name: r.username, d: r.distance }); onCaught?.(r.username);
     } catch (e: any) { haptic.warn(); setSt({ k: 'err', msg: e.message }); }
   }
@@ -87,6 +100,16 @@ export function Scanner({ roomId, getFix, onClose, onCaught }: {
         <button onClick={onClose} aria-label="Close scanner" style={{ width: 48, height: 48, display: 'grid', placeItems: 'center', color: '#fff' }}><X s={28} /></button>
       </div>
       <div style={{ position: 'absolute', left: 16, right: 16, bottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}>
+        {DEMO && st.k === 'scan' && (
+          <div className="card card-pad stack" style={{ background: '#0b0b0c', color: '#ede6da', gap: 8, marginBottom: 10, ['--edge' as any]: '#ede6da' }}>
+            <div style={{ fontSize: 12.5, opacity: 0.8 }}>DEMO · Bots have no phone to hold up a QR. Tap a runner to scan theirs, as if your camera found it.</div>
+            {targets.length ? targets.map((t) => (
+              <Button key={t.token} size="sm" kind="quiet" onClick={() => { if (!busy.current) tryCatch(t.token); }} style={{ justifyContent: 'space-between', background: '#1c1b1a', color: '#ede6da' }}>
+                <span>Scan @{t.username}</span><span className="mono">{t.d < 99999 ? `${t.d} m away` : 'no GPS yet'}</span>
+              </Button>
+            )) : <div style={{ fontSize: 13 }}>No runner left to scan.</div>}
+          </div>
+        )}
         {camErr && <div className="card card-pad" style={{ background: '#0b0b0c', color: '#ede6da', ['--edge' as any]: '#ede6da' }}>{camErr}</div>}
         {st.k === 'check' && <div className="card card-pad row" style={{ background: '#0b0b0c', color: '#ede6da', gap: 12, ['--edge' as any]: '#ede6da' }}><span className="spinner" /> Verifying catch…</div>}
         {st.k === 'ok' && (
