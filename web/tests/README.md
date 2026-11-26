@@ -37,6 +37,21 @@ VITE_ARCGIS_KEY=x VITE_MAPTILER_KEY=y npx vite --port 5174
 node tests/maps.cjs
 ```
 
+## Play-area editor, place search, demo and the opening film
+Needs the dev server (`npx vite --port 5173`); the search hand-over needs the stand-in keys server on 5174 (above).
+```
+node tests/editor.cjs     # Find a place: instant TAG names, map search, credit, pin, locate button, one "you" dot
+node tests/demo.cjs       # DEMO: you as yourself, hunter radio with bots, Scan QR + catch, calls never dial, runner chat
+node tests/intro.cjs      # Skip on the opening film (tap and Escape) goes straight to the app
+node tests/search.cjs     # (port 5174) place search falls from a refused Esri to MapTiler to Photon
+```
+
+## Finished tasks are never lost (weak signal, outside the zone)
+Needs the dev server.
+```
+npx esbuild tests/e2e/task-save.ts --bundle --platform=node --format=cjs --external:playwright --external:playwright-core --outfile=tests/.out/task-save.cjs && node tests/.out/task-save.cjs
+```
+
 ## Lighter ticks (server leaves out what the phone already has)
 Same flows, with the mock answering like the live server: fingerprints in every reply, unchanged room details and member list left out.
 ```

@@ -21,8 +21,8 @@ const R = (seed: number, salt = 0) => mulberry32((seed >>> 0) + salt * 101390422
 /* 0 · ECHO */
 export function genEcho(seed: number, L: number, twist: string | null) {
   const r = R(seed, 1);
-  const tiles = L5(L, [4, 6, 6, 9, 9]);
-  const len = L5(L, [4, 5, 6, 7, 8]);
+  const tiles = L5(L, [6, 6, 9, 9, 9]);
+  const len = L5(L, [5, 6, 7, 7, 8]);
   const glyphs = shuf(GLYPHS, r).slice(0, tiles) as GlyphKey[];
   const colors = Array.from({ length: tiles }, () => pickOne(r, NOISE_COLORS));
   const seq: number[] = [];
@@ -30,13 +30,13 @@ export function genEcho(seed: number, L: number, twist: string | null) {
   let order = [...Array(tiles).keys()];
   if (twist === 'shuffle') { do { order = shuf(order, r); } while (order.filter((v, i) => v === i).length > tiles / 3); }
   return { tiles, cols: tiles === 4 ? 2 : 3, glyphs, colors, seq, answer: twist === 'reverse' ? [...seq].reverse() : seq, order,
-    flashMs: twist === 'fast' ? 270 : L5(L, [520, 480, 440, 400, 360]), gapMs: 150 };
+    flashMs: twist === 'fast' ? 260 : L5(L, [480, 440, 400, 380, 350]), gapMs: 150 };
 }
 
 /* 1 · PAIRS */
 export function genPairs(seed: number, L: number, twist: string | null) {
   const r = R(seed, 2);
-  const n = L5(L, [6, 6, 8, 10, 10]);
+  const n = L5(L, [6, 8, 8, 10, 12]);
   const syms = shuf(GLYPHS, r).slice(0, n + 1) as GlyphKey[];
   const cols = shuf(PAIR_COLORS, r);
   const cards: { pair: number; glyph: GlyphKey; color: string }[] = [];
@@ -56,19 +56,19 @@ export function genPairs(seed: number, L: number, twist: string | null) {
 export function genFlash(seed: number, L: number, twist: string | null) {
   const r = R(seed, 3);
   let n = L5(L, [4, 4, 5, 5, 6]);
-  let k = L5(L, [4, 5, 6, 7, 8]);
+  let k = L5(L, [5, 6, 7, 8, 9]);
   if (twist === 'inverse') { n = 4; k = 16 - L5(L, [4, 5, 5, 6, 6]); }
   const lit = shuf([...Array(n * n).keys()], r).slice(0, k).sort((a, b) => a - b);
   const answer = twist === 'inverse' ? [...Array(n * n).keys()].filter((i) => !lit.includes(i)) : lit;
-  return { n, lit, answer, showMs: L5(L, [1800, 1600, 1450, 1300, 1150]) + (twist === 'inverse' ? 500 : 0),
-    turn: twist === 'turn' ? 90 : 0, mirror: twist === 'mirror', mistakes: L <= 2 ? 1 : 0 };
+  return { n, lit, answer, showMs: L5(L, [1600, 1450, 1300, 1200, 1100]) + (twist === 'inverse' ? 500 : 0),
+    turn: twist === 'turn' ? 90 : 0, mirror: twist === 'mirror', mistakes: 1 };
 }
 
 /* 3 · TRAIL */
 export function genTrail(seed: number, L: number, twist: string | null) {
   const r = R(seed, 4);
-  const n = L <= 3 ? 5 : 6;
-  const len = L5(L, [5, 6, 7, 8, 9]);
+  const n = L <= 2 ? 5 : 6;
+  const len = L5(L, [6, 7, 8, 9, 10]);
   let path: number[] = [];
   for (let t = 0; t < 400 && path.length < len; t++) {
     path = [ri(r, 0, n * n - 1)];
@@ -80,17 +80,17 @@ export function genTrail(seed: number, L: number, twist: string | null) {
       path.push(pickOne(r, opts));
     }
   }
-  return { n, path, answer: twist === 'reverse' ? [...path].reverse() : path, stepMs: twist === 'ghost' ? 190 : L5(L, [430, 390, 350, 320, 290]) };
+  return { n, path, answer: twist === 'reverse' ? [...path].reverse() : path, stepMs: twist === 'ghost' ? 190 : L5(L, [400, 360, 330, 300, 280]) };
 }
 
 /* 4 · SAFE CRACK */
 export function genSafe(seed: number, L: number, twist: string | null) {
   const r = R(seed, 5);
   const len = L === 1 ? 3 : 4;
-  const max = L <= 2 ? 5 : 7;
+  const max = twist === 'blind' ? L5(L, [5, 7, 7, 7, 7]) : L5(L, [5, 7, 7, 9, 9]);
   const code = twist === 'repeat' ? Array.from({ length: len }, () => ri(r, 0, max)) : shuf([...Array(max + 1).keys()], r).slice(0, len);
   if (twist === 'repeat' && new Set(code).size === len) code[ri(r, 1, len - 1)] = code[0];
-  return { len, max, guesses: L5(L, [8, 8, 8, 7, 7]), code, repeats: twist === 'repeat', blind: twist === 'blind' };
+  return { len, max, guesses: 8, code, repeats: twist === 'repeat', blind: twist === 'blind' };
 }
 /** 2 = right digit right spot, 1 = right digit wrong spot, 0 = not in the code (duplicate-aware) */
 export function scoreGuess(code: number[], g: number[]) {
@@ -118,7 +118,7 @@ export function mazePath(open: number[], n: number, from: number, to: number): M
 }
 export function genMaze(seed: number, L: number, twist: string | null) {
   const r = R(seed, 6);
-  const n = L5(L, [5, 6, 7, 8, 9]);
+  const n = L5(L, [6, 7, 8, 9, 10]);
   const open = new Array<number>(n * n).fill(0);
   const seen = new Set<number>([0]); const stack = [0];
   while (stack.length) {
@@ -130,17 +130,17 @@ export function genMaze(seed: number, L: number, twist: string | null) {
   }
   const corners = [0, n - 1, n * (n - 1), n * n - 1];
   const si = ri(r, 0, 3); const start = corners[si], exit = corners[3 - si];
-  return { n, open, start, exit, fog: twist === 'fog', flip: twist === 'flip', bumpMs: L >= 3 ? 1000 : 0, path: mazePath(open, n, start, exit) };
+  return { n, open, start, exit, fog: twist === 'fog', flip: twist === 'flip', bumpMs: L >= 2 ? 1000 : 0, path: mazePath(open, n, start, exit) };
 }
 
 /* 6 · GLYPH LOCK */
 export function genGlyph(seed: number, L: number, twist: string | null) {
   const r = R(seed, 7);
-  const n = L5(L, [5, 6, 7, 8, 10]);
+  const n = L5(L, [6, 7, 8, 10, 10]);
   const syms = shuf(GLYPHS, r).slice(0, n) as GlyphKey[];
   const digits = shuf([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], r).slice(0, n);
   const legend = syms.map((g, i) => ({ g, d: digits[i] }));
-  const len = L5(L, [4, 4, 5, 5, 6]);
+  const len = L5(L, [4, 5, 5, 6, 7]);
   const idx = Array.from({ length: len }, () => ri(r, 0, n - 1));
   const code = idx.map((i) => legend[i].g);
   const digitsCode = idx.map((i) => legend[i].d);
@@ -153,7 +153,7 @@ export function genGlyph(seed: number, L: number, twist: string | null) {
 const pop = (x: number) => { let c = 0; while (x) { c += x & 1; x >>= 1; } return c; };
 export function genBinary(seed: number, L: number, twist: string | null) {
   const r = R(seed, 8);
-  const bits = L5(L, [4, 5, 5, 6, 7]);
+  const bits = L5(L, [5, 5, 6, 7, 8]);
   let target = 0;
   do { target = ri(r, 3, 2 ** bits - 1); } while (pop(target) < 2);
   let expr: string | null = null;
@@ -181,13 +181,13 @@ export function wireRule(w: readonly Wire[], flip: boolean): { rule: number; cut
 }
 export function genWires(seed: number, L: number, twist: string | null) {
   const r = R(seed, 9);
-  const n = L5(L, [4, 4, 5, 5, 6]);
+  const n = L5(L, [4, 5, 5, 6, 6]);
   const flip = twist === 'flip';
   const want = ri(r, 1, 4);
   let wires: Wire[] = [];
   for (let t = 0; t < 400; t++) { wires = Array.from({ length: n }, () => pickOne(r, WIRE_COLORS)); if (wireRule(wires, flip).rule === want) break; }
   const { rule, cut } = wireRule(wires, flip);
-  return { wires, answer: cut, rule, flip, manual: (twist === 'dark' ? 'none' : L <= 2 ? 'open' : 'peek') as 'none' | 'open' | 'peek' };
+  return { wires, answer: cut, rule, flip, manual: (twist === 'dark' ? 'none' : L <= 1 ? 'open' : 'peek') as 'none' | 'open' | 'peek' };
 }
 
 /* 9 · LIGHTS OUT */
@@ -200,8 +200,8 @@ export function lightsPress(b: boolean[], p: number, n: number, x: boolean) {
 }
 export function genLights(seed: number, L: number, twist: string | null) {
   const r = R(seed, 10);
-  const n = L <= 2 ? 3 : 4;
-  const presses = L5(L, [2, 3, 4, 4, 5]);
+  const n = L <= 1 ? 3 : 4;
+  const presses = L5(L, [3, 4, 4, 5, 5]);
   const x = twist === 'x';
   let board: boolean[] = [], ps: number[] = [];
   for (let t = 0; t < 200; t++) {
@@ -240,7 +240,7 @@ export function pipeFlow(cells: Pipe[], n: number, inRow: number, outRow: number
 }
 export function genPipes(seed: number, L: number, twist: string | null) {
   const r = R(seed, 11);
-  const n = L5(L, [4, 4, 5, 5, 6]);
+  const n = L5(L, [4, 5, 5, 6, 6]);
   const minLen = n + L5(L, [1, 2, 3, 4, 5]);
   let path: number[] = [];
   for (let t = 0; t < 600; t++) {
@@ -294,17 +294,17 @@ export function genPipes(seed: number, L: number, twist: string | null) {
 /* 11 · DEAD ZONE */
 export function genZone(seed: number, L: number, twist: string | null) {
   const r = R(seed, 12);
-  const hits = L5(L, [3, 3, 4, 4, 5]);
-  const w0 = L5(L, [0.16, 0.14, 0.13, 0.12, 0.11]);
+  const hits = L5(L, [3, 4, 4, 5, 5]);
+  const w0 = L5(L, [0.15, 0.135, 0.125, 0.115, 0.105]);
   return { hits, misses: L5(L, [2, 2, 2, 1, 1]), zones: Array.from({ length: hits }, (_, i) => ({ at: 0.15 + r() * 0.7, w: w0 * Math.pow(0.86, i) })),
-    speed0: L5(L, [0.55, 0.62, 0.7, 0.8, 0.9]), speedStep: 0.24, drift: twist === 'drift', ghost: twist === 'ghost', driftPhase: r() * 6.28 };
+    speed0: L5(L, [0.6, 0.68, 0.76, 0.84, 0.92]), speedStep: 0.24, drift: twist === 'drift', ghost: twist === 'ghost', driftPhase: r() * 6.28 };
 }
 
 /* 12 · EMBER STRIKE */
 export function genEmber(seed: number, L: number, twist: string | null) {
   const r = R(seed, 13);
   const bad = L5(L, [0.25, 0.3, 0.33, 0.36, 0.4]);
-  return { need: L5(L, [8, 10, 11, 12, 14]), maxMiss: L5(L, [4, 3, 3, 2, 2]), every: L5(L, [650, 600, 560, 520, 470]), life: L5(L, [1350, 1200, 1100, 1000, 900]),
+  return { need: L5(L, [10, 11, 12, 14, 15]), maxMiss: L5(L, [4, 3, 3, 2, 2]), every: L5(L, [620, 580, 540, 500, 460]), life: L5(L, [1250, 1150, 1050, 960, 880]),
     size: Math.round(L5(L, [66, 62, 58, 54, 50]) * (twist === 'tiny' ? 0.72 : 1)), swap: twist === 'swap',
     spawns: Array.from({ length: 200 }, () => ({ x: r(), y: r(), kind: (r() < bad ? 'bad' : twist === 'decoy' && r() < 0.2 ? 'fake' : 'good') as 'bad' | 'fake' | 'good' })) };
 }
@@ -312,7 +312,7 @@ export function genEmber(seed: number, L: number, twist: string | null) {
 /* 13 · STEADY HAND  (coordinates in a 0..1 box) */
 export function genSteady(seed: number, L: number, twist: string | null) {
   const r = R(seed, 14);
-  const k = L5(L, [4, 5, 5, 6, 7]);
+  const k = L5(L, [5, 5, 6, 7, 7]);
   const way: [number, number][] = Array.from({ length: k }, (_, i) => {
     const y = 0.9 - (i / (k - 1)) * 0.8;
     const x = i === 0 ? 0.18 : i === k - 1 ? 0.82 : i % 2 ? 0.62 + r() * 0.24 : 0.14 + r() * 0.24;
@@ -328,43 +328,43 @@ export function genSteady(seed: number, L: number, twist: string | null) {
     }
   }
   pts.push(way[way.length - 1]);
-  return { pts, width: L5(L, [0.16, 0.14, 0.125, 0.11, 0.1]), narrow: twist === 'narrow', fog: twist === 'fog', resets: L5(L, [3, 3, 2, 2, 1]) };
+  return { pts, width: L5(L, [0.15, 0.135, 0.12, 0.105, 0.095]), narrow: twist === 'narrow', fog: twist === 'fog', resets: L5(L, [3, 3, 2, 2, 1]) };
 }
 
 /* 14 · INK */
 export function genInk(seed: number, L: number, twist: string | null) {
   const r = R(seed, 15);
-  const k = L <= 3 ? 4 : 5;
-  const rounds = Array.from({ length: L5(L, [6, 7, 8, 9, 10]) }, (_, i) => {
+  const k = L <= 2 ? 4 : 5;
+  const rounds = Array.from({ length: L5(L, [7, 8, 9, 10, 11]) }, (_, i) => {
     const word = ri(r, 0, k - 1);
     let ink = word;
     if (!(L >= 3 && r() < 0.15)) while (ink === word) ink = ri(r, 0, k - 1);
     return { word, ink, askWord: twist === 'flip' && i > 0 && r() < 0.4, order: twist === 'shuffle' ? shuf([...Array(k).keys()], r) : [...Array(k).keys()] };
   });
-  return { k, rounds, ms: L5(L, [2600, 2300, 2050, 1850, 1650]), lives: L === 1 ? 1 : 0 };
+  return { k, rounds, ms: L5(L, [2400, 2150, 1950, 1750, 1600]), lives: L <= 2 ? 1 : 0 };
 }
 
 /* 15 · ODD ONE */
 export type OddMode = 'turn' | 'mirror' | 'shade' | 'size';
 export function genOdd(seed: number, L: number, twist: string | null) {
   const r = R(seed, 16);
-  const n = L5(L, [3, 4, 4, 5, 5]);
-  const subtle = L >= 4;
-  const rounds = Array.from({ length: L5(L, [3, 3, 4, 4, 5]) }, () => {
+  const n = L5(L, [4, 4, 5, 5, 5]);
+  const subtle = L >= 3;
+  const rounds = Array.from({ length: L5(L, [3, 4, 4, 5, 5]) }, () => {
     const mode = pickOne(r, ['turn', 'turn', 'mirror', 'shade', 'size'] as OddMode[]);
     const glyph = mode === 'mirror' ? pickOne(r, CHIRAL) : mode === 'turn' ? pickOne(r, TURNABLE) : pickOne(r, GLYPHS);
     const odd = shuf([...Array(n * n).keys()], r).slice(0, twist === 'two' ? 2 : 1);
     return { n, glyph, color: pickOne(r, NOISE_COLORS), rot: pickOne(r, [0, 90, 180, 270]), mode,
       diff: mode === 'turn' ? (subtle ? pickOne(r, [35, -35]) : pickOne(r, [90, -90, 180])) : mode === 'shade' ? (subtle ? 0.24 : 0.42) : mode === 'size' ? (subtle ? 0.84 : 0.7) : 1, odd };
   });
-  return { rounds, mistakes: L <= 2 ? 1 : 0, restless: twist === 'restless', shuffleSeed: ri(r, 1, 1e9) };
+  return { rounds, mistakes: 1, restless: twist === 'restless', shuffleSeed: ri(r, 1, 1e9) };
 }
 
 /* 16 · TARGET SUM */
 export function genSum(seed: number, L: number, twist: string | null) {
   const r = R(seed, 17);
-  const count = L5(L, [8, 9, 10, 12, 12]);
-  const k = L5(L, [2, 2, 3, 3, 4]);
+  const count = L5(L, [9, 10, 12, 12, 14]);
+  const k = L5(L, [2, 3, 3, 4, 4]);
   const hi = L5(L, [20, 30, 40, 60, 99]);
   const lo = twist === 'negative' ? -Math.round(hi / 2) : 1;
   const nums: number[] = [];
@@ -416,10 +416,10 @@ const altOps: Seq = (r) => { const o = [ri(r, 1, 5)]; const add = ri(r, 1, 4); w
 const PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61];
 const primes: Seq = (r) => { const s = ri(r, 0, 8); return PRIMES.slice(s, s + 7); };
 const tri: Seq = (r) => { const s = ri(r, 1, 6); return Array.from({ length: 7 }, (_, i) => ((s + i) * (s + i + 1)) / 2); };
-const FAMS: Seq[][] = [[arith, down, times], [arith, times, squares, growDiff], [alt, fib, dbl1, growDiff, squares], [inter, cubes, pron, fib, dbl1], [primes, tri, altOps, inter, pron]];
+const FAMS: Seq[][] = [[arith, down, times, growDiff], [arith, times, squares, growDiff, alt], [alt, fib, dbl1, growDiff, squares, inter], [inter, cubes, pron, fib, dbl1, tri], [primes, tri, altOps, inter, pron, cubes]];
 export function genNext(seed: number, L: number, twist: string | null) {
   const r = R(seed, 18);
-  const rounds = Array.from({ length: L5(L, [2, 2, 2, 3, 3]) }, () => {
+  const rounds = Array.from({ length: L5(L, [2, 3, 3, 3, 4]) }, () => {
     const seq = pickOne(r, FAMS[Math.max(1, Math.min(5, L)) - 1])(r);
     let shown: (number | null)[], answer: number;
     if (twist === 'gap') { const g = ri(r, 2, 3); shown = seq.slice(0, 6).map((v, i) => (i === g ? null : v)); answer = seq[g]; }
@@ -441,7 +441,7 @@ export function genNext(seed: number, L: number, twist: string | null) {
 /* 18 · SCRAMBLE */
 export function genScramble(seed: number, L: number, twist: string | null) {
   const r = R(seed, 19);
-  const [mn, mx] = L5(L, [[4, 5], [5, 6], [6, 7], [7, 8], [8, 10]]);
+  const [mn, mx] = L5(L, [[5, 6], [5, 7], [6, 8], [7, 9], [8, 10]]);
   const pick = pickOne(r, wordsBetween(mn, mx));
   const letters = pick.w.split('');
   if (twist === 'extra') {
@@ -467,7 +467,7 @@ export function scrambleOk(target: string, typed: string, backwards: boolean) {
 export function genMirror(seed: number, L: number, twist: string | null) {
   const r = R(seed, 20);
   const n = L5(L, [4, 4, 5, 5, 6]);
-  const k = L5(L, [4, 5, 6, 7, 9]);
+  const k = L5(L, [5, 6, 7, 8, 10]);
   const tf = (i: number) => { const row = Math.floor(i / n), col = i % n; if (twist === 'turn') return col * n + (n - 1 - row); if (twist === 'flip') return (n - 1 - row) * n + col; return row * n + (n - 1 - col); };
   let src: number[] = [], answer: number[] = [];
   for (let t = 0; t < 100; t++) {
@@ -475,5 +475,5 @@ export function genMirror(seed: number, L: number, twist: string | null) {
     answer = src.map(tf).sort((a, b) => a - b);
     if (answer.filter((x) => src.includes(x)).length <= Math.floor(k / 2)) break;
   }
-  return { n, src, answer, mistakes: L <= 2 ? 1 : 0 };
+  return { n, src, answer, mistakes: 1 };
 }
