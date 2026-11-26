@@ -37,6 +37,7 @@ export default defineConfig({
         globIgnores: ['splash/**', 'wake.mp4'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: '/index.html',
+        importScripts: ['/workbox-maintenance.js'], // maintenance mode: reload every open window onto the notice
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,

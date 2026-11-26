@@ -1,40 +1,23 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-import './styles/base.css';
-import './lib/viewport';
-import App from './App';
-import { SessionProvider } from './lib/session';
-import { ToastProvider } from './components/ui';
+import '@fontsource-variable/inter/opsz.css';
+import '@fontsource-variable/archivo/wdth.css';
+import { Maintenance } from './Maintenance';
 
-// Keep installed phones on the newest version: check for an update on launch and whenever the app comes
-// back to the foreground. When a new version takes over, reload straight away during the opening film,
-// otherwise wait until the app is in the background so nobody is yanked out of a match.
+// MAINTENANCE MODE: every visitor, on every page, sees one message and nothing else (no sign-in, no matches, no demo).
+// Installed phones still check for a new version on launch, when the app comes back to the foreground and every
+// 10 minutes. When the full app is back, its new version takes over and this page reloads straight into it.
 if ('serviceWorker' in navigator) {
   const hadController = !!navigator.serviceWorker.controller;
-  let pending = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!hadController) return; // first install, nothing old to replace
-    if (performance.now() < 9000) location.reload();
-    else pending = true;
-  });
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) location.reload(); });
   const check = () => navigator.serviceWorker.getRegistration().then((r) => r?.update()).catch(() => {});
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden' && pending) location.reload();
-    if (document.visibilityState === 'visible') check();
-  });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
   window.addEventListener('load', check);
   setInterval(check, 10 * 60e3);
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <SessionProvider>
-        <ToastProvider>
-          <App />
-        </ToastProvider>
-      </SessionProvider>
-    </BrowserRouter>
+    <Maintenance />
   </React.StrictMode>,
 );
